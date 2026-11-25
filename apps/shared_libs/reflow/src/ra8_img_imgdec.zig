@@ -231,14 +231,49 @@ fn internalDecodeFail() c_int {
     return k_ra8_err_not_supported;
 }
 
-/// Unbind the arena and return it to empty. Called on every path out of
-/// the decode once the arena has been bound, so no handle is left
-/// pointing at the previous decode's store and no stray allocation can
-/// reach a stale buffer.
-fn internalArenaRelease(arena: *Ra8ImgArena) void {
+pub const TailSlice = struct {
+    tail_off: usize,
+    tail: Ra8ImgArena,
+};
+
+/// Partition caller's arena into its intact aligned prefix and stb scratch tail.
+///
+/// Caller allocations occupying `[0 .. caller.offset)` are preserved untouched;
+/// the unused suffix starting at the next 16-byte address becomes stb's
+/// transient scratch arena for one decode.
+pub fn internalCarveTail(caller: *const Ra8ImgArena) ?TailSlice {
+    const base_ptr = caller.base orelse return null;
+    const used = caller.offset;
+    if ((used >= caller.cap) or (used > (std.math.maxInt(usize) - 15))) {
+        return null;
+    }
+    const cur_addr = @intFromPtr(base_ptr) +% used;
+    const pad: usize = (16 -% (cur_addr & 15)) & 15;
+    const rem = caller.cap - used;
+    if (pad >= rem) {
+        return null;
+    }
+    const tail_off = used + pad;
+    return .{
+        .tail_off = tail_off,
+        .tail = .{
+            .base = base_ptr + tail_off,
+            .cap = caller.cap - tail_off,
+            .offset = 0,
+            .live = 0,
+            .high_water = 0,
+        },
+    };
+}
+
+/// Unbind stb's temporary tail arena and fold peak usage into caller high_water
+/// without disturbing caller prefix `offset` or `live` bookkeeping.
+pub fn internalReleaseTail(caller: *Ra8ImgArena, tail_off: usize, tail: *const Ra8ImgArena) void {
     ra8_img_arena_unbind();
-    arena.offset = 0;
-    arena.live = 0;
+    const peak = tail_off +| tail.high_water;
+    if (peak > caller.high_water) {
+        caller.high_water = peak;
+    }
 }
 
 /// Report this backend's static capabilities. The arena came through the
@@ -257,14 +292,11 @@ pub fn internalCaps(ctx: ?*anyopaque, out: *Ra8ImgdecCaps) callconv(.c) c_int {
 
 /// Decode one PNG, GIF or BMP into the request's destination surface.
 /// Verifies the container, pre-flights the geometry and the destination,
-/// then binds the arena recorded at ra8_img_imgdec_bind() time and calls
-/// stbi_load_from_memory() asking for exactly the layout req->want
-/// names. stb's buffer is copied into req->dst and the arena is drained
-/// on every return path, success or failure, so a handle is never left
-/// holding the previous decode's store. The probe read the header; stb
-/// read it again on its way through the body. They must agree, and a
-/// disagreement means the copy below would run off the end of one
-/// buffer or the other, so it is refused rather than clamped.
+/// then binds the unused aligned tail of the arena recorded at
+/// ra8_img_imgdec_bind() time and calls stbi_load_from_memory() asking for
+/// exactly the layout req->want names. stb's buffer is copied into req->dst
+/// and the temporary tail arena is unbound on every return path, success or
+/// failure, leaving any caller-carved destination prefix in scratch intact.
 fn internalDecode(ctx: ?*anyopaque, req: *const Ra8ImgdecReq, out: *Ra8ImgdecImage) callconv(.c) c_int {
     const arena_ptr = ctx orelse return k_ra8_err_invalid_state;
     const arena: *Ra8ImgArena = @ptrCast(@alignCast(arena_ptr));
@@ -289,20 +321,26 @@ fn internalDecode(ctx: ?*anyopaque, req: *const Ra8ImgdecReq, out: *Ra8ImgdecIma
         return fits;
     }
 
+    var carved = internalCarveTail(arena) orelse {
+        logErr("decode: no arena tail room for stb scratch");
+        return k_ra8_err_no_mem;
+    };
+
     var sx: c_int = 0;
     var sy: c_int = 0;
     var comp: c_int = 0;
-    ra8_img_arena_bind(arena); // resets the arena to empty
+    ra8_img_arena_bind(&carved.tail);
     const pixels = stbi_load_from_memory(req.bytes.?, @intCast(req.byte_count), &sx, &sy, &comp, @intCast(bpp));
     if (pixels == null) {
         const why = internalDecodeFail();
-        internalArenaRelease(arena);
+        internalReleaseTail(arena, carved.tail_off, &carved.tail);
         logErr("decode: stb refused the image");
         return why;
     }
 
     if ((sx != @as(c_int, @intCast(src_w))) or (sy != @as(c_int, @intCast(src_h)))) {
-        internalArenaRelease(arena);
+        stbi_image_free(@ptrCast(pixels.?));
+        internalReleaseTail(arena, carved.tail_off, &carved.tail);
         logErr("decode: decoded geometry disagrees with the header");
         return k_ra8_err_validation_failed;
     }
@@ -311,7 +349,7 @@ fn internalDecode(ctx: ?*anyopaque, req: *const Ra8ImgdecReq, out: *Ra8ImgdecIma
     internalCopyRows(pixels.?, req.dst.?, stride, src_h, packed_row);
 
     stbi_image_free(@ptrCast(pixels.?));
-    internalArenaRelease(arena);
+    internalReleaseTail(arena, carved.tail_off, &carved.tail);
 
     out.width_px = src_w;
     out.height_px = src_h;

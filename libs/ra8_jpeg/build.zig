@@ -76,6 +76,8 @@ pub fn build(b: *std.Build) void {
     // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_jpeg tests");

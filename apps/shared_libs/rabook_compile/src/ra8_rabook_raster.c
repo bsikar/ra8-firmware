@@ -21,74 +21,44 @@
 
 #include "ra8_attributes.h"
 #include "ra8_img_arena.h"
+#include "ra8_img_imgdec.h"
 #include "ra8_imgdec.h"
+#include "ra8_imgdec_mux.h"
+#include "ra8_imgdec_scratch.h"
+#include "ra8_jpeg_imgdec.h"
 #include "ra8_rabook_gray4.h"
-#include "ra8_webp.h"
-#include "stb_image.h"
+#include "ra8_webp_imgdec.h"
 
 /** @brief Raster color-conversion constants. */
 typedef enum : uint16_t {
-  k_raster_webp_bytes_per_px = 4U,   /**< Decoded RGBA bytes per pixel.  */
-  k_raster_luma_r            = 77U,  /**< stb-compatible red weight.     */
-  k_raster_luma_g            = 150U, /**< stb-compatible green weight.   */
-  k_raster_luma_b            = 29U,  /**< stb-compatible blue weight.    */
-  k_raster_luma_shift        = 8U,   /**< Luminance normalization shift. */
+  k_raster_rgb_bytes_per_px  = 3U,   /**< Decoded RGB888 bytes per pixel. */
+  k_raster_rgba_bytes_per_px = 4U,   /**< Decoded RGBA bytes per pixel.   */
+  k_raster_luma_r            = 77U,  /**< stb-compatible red weight.      */
+  k_raster_luma_g            = 150U, /**< stb-compatible green weight.    */
+  k_raster_luma_b            = 29U,  /**< stb-compatible blue weight.     */
+  k_raster_luma_shift        = 8U,   /**< Luminance normalization shift.  */
 } ra8_rabook_raster_consts_t;
 
 /**
- * @brief Return true only for a candidate the shared sniff names as WebP.
- * @details Forwards the leading bytes to ra8_imgdec_sniff() rather than
- *          matching the RIFF and WEBP tags in this module, so the routing
- *          decision follows one container table (RA8FW-308). Every refusal folds to
- *          false because the single caller only asks whether the libwebp arena
- *          path applies; any other answer belongs to the stb decoder, which
- *          rejects what it cannot read.
- * @param[in] source Encoded candidate bytes.
- * @param[in] source_size Readable byte count at @p source.
- * @return Whether the candidate carries the WebP signature.
- * @retval true The shared sniff resolved the candidate to WebP.
- * @retval false The header is short, unreadable, or names another container.
- * @pre @p source is non-NULL and spans @p source_size bytes.
- * @pre @p source_size is the complete candidate byte length.
- * @post No input or codec state is modified.
- * @post No byte beyond ::k_ra8_imgdec_sniff_bytes is inspected.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_is_webp(const uint8_t* source, size_t source_size)
-{
-  const uint32_t window = (source_size > (size_t)k_ra8_imgdec_sniff_bytes)
-                            ? (uint32_t)k_ra8_imgdec_sniff_bytes
-                            : (uint32_t)source_size;
-  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
-  if (ra8_imgdec_sniff(source, window, &format) != k_ra8_ok) {
-    return false;
-  }
-  return format == k_ra8_imgdec_format_webp;
-}
-
-/**
- * @brief Convert an in-place RGBA frame to a packed grayscale prefix.
- * @details Reads each four-byte pixel before replacing the corresponding byte
- *          in the frame prefix with stb's deterministic integer luminance.
- * @param[in,out] rgba Frame containing @p pixels RGBA8888 pixels.
- * @param[in] pixels Number of pixels to convert.
- * @pre @p rgba is non-NULL and spans `pixels * 4` readable/writable bytes.
- * @pre `pixels * 4` is representable by size_t.
- * @post The first @p pixels bytes hold grayscale samples; later bytes are
- *       unspecified scratch and no byte outside the original frame is written.
- * @post The alpha channel does not influence any grayscale sample.
+ * @brief Convert an in-place RGB/RGBA frame to a packed grayscale prefix.
+ * @details Reads each multi-byte pixel before replacing the corresponding byte
+ *          in the frame prefix with BT.601 integer luminance.
+ * @param[in,out] frame     Frame containing @p pixels packed RGB or RGBA pixels.
+ * @param[in]     pixels    Number of pixels to convert.
+ * @param[in]     step      Bytes per source pixel (3 for RGB888, 4 for RGBA8888).
+ * @pre @p frame is non-NULL and spans `pixels * step` readable/writable bytes.
+ * @post The first @p pixels bytes hold grayscale samples.
  * @note Pure with respect to global state; thread-safe for distinct frames.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_rgba_to_gray(uint8_t* rgba, uint32_t pixels)
+RA8_INTERNAL static void internal_packed_to_gray(uint8_t* frame, uint32_t pixels, uint32_t step)
 {
   for (uint32_t i = 0U; i < pixels; ++i) {
-    const size_t   p = (size_t)i * (size_t)k_raster_webp_bytes_per_px;
-    const uint32_t y = ((uint32_t)rgba[p] * (uint32_t)k_raster_luma_r) +
-                       ((uint32_t)rgba[p + 1U] * (uint32_t)k_raster_luma_g) +
-                       ((uint32_t)rgba[p + 2U] * (uint32_t)k_raster_luma_b);
-    rgba[i]          = (uint8_t)(y >> k_raster_luma_shift);
+    const size_t   p = (size_t)i * (size_t)step;
+    const uint32_t y = ((uint32_t)frame[p] * (uint32_t)k_raster_luma_r) +
+                       ((uint32_t)frame[p + 1U] * (uint32_t)k_raster_luma_g) +
+                       ((uint32_t)frame[p + 2U] * (uint32_t)k_raster_luma_b);
+    frame[i]         = (uint8_t)(y >> k_raster_luma_shift);
   }
 }
 
@@ -216,176 +186,200 @@ RA8_INTERNAL static ra8_err_t internal_encode(const uint8_t* gray,
 }
 
 /**
- * @brief Decode WebP into caller RGBA storage and expose its gray prefix.
- * @details Validates bounded dimensions, proves the full RGBA frame fits, runs
- *          the arena-backed WebP facade, then converts the frame prefix in
- *          place to deterministic grayscale.
- * @param[in] source Encoded WebP bytes.
- * @param[in] source_size Readable source length.
- * @param[in,out] workspace Caller WebP arena and RGBA frame storage.
- * @param[out] out_gray Receives the grayscale frame prefix.
- * @param[out] out_width Receives source width.
- * @param[out] out_height Receives source height.
- * @return Decode status.
- * @retval k_ra8_ok A complete gray frame is available.
- * @retval k_ra8_err_invalid_size Dimensions exceed the RABOOK wire fields.
- * @retval k_ra8_err_no_mem Required caller storage is absent or undersized.
- * @return Other WebP validation/decode errors propagate unchanged.
- * @pre All pointer arguments are non-NULL.
- * @pre Non-NULL arena/buffer members span their declared capacities.
- * @post On success the WebP arena is drained and outputs are initialized.
- * @post On error the output pointer/dimensions remain untouched.
- * @note Not thread-safe because the WebP allocator binding is global.
+ * @brief Bind available raster decoders into @p mux in priority order.
+ * @details Always registers the stateless baseline JPEG backend first, then
+ *          binds WebP and residual stb backends whenever their caller arenas
+ *          are present.
+ * @param[out]    mux       Mux initialized with all bound backends.
+ * @param[in,out] workspace Caller arenas for WebP and stb backends.
+ * @return Initialization status.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_decode_webp(const uint8_t*                 source,
-                                                   size_t                         source_size,
-                                                   ra8_rabook_raster_workspace_t* workspace,
-                                                   const uint8_t**                out_gray,
-                                                   uint16_t*                      out_width,
-                                                   uint16_t*                      out_height)
+RA8_INTERNAL static ra8_err_t internal_init_mux(ra8_imgdec_mux_t*              mux,
+                                                ra8_rabook_raster_workspace_t* workspace)
 {
-  uint32_t  width  = 0U;
-  uint32_t  height = 0U;
-  ra8_err_t rc     = ra8_webp_get_info(source, source_size, &width, &height);
+  ra8_err_t rc = ra8_imgdec_mux_init(mux);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if (width > UINT16_MAX) {
-    return k_ra8_err_invalid_size;
-  }
-  if (height > UINT16_MAX) {
-    return k_ra8_err_invalid_size;
-  }
-  const uint64_t frame_size =
-    (uint64_t)width * (uint64_t)height * (uint64_t)k_raster_webp_bytes_per_px;
-  if (workspace->webp_arena == nullptr) {
-    return k_ra8_err_no_mem;
-  }
-  if (workspace->rgba == nullptr) {
-    return k_ra8_err_no_mem;
-  }
-  if (frame_size > (uint64_t)workspace->rgba_cap) {
-    return k_ra8_err_no_mem;
-  }
-  rc = ra8_webp_decode_rgba(source,
-                            source_size,
-                            workspace->webp_arena,
-                            workspace->rgba,
-                            (size_t)width * (size_t)k_raster_webp_bytes_per_px,
-                            (size_t)frame_size,
-                            nullptr,
-                            nullptr);
+
+  ra8_imgdec_t dec = {};
+  rc               = ra8_jpeg_imgdec_bind(&dec);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  const uint32_t pixels = width * height;
-  internal_rgba_to_gray(workspace->rgba, pixels);
-  *out_gray   = workspace->rgba;
-  *out_width  = (uint16_t)width;
-  *out_height = (uint16_t)height;
+  rc = ra8_imgdec_mux_add(mux, &dec);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+
+  if (workspace->webp_arena != nullptr) {
+    rc = ra8_webp_imgdec_bind(&dec, workspace->webp_arena);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+    rc = ra8_imgdec_mux_add(mux, &dec);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+  }
+
+  if (workspace->stb_arena != nullptr) {
+    rc = ra8_img_imgdec_bind(&dec, workspace->stb_arena);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+    rc = ra8_imgdec_mux_add(mux, &dec);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+  }
+
   return k_ra8_ok;
 }
 
 /**
- * @brief Decode an stb-supported raster and expose arena-owned gray pixels.
- * @details Binds the caller arena, asks stb_image for one gray channel, and
- *          validates positive dimensions against the RABOOK uint16 fields. The
- *          successful allocation deliberately remains live for the caller to
- *          scale/encode before it frees and unbinds it.
- * @param[in] source Encoded JPEG/PNG/GIF/BMP bytes.
- * @param[in] source_size Readable source length.
- * @param[in,out] workspace Caller stb arena descriptor.
- * @param[out] out_gray Receives arena-owned gray pixels.
- * @param[out] out_width Receives source width.
- * @param[out] out_height Receives source height.
- * @return Decode status.
- * @retval k_ra8_ok Gray pixels remain live in the bound arena.
- * @retval k_ra8_err_invalid_size Source length or dimensions exceed an API bound.
- * @retval k_ra8_err_no_mem No stb arena was supplied.
- * @retval k_ra8_err_validation_failed stb rejected or could not decode the source.
- * @pre All pointer arguments are non-NULL.
- * @pre @p workspace's stb arena backing spans its declared capacity.
- * @post On success the image arena remains bound until the public caller frees it.
- * @post On failure the image arena is unbound before return.
- * @note Not thread-safe because the stb allocator binding is global.
- * @since 0.1.0
+ * @brief Select the preferred decoded pixel layout for @p format.
  */
-RA8_INTERNAL static ra8_err_t internal_decode_stb(const uint8_t*                 source,
-                                                  size_t                         source_size,
-                                                  ra8_rabook_raster_workspace_t* workspace,
-                                                  uint8_t**                      out_gray,
-                                                  uint16_t*                      out_width,
-                                                  uint16_t*                      out_height)
+RA8_INTERNAL static ra8_imgdec_pixel_t internal_want_for_format(ra8_imgdec_format_t format)
 {
-  if (source_size > (size_t)INT_MAX) {
+  if (format == k_ra8_imgdec_format_webp) {
+    return k_ra8_imgdec_pixel_rgba8888;
+  }
+  if (format == k_ra8_imgdec_format_jpeg) {
+    return k_ra8_imgdec_pixel_rgb888;
+  }
+  return k_ra8_imgdec_pixel_grey8;
+}
+
+/**
+ * @brief Probe @p source through @p mux and map geometry/container errors.
+ */
+RA8_INTERNAL static ra8_err_t internal_probe_raster(const ra8_imgdec_mux_t* mux,
+                                                    const uint8_t*          source,
+                                                    uint32_t                source_size,
+                                                    ra8_imgdec_pixel_t      want,
+                                                    ra8_imgdec_geom_t*      out_geom)
+{
+  const ra8_err_t rc = ra8_imgdec_mux_probe(mux, source, source_size, want, out_geom, nullptr);
+  if (rc == k_ra8_err_invalid_size) {
     return k_ra8_err_invalid_size;
   }
-  if (workspace->stb_arena == nullptr) {
-    return k_ra8_err_no_mem;
-  }
-  int width      = 0;
-  int height     = 0;
-  int components = 0;
-  ra8_img_arena_bind(workspace->stb_arena);
-  uint8_t* pixels = stbi_load_from_memory(source, /* alloc-allow: caller-bound ra8_img_arena */
-                                          (int)source_size,
-                                          &width,
-                                          &height,
-                                          &components,
-                                          1);
-  if (pixels == nullptr) {
-    ra8_img_arena_unbind();
+  if (rc != k_ra8_ok) {
     return k_ra8_err_validation_failed;
   }
-  bool dimensions_valid = width > 0;
-  if (height <= 0) {
-    dimensions_valid = false;
-  }
-  if (width > (int)UINT16_MAX) {
-    dimensions_valid = false;
-  }
-  if (height > (int)UINT16_MAX) {
-    dimensions_valid = false;
-  }
-  if (!dimensions_valid) {
-    stbi_image_free(pixels); /* alloc-allow: caller-bound ra8_img_arena */
-    ra8_img_arena_unbind();
+  if ((out_geom->width_px == 0U) || (out_geom->height_px == 0U) ||
+      (out_geom->width_px > (uint32_t)UINT16_MAX) || (out_geom->height_px > (uint32_t)UINT16_MAX)) {
     return k_ra8_err_invalid_size;
   }
-  *out_gray   = pixels;
-  *out_width  = (uint16_t)width;
-  *out_height = (uint16_t)height;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Decode WebP into caller RGBA storage and expose its gray prefix.
+ */
+RA8_INTERNAL static ra8_err_t internal_decode_webp(const ra8_imgdec_mux_t*        mux,
+                                                   const uint8_t*                 source,
+                                                   uint32_t                       source_size,
+                                                   const ra8_imgdec_geom_t*       geom,
+                                                   ra8_rabook_raster_workspace_t* workspace,
+                                                   const uint8_t**                out_gray)
+{
+  const uint64_t frame_size =
+    (uint64_t)geom->width_px * (uint64_t)geom->height_px * (uint64_t)k_raster_rgba_bytes_per_px;
+  if (frame_size > (uint64_t)workspace->rgba_cap) {
+    return k_ra8_err_no_mem;
+  }
+
+  const ra8_imgdec_req_t req = {.bytes      = source,
+                                .byte_count = source_size,
+                                .arena      = nullptr,
+                                .dst        = workspace->rgba,
+                                .dst_bytes  = (uint32_t)frame_size,
+                                .dst_stride = 0U,
+                                .format     = geom->format,
+                                .want       = k_ra8_imgdec_pixel_rgba8888};
+  ra8_imgdec_image_t     img = {};
+  const ra8_err_t        rc  = ra8_imgdec_mux_decode(mux, &req, &img);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  internal_packed_to_gray(workspace->rgba,
+                          img.width_px * img.height_px,
+                          (uint32_t)k_raster_rgba_bytes_per_px);
+  *out_gray = workspace->rgba;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Decode JPEG/PNG/GIF/BMP into caller stb_arena prefix storage.
+ */
+RA8_INTERNAL static ra8_err_t internal_decode_arena_prefix(const ra8_imgdec_mux_t*  mux,
+                                                           const uint8_t*           source,
+                                                           uint32_t                 source_size,
+                                                           const ra8_imgdec_geom_t* geom,
+                                                           ra8_imgdec_pixel_t       want,
+                                                           ra8_rabook_raster_workspace_t* workspace,
+                                                           uint8_t** out_pixels)
+{
+  const uint32_t bpp      = ra8_imgdec_pixel_bytes(want);
+  const uint64_t px_count = (uint64_t)geom->width_px * (uint64_t)geom->height_px;
+  const uint64_t frame    = px_count * (uint64_t)bpp;
+  if ((bpp == 0U) || (frame == 0ULL) || (frame > (uint64_t)UINT32_MAX) ||
+      (frame > (uint64_t)SIZE_MAX)) {
+    return k_ra8_err_invalid_size;
+  }
+
+  if (ra8_imgdec_scratch_init(workspace->stb_arena,
+                              workspace->stb_arena->base,
+                              workspace->stb_arena->cap) != k_ra8_ok) {
+    return k_ra8_err_no_mem;
+  }
+  uint8_t* const pixels = (uint8_t*)ra8_imgdec_scratch_alloc(workspace->stb_arena, (size_t)frame);
+  if (pixels == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+
+  const ra8_imgdec_req_t req = {.bytes      = source,
+                                .byte_count = source_size,
+                                .arena      = nullptr,
+                                .dst        = pixels,
+                                .dst_bytes  = (uint32_t)frame,
+                                .dst_stride = 0U,
+                                .format     = geom->format,
+                                .want       = want};
+  ra8_imgdec_image_t     img = {};
+  const ra8_err_t        rc  = ra8_imgdec_mux_decode(mux, &req, &img);
+  if (rc != k_ra8_ok) {
+    ra8_imgdec_scratch_free(workspace->stb_arena, pixels);
+    if ((rc == k_ra8_err_no_mem) || (rc == k_ra8_err_invalid_size)) {
+      return rc;
+    }
+    return k_ra8_err_validation_failed;
+  }
+  if (want == k_ra8_imgdec_pixel_rgb888) {
+    internal_packed_to_gray(pixels,
+                            img.width_px * img.height_px,
+                            (uint32_t)k_raster_rgb_bytes_per_px);
+  }
+  *out_pixels = pixels;
   return k_ra8_ok;
 }
 
 /** @brief One decoded source view and the ownership needed to release it. */
 typedef struct internal_decoded_raster_t {
-  const uint8_t* gray;       /**< Decoded grayscale samples.              */
-  uint8_t*       stb_pixels; /**< stb-owned arena span, or null for WebP. */
-  uint16_t       width;      /**< Source width in pixels.                 */
-  uint16_t       height;     /**< Source height in pixels.                */
-  bool           webp;       /**< Whether the WebP caller arena owns it.  */
+  const uint8_t* gray;       /**< Decoded grayscale samples.               */
+  uint8_t*       stb_pixels; /**< Arena-owned span, or null for WebP.      */
+  uint16_t       width;      /**< Source width in pixels.                  */
+  uint16_t       height;     /**< Source height in pixels.                 */
+  bool           webp;       /**< Whether the WebP caller storage owns it. */
 } internal_decoded_raster_t;
 
 /**
  * @brief Decode one supported source into a normalized grayscale view.
- * @details Detects WebP by signature and selects the bounded WebP or stb arena
- *          decoder, then normalizes ownership and sample access in @p decoded.
- * @param[in] source Encoded raster bytes.
- * @param[in] source_size Accessible source length in bytes.
- * @param[in,out] workspace Caller-owned decoder arenas.
- * @param[out] decoded Receives normalized pixels, dimensions, and ownership.
- * @return Decoder status.
- * @retval k_ra8_ok The source decoded to a grayscale view.
- * @retval k_ra8_err_validation_failed The encoded source is malformed.
- * @retval k_ra8_err_invalid_size Source or decoded dimensions are unsupported.
- * @retval k_ra8_err_no_mem A selected bounded arena is unavailable or too small.
- * @pre All pointer arguments are non-NULL and capacities describe accessible spans.
- * @pre @p decoded does not alias source bytes or decoder arenas.
- * @post Success initializes every field of @p decoded.
- * @post Failure does not publish a successful normalized view.
- * @note Not thread-safe; decoder arena binding is process-global.
+ * @details Sniffs the container signature, validates required caller arenas,
+ *          routes JPEG/PNG/GIF/BMP/WebP through `ra8_imgdec_mux`, and exposes
+ *          the resulting gray samples in @p decoded.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
@@ -394,30 +388,69 @@ static ra8_err_t internal_decode_source(const uint8_t*                 source,
                                         ra8_rabook_raster_workspace_t* workspace,
                                         internal_decoded_raster_t*     decoded)
 {
-  decoded->webp          = internal_is_webp(source, source_size);
-  const ra8_err_t result = decoded->webp ? internal_decode_webp(source,
-                                                                source_size,
-                                                                workspace,
-                                                                &decoded->gray,
-                                                                &decoded->width,
-                                                                &decoded->height)
-                                         : internal_decode_stb(source,
-                                                               source_size,
-                                                               workspace,
-                                                               &decoded->stb_pixels,
-                                                               &decoded->width,
-                                                               &decoded->height);
-  if (!decoded->webp) {
+  if (source_size > (size_t)INT_MAX) {
+    return k_ra8_err_invalid_size;
+  }
+  const uint32_t      window = (source_size > (size_t)k_ra8_imgdec_sniff_bytes)
+                                 ? (uint32_t)k_ra8_imgdec_sniff_bytes
+                                 : (uint32_t)source_size;
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff(source, window, &format) != k_ra8_ok) {
+    return k_ra8_err_validation_failed;
+  }
+
+  const bool is_webp = (format == k_ra8_imgdec_format_webp);
+  decoded->webp      = is_webp;
+  if (is_webp) {
+    if ((workspace->webp_arena == nullptr) || (workspace->rgba == nullptr)) {
+      return k_ra8_err_no_mem;
+    }
+  } else if (workspace->stb_arena == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+
+  ra8_imgdec_mux_t mux = {};
+  ra8_err_t        rc  = internal_init_mux(&mux, workspace);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+
+  const ra8_imgdec_pixel_t want = internal_want_for_format(format);
+  ra8_imgdec_geom_t        geom = {};
+  rc = internal_probe_raster(&mux, source, (uint32_t)source_size, want, &geom);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+
+  decoded->width  = (uint16_t)geom.width_px;
+  decoded->height = (uint16_t)geom.height_px;
+  if (is_webp) {
+    decoded->stb_pixels = nullptr;
+    return internal_decode_webp(&mux,
+                                source,
+                                (uint32_t)source_size,
+                                &geom,
+                                workspace,
+                                &decoded->gray);
+  }
+  rc = internal_decode_arena_prefix(&mux,
+                                    source,
+                                    (uint32_t)source_size,
+                                    &geom,
+                                    want,
+                                    workspace,
+                                    &decoded->stb_pixels);
+  if (rc == k_ra8_ok) {
     decoded->gray = decoded->stb_pixels;
   }
-  return result;
+  return rc;
 }
 
 /**
  * @brief Scale, encode, and release one successfully validated source.
  * @details Decodes to gray, derives aspect-preserving bounded dimensions,
- *          scales when required, packs the requested depth, and releases stb
- *          arena ownership on every post-decode path.
+ *          scales when required, packs the requested depth, and releases arena
+ *          ownership on every post-decode path.
  * @param[in] source Encoded raster bytes.
  * @param[in] source_size Accessible source length in bytes.
  * @param[in] max_edge Maximum output width or height in pixels.
@@ -434,7 +467,7 @@ static ra8_err_t internal_decode_source(const uint8_t*                 source,
  * @pre Pointer arguments and workspace arenas passed public validation.
  * @pre @p encoded addresses @p encoded_cap writable bytes disjoint from source.
  * @post Success fully initializes @p result and the reported encoded prefix.
- * @post Failure zeros @p result and releases any temporary stb ownership.
+ * @post Failure zeros @p result and releases any temporary arena ownership.
  * @note Not thread-safe; decoder arena binding is process-global.
  * @since Version 0.1.0
  */
@@ -473,9 +506,8 @@ static ra8_err_t internal_encode_source(const uint8_t*                 source,
                          encoded_cap,
                          &result->encoded_size);
   }
-  if (!decoded.webp) {
-    stbi_image_free(decoded.stb_pixels); /* alloc-allow: caller-bound ra8_img_arena */
-    ra8_img_arena_unbind();
+  if (!decoded.webp && (decoded.stb_pixels != nullptr)) {
+    ra8_imgdec_scratch_free(workspace->stb_arena, decoded.stb_pixels);
   }
   if (rc != k_ra8_ok) {
     *result = (ra8_rabook_raster_result_t){0};

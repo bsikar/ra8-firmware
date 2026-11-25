@@ -516,6 +516,54 @@ RA8_INTERNAL static void internal_test_bind_guards(void)
   TEST_END("bind refuses a null handle and a null arena");
 }
 
+/**
+ * @brief A decode preserves a destination buffer carved in the arena prefix.
+ * @return None.
+ * @pre None.
+ * @post No state mutated beyond the fixture buffers.
+ * @note File-local case; no ownership escapes this executable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_prefix_preserved(void)
+{
+  TEST_BEGIN("decoding into a caller prefix in the arena preserves it");
+
+  ra8_imgdec_t dec = {};
+  internal_bind(&dec);
+
+  const uint32_t need        = (uint32_t)k_t_w * (uint32_t)k_t_h * (uint32_t)k_t_rgb;
+  const uint32_t prefix_keep = 8U;
+  uint8_t* const prefix_dst  = &s_pool[prefix_keep];
+  (void)memset(s_pool, 0x5AU, prefix_keep + need + 16U);
+  s_arena.offset     = (size_t)prefix_keep + (size_t)need;
+  s_arena.live       = 1U;
+  s_arena.high_water = s_arena.offset;
+
+  ra8_imgdec_req_t req   = internal_req(s_png,
+                                        (uint32_t)sizeof(s_png),
+                                        k_ra8_imgdec_format_png,
+                                        k_ra8_imgdec_pixel_rgb888);
+  req.dst                = prefix_dst;
+  req.dst_bytes          = need;
+  ra8_imgdec_image_t img = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_imgdec_decode(&dec, &req, &img));
+
+  for (uint32_t i = 0U; i < prefix_keep; ++i) {
+    TEST_ASSERT_EQ(0x5AU, s_pool[i]);
+  }
+  TEST_ASSERT_EQ(0xFFU, prefix_dst[0]);
+  TEST_ASSERT_EQ(0x00U, prefix_dst[1]);
+  TEST_ASSERT_EQ(0x00U, prefix_dst[2]);
+  TEST_ASSERT_EQ(0xFFU, prefix_dst[3]);
+  TEST_ASSERT_EQ(0xFFU, prefix_dst[4]);
+  TEST_ASSERT_EQ(0xFFU, prefix_dst[5]);
+  TEST_ASSERT_EQ((size_t)prefix_keep + (size_t)need, s_arena.offset);
+  TEST_ASSERT_EQ(1U, s_arena.live);
+  TEST_ASSERT(s_arena.high_water > s_arena.offset);
+
+  TEST_END("decoding into a caller prefix in the arena preserves it");
+}
+
 int main(void)
 {
   internal_test_caps_are_the_residue();
@@ -528,5 +576,6 @@ int main(void)
   internal_test_arena_exhaustion();
   internal_test_grey_is_advertised_and_works();
   internal_test_bind_guards();
+  internal_test_prefix_preserved();
   return 0;
 }

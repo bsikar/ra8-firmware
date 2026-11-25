@@ -20,6 +20,7 @@
 #include "book.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_jpeg_sw.h"
 #include "ra8_rabook_raster.h"
 #include "ra8_webp_arena.h"
 #include "reflow_image.h"
@@ -794,6 +795,142 @@ RA8_INTERNAL static void internal_test_webp_decode_faults(void)
   TEST_END("rabook raster: WebP decode faults");
 }
 
+/**
+ * @test internal_test_png_gif_and_jpeg_formats
+ * @brief PNG, GIF, and baseline JPEG route cleanly through ra8_imgdec_mux and drain stb_arena.
+ */
+RA8_INTERNAL static void internal_test_png_gif_and_jpeg_formats(void)
+{
+  static const uint8_t s_png[] = {
+    0x89U, 0x50U, 0x4EU, 0x47U, 0x0DU, 0x0AU, 0x1AU, 0x0AU, 0x00U, 0x00U, 0x00U, 0x0DU,
+    0x49U, 0x48U, 0x44U, 0x52U, 0x00U, 0x00U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x02U,
+    0x08U, 0x02U, 0x00U, 0x00U, 0x00U, 0xFDU, 0xD4U, 0x9AU, 0x73U, 0x00U, 0x00U, 0x00U,
+    0x19U, 0x49U, 0x44U, 0x41U, 0x54U, 0x78U, 0x01U, 0x01U, 0x0EU, 0x00U, 0xF1U, 0xFFU,
+    0x00U, 0xFFU, 0x00U, 0x00U, 0xFFU, 0xFFU, 0xFFU, 0x00U, 0x00U, 0x00U, 0xFFU, 0x00U,
+    0xFFU, 0x00U, 0x2DU, 0xE0U, 0x05U, 0xFBU, 0xDFU, 0xA2U, 0xE5U, 0x83U, 0x00U, 0x00U,
+    0x00U, 0x00U, 0x49U, 0x45U, 0x4EU, 0x44U, 0xAEU, 0x42U, 0x60U, 0x82U,
+  };
+  static const uint8_t s_gif[] = {
+    0x47U, 0x49U, 0x46U, 0x38U, 0x39U, 0x61U, 0x02U, 0x00U, 0x02U, 0x00U, 0x81U,
+    0x00U, 0x00U, 0xFFU, 0x00U, 0x00U, 0x00U, 0xFFU, 0x00U, 0x00U, 0x00U, 0xFFU,
+    0xFFU, 0xFFU, 0xFFU, 0x2CU, 0x00U, 0x00U, 0x00U, 0x00U, 0x02U, 0x00U, 0x02U,
+    0x00U, 0x00U, 0x02U, 0x03U, 0x44U, 0x34U, 0x05U, 0x00U,
+  };
+  enum : uint32_t {
+    k_jpg_w     = 16U,
+    k_jpg_h     = 16U,
+    k_jpg_rgb   = 3U,
+    k_jpg_px    = k_jpg_w * k_jpg_h,
+    k_jpg_cap   = 4096U,
+    k_jpg_q     = 95U,
+    k_jpg_clamp = 8U,
+    k_gray4_8x8 = 32U,
+    k_luma_err  = 12U,
+    k_png_red   = 76U,
+    k_png_white = 255U,
+    k_png_blue  = 28U,
+    k_png_green = 149U,
+  };
+
+  TEST_BEGIN("rabook raster: PNG, GIF, and JPEG via ra8_imgdec_mux");
+  ra8_img_arena_t               stb  = {};
+  ra8_webp_arena_t              webp = {};
+  ra8_rabook_raster_workspace_t ws   = internal_fresh_workspace(&stb, &webp);
+  ra8_rabook_raster_result_t    got  = {};
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_png,
+                                          sizeof s_png,
+                                          0U,
+                                          (uint8_t)k_book_pixfmt_gray8,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.width);
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.height);
+  TEST_ASSERT_EQ(4U, got.encoded_size);
+  TEST_ASSERT_EQ(k_png_red, s_encoded[0]);
+  TEST_ASSERT_EQ(k_png_white, s_encoded[1]);
+  TEST_ASSERT_EQ(k_png_blue, s_encoded[2]);
+  TEST_ASSERT_EQ(k_png_green, s_encoded[3]);
+  TEST_ASSERT_EQ(0U, stb.live);
+  TEST_ASSERT_EQ(0U, stb.offset);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_gif,
+                                          sizeof s_gif,
+                                          0U,
+                                          (uint8_t)k_book_pixfmt_gray8,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.width);
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.height);
+  TEST_ASSERT_EQ(4U, got.encoded_size);
+  TEST_ASSERT_EQ(k_png_red, s_encoded[0]);
+  TEST_ASSERT_EQ(k_png_green, s_encoded[1]);
+  TEST_ASSERT_EQ(0U, stb.live);
+  TEST_ASSERT_EQ(0U, stb.offset);
+
+  static uint8_t s_rgb_in[k_jpg_px * k_jpg_rgb];
+  static uint8_t s_jpeg_buf[k_jpg_cap];
+  static uint8_t s_jpg_gray8[k_jpg_px];
+  for (uint32_t y = 0U; y < k_jpg_h; ++y) {
+    for (uint32_t x = 0U; x < k_jpg_w; ++x) {
+      const uint32_t i = ((y * k_jpg_w) + x) * k_jpg_rgb;
+      s_rgb_in[i + 0U] = (uint8_t)(x * 16U);
+      s_rgb_in[i + 1U] = (uint8_t)(y * 16U);
+      s_rgb_in[i + 2U] = (uint8_t)((x + y) * 8U);
+    }
+  }
+  uint32_t jpeg_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jpeg_sw_encode(s_rgb_in,
+                                    (uint16_t)k_jpg_w,
+                                    (uint16_t)k_jpg_h,
+                                    (int)k_jpg_q,
+                                    s_jpeg_buf,
+                                    sizeof s_jpeg_buf,
+                                    &jpeg_len));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_jpeg_buf,
+                                          jpeg_len,
+                                          0U,
+                                          (uint8_t)k_book_pixfmt_gray8,
+                                          &ws,
+                                          s_jpg_gray8,
+                                          sizeof s_jpg_gray8,
+                                          &got));
+  TEST_ASSERT_EQ(k_jpg_w, got.width);
+  TEST_ASSERT_EQ(k_jpg_h, got.height);
+  TEST_ASSERT_EQ(k_jpg_px, got.encoded_size);
+  const uint32_t want_mid = ((77U * (8U * 16U)) + (150U * (8U * 16U)) + (29U * (16U * 8U))) >> 8U;
+  const int32_t  got_mid  = (int32_t)s_jpg_gray8[(8U * k_jpg_w) + 8U];
+  const int32_t  diff     = got_mid - (int32_t)want_mid;
+  TEST_ASSERT(((diff < 0) ? -diff : diff) <= (int32_t)k_luma_err);
+  TEST_ASSERT_EQ(0U, stb.live);
+  TEST_ASSERT_EQ(0U, stb.offset);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_jpeg_buf,
+                                          jpeg_len,
+                                          (uint16_t)k_jpg_clamp,
+                                          (uint8_t)k_book_pixfmt_gray4,
+                                          &ws,
+                                          s_jpg_gray8,
+                                          sizeof s_jpg_gray8,
+                                          &got));
+  TEST_ASSERT_EQ(k_jpg_clamp, got.width);
+  TEST_ASSERT_EQ(k_jpg_clamp, got.height);
+  TEST_ASSERT_EQ(k_gray4_8x8, got.encoded_size);
+  TEST_ASSERT_EQ(0U, stb.live);
+  TEST_ASSERT_EQ(0U, stb.offset);
+
+  TEST_END("rabook raster: PNG, GIF, and JPEG via ra8_imgdec_mux");
+}
+
 int main(void)
 {
   internal_test_bmp_gray4_and_clamp();
@@ -805,5 +942,6 @@ int main(void)
   internal_test_stb_entry_guards();
   internal_test_decoded_geometry_rejected();
   internal_test_webp_decode_faults();
+  internal_test_png_gif_and_jpeg_formats();
   return 0;
 }

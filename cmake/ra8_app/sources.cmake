@@ -557,23 +557,32 @@ macro(_ra8_app_collect_sources)
   set(_ra8_stb_img_impl "")
   if("reflow" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_truetype_impl.c)
-    # reflow also decodes raster <img> / cover art through the vendored
-    # stb_image, whose STBI_MALLOC / STBI_FREE / STBI_REALLOC_SIZED hooks are
-    # the Zig arena in libs/ra8_imgdec/src/ra8_img_arena.zig (RA8FW-1238). That
-    # single-TU build (stb_image_impl.c) is self-contained (the STBI_* macros
-    # are defined inside it), so it needs no -include here.
+    # reflow decodes raster <img> / cover art via ra8_imgdec_mux over the
+    # first-party JPEG decoder, libwebp, and stb_image (RA8FW-308). stb_image's
+    # STBI_MALLOC / STBI_FREE / STBI_REALLOC_SIZED hooks live in libs/ra8_imgdec
+    # (ra8_img_arena.zig, RA8FW-1238), so stb_image_impl.c needs no extra TU.
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
-    # reflow_image.c routes WebP through the shared container sniff (RA8FW-308);
-    # the arena hooks live in the ra8_imgdec archive beside the scratch they
-    # forward to (RA8FW-1238), so stb_image_impl.c needs no extra TU below.
     list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
-    # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
-    # one library rather than two TUs compiled by path.
-    list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
-    # RA8FW-1212: the reflow parse entry point is a Zig archive too, so
-    # apps link it instead of compiling the former C TU by path.
+    # Callers before callees (single-pass GNU ld): ra8_reflow_parse reaches
+    # ra8_jpeg, webp, ra8_imgdec, ra8_gfx, and ra8_mem, so register it ahead of
+    # all five below.
     list(APPEND _ra8_lib_zig "ra8_reflow_parse|${RA8_REPO_ROOT}/apps/shared_libs/reflow")
-    # reflow's SVG shape renderer reaches ra8_gfx_pixel/line/rect/circle, so
+    if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
+      _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
+      _ra8_app_require_compilable_lib(
+        ra8_jpeg
+        "${RA8_REPO_ROOT}/libs/ra8_jpeg"
+        "pulls in ra8_jpeg for LIBS reflow"
+        ""
+        "${_ra8_jpeg_zig}"
+      )
+      if(_ra8_jpeg_zig)
+        list(APPEND _ra8_lib_zig "${_ra8_jpeg_zig}")
+      endif()
+    elseif(EXISTS "${RA8_REPO_ROOT}/libs/ra8_jpeg/build.zig")
+      list(REMOVE_ITEM _ra8_lib_zig "ra8_jpeg|${RA8_REPO_ROOT}/libs/ra8_jpeg")
+      list(APPEND _ra8_lib_zig "ra8_jpeg|${RA8_REPO_ROOT}/libs/ra8_jpeg")
+    endif()
     # ra8_gfx must appear after ra8_reflow_parse regardless of LIBS order.
     if("ra8_gfx" IN_LIST _RA8_APP_LIBS AND EXISTS "${RA8_REPO_ROOT}/libs/ra8_gfx/build.zig")
       list(REMOVE_ITEM _ra8_lib_zig "ra8_gfx|${RA8_REPO_ROOT}/libs/ra8_gfx")
@@ -585,13 +594,24 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
       ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
+      ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc
     )
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
-    # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
-    # container sniff (RA8FW-308), the same way reflow_image.c does above, so the
-    # sniff TU travels with the rabook_compile sources wherever they go.
     list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl})
+    if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
+      _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
+      _ra8_app_require_compilable_lib(
+        ra8_jpeg
+        "${RA8_REPO_ROOT}/libs/ra8_jpeg"
+        "pulls in ra8_jpeg for LIBS rabook_compile"
+        ""
+        "${_ra8_jpeg_zig}"
+      )
+      if(_ra8_jpeg_zig)
+        list(APPEND _ra8_lib_zig "${_ra8_jpeg_zig}")
+      endif()
+    endif()
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(
       APPEND
@@ -600,6 +620,7 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/inc
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
       ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
+      ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc
     )
   endif()
 
@@ -827,6 +848,8 @@ macro(_ra8_app_collect_sources)
     # One archive, and _ra8_lib_zig is de-duplicated where it is consumed
     # (_ra8_app_link_zig_libraries), so the blocks above may already have
     # named it.
+    list(REMOVE_ITEM _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
+    list(REMOVE_ITEM _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(APPEND _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)

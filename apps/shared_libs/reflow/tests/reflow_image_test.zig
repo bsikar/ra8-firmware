@@ -167,6 +167,18 @@ test "rgbaToGray8 matches BT.601 integer luma and ignores alpha" {
     try testing.expectEqual([4]u8{ 76, 149, 28, 255 }, gray);
 }
 
+test "rgbToGray8 matches BT.601 integer luma" {
+    const rgb = [_]u8{
+        255, 0,   0,
+        0,   255, 0,
+        0,   0,   255,
+        255, 255, 255,
+    };
+    var gray: [4]u8 = undefined;
+    image.rgbToGray8(&rgb, 4, &gray);
+    try testing.expectEqual([4]u8{ 76, 149, 28, 255 }, gray);
+}
+
 test "decode gray8 rejects null arguments and invalid sizes" {
     var scratch = Ra8ImgArena{ .base = null, .cap = 16, .offset = 0, .live = 0, .high_water = 0 };
     var dst: [4]u8 = undefined;
