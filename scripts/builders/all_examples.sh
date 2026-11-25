@@ -10,6 +10,7 @@
 #
 # Usage:
 #   bash scripts/builders/all_examples.sh
+#   bash scripts/builders/all_examples.sh --selected app1 app2 ...
 #   printf '%s\0' app1 app2 | bash scripts/builders/all_examples.sh --selected0
 #   bash scripts/builders/all_examples.sh --selftest
 #
@@ -34,15 +35,27 @@ selected_mode=0
 case "${1:-}" in
   --selftest)
     [[ $# -eq 1 ]] || {
-      echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+      echo "usage: all_examples.sh [--selected <name>...|--selected0|--selftest]" >&2
       exit 2
     }
     ra8_app_batch_selftest "$REPO_ROOT/scripts/dev/ra8_apps.py"
     exit $?
     ;;
+  --selected)
+    [[ $# -ge 2 ]] || {
+      echo "usage: all_examples.sh --selected <name> [<name>...]" >&2
+      exit 2
+    }
+    selected_mode=1
+    shift
+    ra8_app_batch_set_argv "$@"
+    ra8_app_batch_resolve "$REPO_ROOT/scripts/dev/ra8_apps.py" || exit $?
+    ra8_app_batch_require_census \
+      "${#RA8_APP_BATCH_ITEMS[@]}" "${RA8_SELECTED_APP_FLOOR:-1}" || exit $?
+    ;;
   --selected0)
     [[ $# -eq 1 ]] || {
-      echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+      echo "usage: all_examples.sh [--selected <name>...|--selected0|--selftest]" >&2
       exit 2
     }
     selected_mode=1
@@ -53,7 +66,7 @@ case "${1:-}" in
     ;;
   '') ;;
   *)
-    echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+    echo "usage: all_examples.sh [--selected <name>...|--selected0|--selftest]" >&2
     exit 2
     ;;
 esac

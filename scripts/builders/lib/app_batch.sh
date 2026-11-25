@@ -22,6 +22,14 @@ ra8_app_batch_read_nul() {
   fi
 }
 
+# Set the selected items from the caller's argv: each positional argument is
+# one intact selector. A NUL byte cannot appear inside an argument, so the
+# NUL-safety contract carries through unchanged; ra8_app_batch_resolve still
+# rejects empty entries and duplicates.
+ra8_app_batch_set_argv() {
+  RA8_APP_BATCH_ITEMS=("$@")
+}
+
 ra8_app_batch_require_census() {
   local count="$1" floor="$2"
   if [[ ! "$count" =~ ^[0-9]+$ || ! "$floor" =~ ^[0-9]+$ || "$floor" -lt 1 ]]; then
@@ -122,6 +130,21 @@ _ra8_app_batch_selftest_selection() {
     failed=1
   fi
 
+  # Argv selection: one argument is one intact selector, so a space inside a
+  # name survives as data. An empty argument is an invalid selector and must
+  # be rejected downstream by resolve.
+  ra8_app_batch_set_argv alpha 'two words'
+  if [[ "${#RA8_APP_BATCH_ITEMS[@]}" -ne 2 || "${RA8_APP_BATCH_ITEMS[1]}" != "two words" ]]; then
+    echo "app-batch selftest: argv selection did not preserve one intact selector per argument" >&2
+    failed=1
+  fi
+  ra8_app_batch_set_argv alpha
+  ra8_app_batch_set_argv ''
+  if ra8_app_batch_resolve "$helper" >/dev/null 2>&1; then
+    echo "app-batch selftest: empty argv selector was accepted" >&2
+    failed=1
+  fi
+
   return "$failed"
 }
 
@@ -181,5 +204,5 @@ ra8_app_batch_selftest() {
     echo "app-batch selftest: FAIL" >&2
     return 1
   fi
-  echo "app-batch selftest: PASS (census, zero, aliases, NUL/whitespace, bounded pool)"
+  echo "app-batch selftest: PASS (census, zero, aliases, NUL/whitespace, argv, bounded pool)"
 }
