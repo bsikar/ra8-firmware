@@ -351,6 +351,16 @@
       ]
     },
     {
+      "path": "libs/ra8_translate/src/ctc_decode_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_translate_ctc_charset_open",
+        "ra8_translate_ctc_charset_glyph",
+        "ra8_translate_ctc_decode_i8",
+        "ra8_translate_ctc_decode_f32"
+      ]
+    },
+    {
       "path": "libs/ra8_ui/src/ra8_ui_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -3797,7 +3807,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "f27f35b76b165f29ab8a7ae58aad461505d580a1f5d389e969cbc4debaaa89a4",
+      "compatibility_sha256": "923ea6258fe6801044cdd1252483e6d4b569d8d3176e8a3c8c0d71986e6c44ba",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3831,11 +3841,35 @@
         "@alignOf(OverlayFit) == 2"
       ],
       "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
+      "public_headers": [
+        {
+          "path": "libs/ra8_translate/inc/ra8_translate_ctc.h",
+          "compatibility_sha256": "1b2c5a2d89be5d365a6a7ea7d1f212952b460c8219c0ab96805a7272280d66d4",
+          "symbol_prefix": "ra8_translate_ctc_",
+          "layout_assertions": [
+            "@sizeOf(CharsetHeader) == 32",
+            "@alignOf(CharsetHeader) == 4",
+            "@sizeOf(DecodeCfg) == 16",
+            "@alignOf(DecodeCfg) == 4",
+            "@sizeOf(DecodeResult) == 24",
+            "@alignOf(DecodeResult) == 4"
+          ]
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_translate/src/ctc_decode_abi.zig",
+          "symbol_prefixes": [
+            "ra8_translate_ctc_"
+          ]
+        }
+      ],
       "layout_sources": [
         "libs/ra8_translate/src/internal/sidecar.zig",
         "libs/ra8_translate/src/internal/lang.zig",
         "libs/ra8_translate/src/internal/ocr_preprocess.zig",
-        "libs/ra8_translate/src/internal/overlay.zig"
+        "libs/ra8_translate/src/internal/overlay.zig",
+        "libs/ra8_translate/src/internal/ctc_decode.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3863,9 +3897,21 @@
           "registration": "build.zig"
         },
         {
+          "language": "c",
+          "path": "tests/support/c/test_ra8_translate_ctc.c",
+          "symbol_evidence": "libs/ra8_translate/src/ctc_decode_abi.zig",
+          "registration": "build.zig"
+        },
+        {
           "language": "zig",
           "path": "libs/ra8_translate/tests/abi_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/ra8_translate_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/ctc_decode_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/ctc_decode_abi.zig",
           "registration": "libs/ra8_translate/.zig-test-contract.json"
         }
       ],
@@ -4020,6 +4066,26 @@
           "name": "ra8_translate_overlay_render_page",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows Paint callbacks and immutable TRN1 bytes, paints page bubbles in reading order, and emits minimal damage rects"
+        },
+        {
+          "name": "ra8_translate_ctc_charset_open",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows serialized TCHR character table bytes for CRC and schema validation and writes caller header on success"
+        },
+        {
+          "name": "ra8_translate_ctc_charset_glyph",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows validated TCHR container and writes borrowed UTF-8 glyph slice pointer and length"
+        },
+        {
+          "name": "ra8_translate_ctc_decode_i8",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TCHR table and quantized int8 activations and transactionally writes decoded UTF-8 and confidence metrics"
+        },
+        {
+          "name": "ra8_translate_ctc_decode_f32",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TCHR table and float logits or probabilities and transactionally writes decoded UTF-8 and confidence metrics"
         }
       ],
       "data_exports": [],

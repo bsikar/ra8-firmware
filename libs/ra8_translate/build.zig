@@ -90,6 +90,15 @@ pub fn build(b: *std.Build) void {
     overlay_mod.addImport("sidecar", sidecar_mod);
     overlay_mod.addImport("overlay_mask", overlay_mask_mod);
 
+    const ctc_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/ctc_decode.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ctc_mod.addImport("crc32", crc32_mod);
+    ctc_mod.addImport("err", err_mod);
+    ctc_mod.addImport("lang", lang_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -104,10 +113,28 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("tokenizer", tok_mod);
     abi_mod.addImport("overlay", overlay_mod);
 
+    const ctc_abi_mod = b.createModule(.{
+        .root_source_file = b.path("src/ctc_decode_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    ctc_abi_mod.addImport("ctc_decode", ctc_mod);
+    ctc_abi_mod.addImport("err", err_mod);
+
+    const root_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    root_mod.addImport("ra8_translate_abi", abi_mod);
+    root_mod.addImport("ctc_decode_abi", ctc_abi_mod);
+
     const library = b.addLibrary(.{
         .name = "ra8_translate",
         .linkage = .static,
-        .root_module = abi_mod,
+        .root_module = root_mod,
     });
     library.bundle_compiler_rt = false;
     library.link_function_sections = true;
@@ -253,4 +280,17 @@ pub fn build(b: *std.Build) void {
     const run_overlay = b.addRunArtifact(overlay_tests);
     ra8_build.configureHostTestRun(b, test_step, overlay_tests, run_overlay);
     test_step.dependOn(&run_overlay.step);
+
+    const ctc_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/ctc_decode_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ctc_tmod.addImport("ctc_decode_abi", ctc_abi_mod);
+    ctc_tmod.addImport("ctc_decode", ctc_mod);
+    ctc_tmod.addImport("err", err_mod);
+    const ctc_tests = b.addTest(.{ .root_module = ctc_tmod });
+    const run_ctc = b.addRunArtifact(ctc_tests);
+    ra8_build.configureHostTestRun(b, test_step, ctc_tests, run_ctc);
+    test_step.dependOn(&run_ctc.step);
 }

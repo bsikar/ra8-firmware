@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_translate_ctc.h"
 #include "ra8_translate_ocr.h"
 #include "ra8_translate_overlay.h"
 
