@@ -5,6 +5,11 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+        .ra8_core = .{ .path = "../ra8_core" },
+        .ra8_gfx = .{ .path = "../ra8_gfx" },
+        .ra8_widget = .{ .path = "../ra8_widget" },
+        .ra8_box = .{ .path = "../ra8_box" },
+        .ra8_ui = .{ .path = "../ra8_ui" },
     },
     .paths = .{
         "build.zig",
