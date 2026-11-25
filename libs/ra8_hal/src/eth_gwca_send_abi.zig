@@ -25,7 +25,11 @@ const seam = struct {
 
 const Hw = struct {
     pub fn dsb(_: Hw) void {
-        ra8_hw_dsb();
+        if (hosted) {
+            ra8_hw_dsb();
+        } else {
+            asm volatile ("dsb 0xF" ::: .{ .memory = true });
+        }
     }
     pub fn reloadQueue(_: Hw, qi: u32) u16 {
         return ra8_eth_gwca_reload_queue(qi);
