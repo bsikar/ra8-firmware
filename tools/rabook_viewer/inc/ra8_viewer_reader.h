@@ -2,15 +2,16 @@
  * @file ra8_viewer_reader.h
  * @brief Caller-owned host JOF/comic reader and RGB565 render surface.
  *
- * @details The reader is deliberately storage- and allocator-agnostic below its
- * POSIX composition edge. A format-aware requirements query reports the exact
- * bytes and alignment needed by one JOF or bare CBZ/CBR/CBT document; bind
- * partitions caller-owned storage; open attaches a raw descriptor behind a
- * positional-read callback. No reusable reader function owns dynamic memory or
- * exposes a hosted stream type. Comic decoding uses explicit bounded slices for
- * its page index, name arena, resident encoded page, and stb decode arena.
- * Gzip/XZ-wrapped comics remain unsupported because the shared wrapper API still
- * requires the complete unwrapped archive to be resident at once.
+ * @details The reader core is storage-, allocator-, and OS-agnostic below its
+ * POSIX composition edge. A format-aware requirements query calculates the
+ * exact bytes and alignment needed by one JOF, bare CBZ/CBR/CBT, EPUB, or
+ * RABOOK document; bind partitions caller-owned storage; open attaches either an
+ * injected ::ra8_fmt_source_t positioned-read callback or a host file path. No
+ * core reader function owns dynamic memory or exposes a hosted stream type.
+ * Comic decoding uses explicit bounded slices for its page index, name arena,
+ * resident encoded page, and stb decode arena. Gzip/XZ-wrapped comics remain
+ * unsupported because the shared wrapper API still requires the complete
+ * unwrapped archive to be resident at once.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,6 +23,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fmt_io.h"
 #include "ra8_imgdec_name.h"
 
 #ifdef __cplusplus
@@ -36,6 +38,16 @@ typedef enum : uint16_t {
 
 /** @brief Opaque state bound inside caller-owned workspace. */
 typedef struct ra8_viewer_reader ra8_viewer_reader_t;
+
+/** @brief Recognised container format passed to the portable reader core. */
+typedef enum : uint32_t {
+  k_ra8_viewer_format_unknown    = 0U, /**< Unrecognised format or extension.    */
+  k_ra8_viewer_format_jof        = 1U, /**< Streamed JOF long-strip atlas.       */
+  k_ra8_viewer_format_comic      = 2U, /**< Bare CBZ/CBR/CBT archive.            */
+  k_ra8_viewer_format_comic_wrap = 3U, /**< Gzip/XZ-wrapped comic (unsupported). */
+  k_ra8_viewer_format_epub       = 4U, /**< Streamed EPUB reflowable book.       */
+  k_ra8_viewer_format_rabook     = 5U, /**< Compiled RBKC/RABOOK1 reflow book.   */
+} ra8_viewer_format_t;
 
 /** @brief Reader engine selected by the requirements query. */
 typedef enum : uint32_t {
@@ -79,6 +91,35 @@ typedef struct {
 } ra8_viewer_workspace_report_t;
 
 /**
+ * @brief Classify a filename or host path by extension without opening it.
+ * @param[in] path NUL-terminated path or filename, or NULL.
+ * @return Recognised ::ra8_viewer_format_t classification.
+ * @retval k_ra8_viewer_format_unknown @p path was NULL or carried no known suffix.
+ * @post No descriptor is opened and no state is mutated.
+ * @note Pure apart from read-only inspection of @p path.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_viewer_format_t ra8_viewer_classify_path(const char* path);
+
+/**
+ * @brief Derive exact reader workspace requirements from a portable source.
+ * @param[in] format Document container format to prepare for.
+ * @param[in] source Caller-owned positioned-read source spanning > 0 bytes.
+ * @param[out] out Exact requirements on success.
+ * @return ::k_ra8_ok on success; ::k_ra8_err_not_supported for wrapped/unknown
+ * formats, ::k_ra8_err_invalid_size for zero-length or over-cap inputs, or a
+ * propagated read/parse error.
+ * @pre @p source and @p out are non-NULL and `source->read_at` is non-NULL.
+ * @post On failure @p out is zeroed.
+ * @note Performs no heap allocation and opens no POSIX descriptor.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_viewer_reader_requirements_source(ra8_viewer_format_t               format,
+                                      const ra8_fmt_source_t*           source,
+                                      ra8_viewer_reader_requirements_t* out);
+
+/**
  * @brief Inspect @p path and calculate its exact reader workspace.
  * @param[in] path NUL-terminated host path.
  * @param[out] out Exact requirements on success.
@@ -113,6 +154,24 @@ typedef struct {
                                                size_t                workspace_bytes,
                                                const ra8_viewer_reader_requirements_t* requirements,
                                                ra8_viewer_workspace_report_t*          report);
+
+/**
+ * @brief Open the document over an injected positioned-read source.
+ * @param[in,out] reader Bound, closed reader.
+ * @param[in] format Document container format matching the bound workspace.
+ * @param[in] source Caller-owned positioned source remaining live until close.
+ * @return ::k_ra8_ok on success or a propagated parse/open error.
+ * @retval k_ra8_ok The selected reader engine is open and ready to render.
+ * @retval k_ra8_err_null_ptr A required pointer or callback was NULL.
+ * @retval k_ra8_err_invalid_state @p reader is unbound/open or engine mismatches.
+ * @retval k_ra8_err_invalid_size Source length is zero or fails bounds.
+ * @post Failure closes any partially initialized engine state.
+ * @note Caller retains @p source->ctx ownership; zero POSIX descriptors acquired.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_viewer_open_source(ra8_viewer_reader_t*    reader,
+                                               ra8_viewer_format_t     format,
+                                               const ra8_fmt_source_t* source);
 
 /**
  * @brief Open the document class used to size and bind @p reader.

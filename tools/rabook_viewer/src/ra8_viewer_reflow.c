@@ -126,7 +126,7 @@ internal_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, siz
 RA8_INTERNAL static ra8_err_t internal_read_file_bytes(ra8_viewer_reader_t* reader)
 {
   viewer_reflow_t* reflow = &reader->reflow;
-  const uint64_t   total  = reader->file.size;
+  const uint64_t   total  = reader->source.size;
   if ((total == 0U) || (total > (uint64_t)reflow->file_cap)) {
     return k_ra8_err_invalid_size;
   }
@@ -138,7 +138,7 @@ RA8_INTERNAL static ra8_err_t internal_read_file_bytes(ra8_viewer_reader_t* read
                                   : (size_t)remaining;
     size_t          got       = 0U;
     const ra8_err_t error =
-      priv_viewer_pread(&reader->file, offset, &reflow->file_buf[offset], chunk, &got);
+      priv_viewer_pread(&reader->source, offset, &reflow->file_buf[offset], chunk, &got);
     if (error != k_ra8_ok) {
       return error;
     }
@@ -169,8 +169,8 @@ RA8_INTERNAL static ra8_err_t internal_open_epub(ra8_viewer_reader_t* reader)
   viewer_reflow_t*          reflow = &reader->reflow;
   const epub_stream_media_t media  = {
     .read = internal_epub_stream_read,
-    .ctx  = &reader->file,
-    .size = reader->file.size,
+    .ctx  = &reader->source,
+    .size = reader->source.size,
   };
   ra8_err_t error = epub_open_streamed(&media, nullptr, reflow->epub);
   if (error != k_ra8_ok) {
@@ -209,7 +209,7 @@ RA8_INTERNAL static ra8_err_t internal_open_rabook(ra8_viewer_reader_t* reader)
   if (error != k_ra8_ok) {
     return error;
   }
-  const size_t file_len = (size_t)reader->file.size;
+  const size_t file_len = (size_t)reader->source.size;
   const void*  base     = nullptr;
   size_t       out_size = 0U;
   if ((file_len >= (size_t)k_book_container_header_len) &&
@@ -218,7 +218,7 @@ RA8_INTERNAL static ra8_err_t internal_open_rabook(ra8_viewer_reader_t* reader)
     (void)memcpy(&declared_total,
                  &reflow->file_buf[k_reflow_container_total],
                  sizeof(declared_total));
-    error = ra8_decomp_check_declared(&reader->limits, reader->file.size, declared_total);
+    error = ra8_decomp_check_declared(&reader->limits, reader->source.size, declared_total);
     if ((error == k_ra8_ok) &&
         ((declared_total == 0U) || (declared_total > (uint64_t)reflow->book_cap))) {
       error = k_ra8_err_invalid_size;

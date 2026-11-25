@@ -20,6 +20,29 @@
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_reader_internal.h"
 
+/** @brief RGB565 pack constants shared by JOF pixel conversion. */
+typedef enum : uint8_t {
+  k_jof_rgb565_r_shift  = 11U, /**< Red bit position in RGB565.        */
+  k_jof_rgb565_g_shift  = 5U,  /**< Green bit position in RGB565.      */
+  k_jof_rgb565_r5_drop  = 3U,  /**< 8->5-bit narrow shift for R and B. */
+  k_jof_rgb565_g6_drop  = 2U,  /**< 8->6-bit narrow shift for G.       */
+  k_jof_rgb565_hi_shift = 8U,  /**< Little-endian high byte shift.     */
+} viewer_jof_pack_t;
+
+uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb)
+{
+  const uint16_t r5 = (uint16_t)(rr >> (uint16_t)k_jof_rgb565_r5_drop);
+  const uint16_t g6 = (uint16_t)(gg >> (uint16_t)k_jof_rgb565_g6_drop);
+  const uint16_t b5 = (uint16_t)(bb >> (uint16_t)k_jof_rgb565_r5_drop);
+  return (uint16_t)((r5 << (uint16_t)k_jof_rgb565_r_shift) |
+                    (g6 << (uint16_t)k_jof_rgb565_g_shift) | b5);
+}
+
+uint16_t ra8_viewer_pack565_le_pair(uint8_t lo, uint8_t hi)
+{
+  return (uint16_t)((uint16_t)lo | ((uint16_t)hi << (uint16_t)k_jof_rgb565_hi_shift));
+}
+
 /** @brief Supported source pixel widths and channel indices. */
 typedef enum : uint8_t {
   k_viewer_bpp_gray   = 1U, /**< 8-bit grayscale.               */
@@ -142,8 +165,8 @@ RA8_INTERNAL static ra8_err_t internal_wire(ra8_viewer_reader_t* reader, size_t 
   jof->x_off                         = 0;
   const longstrip_cfg_t strip_config = {
     .pread      = priv_viewer_pread,
-    .pread_ctx  = &reader->file,
-    .atlas_size = reader->file.size,
+    .pread_ctx  = &reader->source,
+    .atlas_size = reader->source.size,
     .cache      = &jof->cache,
     .image_id   = 1U,
     .viewport_w = jof->dctx.info.width,
@@ -190,16 +213,16 @@ ra8_err_t priv_viewer_open_jof(ra8_viewer_reader_t* reader)
 {
   viewer_jof_t* jof   = &reader->jof;
   jof->dctx.pread     = priv_viewer_pread;
-  jof->dctx.pread_ctx = &reader->file;
-  ra8_err_t error = jof_parse(priv_viewer_pread, &reader->file, reader->file.size, &jof->dctx.info);
+  jof->dctx.pread_ctx = &reader->source;
+  ra8_err_t error =
+    jof_parse(priv_viewer_pread, &reader->source, reader->source.size, &jof->dctx.info);
   const uint64_t band = (uint64_t)jof->dctx.info.tile_w * (uint64_t)jof->dctx.info.tile_h *
                         (uint64_t)jof->dctx.info.bpp;
   if ((error == k_ra8_ok) && (band == 0U)) {
     error = k_ra8_err_invalid_size;
   }
-  const ra8_decomp_limits_t limits = ra8_decomp_limits_default();
   if (error == k_ra8_ok) {
-    error = ra8_decomp_check_declared(&limits, reader->file.size, band);
+    error = ra8_decomp_check_declared(&reader->limits, reader->source.size, band);
   }
   const size_t scratch_required = (jof->dctx.info.codec == (uint8_t)k_jof_codec_raw)
                                     ? 1U

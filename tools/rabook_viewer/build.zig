@@ -77,9 +77,27 @@ const comic_closure = [_][]const u8{
 };
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
-const stb_sources = [_][]const u8{
+const stb_image_sources = [_][]const u8{
     "../../apps/shared_libs/third_party/stb/stb_image_impl.c",
+};
+const stb_truetype_sources = [_][]const u8{
     "../../apps/shared_libs/third_party/stb/stb_truetype_impl.c",
+};
+const stbtt_flags = [_][]const u8{
+    "-std=gnu23",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-parameter",
+    "-fno-strict-aliasing",
+    "-DRA8_OFF_TARGET",
+    "-DMINIZ_NO_MALLOC",
+    "-DMINIZ_NO_STDIO",
+    "-DMINIZ_NO_TIME",
+    "-include",
+    "../../apps/shared_libs/reflow/inc/ra8_stbtt_alloc.h",
+    "-DSTBTT_malloc(x,u)=ra8_stbtt_malloc(x)",
+    "-DSTBTT_free(x,u)=ra8_stbtt_free(x)",
 };
 
 // The facade is the Zig webp archive now (RA8FW-1209): it is linked, not
@@ -173,6 +191,7 @@ fn addWebpIncludes(b: *std.Build, mod: *std.Build.Module) void {
 // consumer of the archive inherited.
 fn addReaderIncludes(b: *std.Build, mod: *std.Build.Module) void {
     mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
+    mod.addIncludePath(b.path("../../libs/ra8_fmt/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/book/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/comic/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/epub/inc"));
@@ -273,14 +292,21 @@ pub fn build(b: *std.Build) void {
     gen_font.addArg("literata_latin1.h");
 
     // ---- ra8_reader: the archive of firmware read-path sources ----
-    const reader_mod = b.createModule(.{ .target = target, .optimize = optimize });
+    // Disable C-UBSan so libra8_reader.a emits zero libubsan_rt malloc/free/mmap
+    // symbols and matches check_production_surface.sh in debug builds too.
+    const reader_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .sanitize_c = .off,
+    });
     reader_mod.link_libc = true;
     linkZigLibs(b, reader_mod, target, optimize);
     addReaderIncludes(b, reader_mod);
     addC(b, reader_mod, ".", &comic_closure, &first_party_flags);
     reader_mod.addCSourceFile(.{ .file = baked_font_c, .flags = &third_party_flags });
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
-    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_sources, .flags = &third_party_flags });
+    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_image_sources, .flags = &third_party_flags });
+    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_truetype_sources, .flags = &stbtt_flags });
     addWebp(b, reader_mod);
     const reader = b.addLibrary(.{ .name = "ra8_reader", .linkage = .static, .root_module = reader_mod });
 
@@ -292,6 +318,7 @@ pub fn build(b: *std.Build) void {
         "src/main.c",
         "src/ra8_viewer_output.c",
         "src/ra8_viewer_reader.c",
+        "src/ra8_viewer_host_fd.c",
         "src/ra8_viewer_comic.c",
         "src/ra8_viewer_jof.c",
         "src/ra8_viewer_reflow.c",
@@ -304,7 +331,11 @@ pub fn build(b: *std.Build) void {
         "../../port/posix/src/ra8_io_stream_posix.c",
         "src/ra8_viewer_view_stub.c",
     };
-    const exe_mod = b.createModule(.{ .target = target, .optimize = optimize });
+    const exe_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .sanitize_c = .off,
+    });
     exe_mod.link_libc = true;
     linkZigLibs(b, exe_mod, target, optimize);
     exe_mod.addIncludePath(b.path("inc"));
@@ -317,7 +348,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     // ---- unit targets (the C-era add_test set) ----
-    const Unit = struct { name: []const u8, files: []const []const u8, extra_includes: []const []const u8 };
+    const Unit = struct { name: []const u8, files: []const []const u8, extra_includes: []const []const u8, sanitize_c: bool = true };
 
     const units = [_]Unit{
         .{
@@ -325,6 +356,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{
                 "tests/src/test_viewer_workspace.c",
                 "src/ra8_viewer_reader.c",
+                "src/ra8_viewer_host_fd.c",
                 "src/ra8_viewer_comic.c",
                 "src/ra8_viewer_jof.c",
                 "src/ra8_viewer_reflow.c",
@@ -337,6 +369,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{
                 "tests/src/test_viewer_comic_workspace.c",
                 "src/ra8_viewer_reader.c",
+                "src/ra8_viewer_host_fd.c",
                 "src/ra8_viewer_comic.c",
                 "src/ra8_viewer_jof.c",
                 "src/ra8_viewer_reflow.c",
@@ -358,6 +391,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{
                 "tests/src/test_viewer_reflow_workspace.c",
                 "src/ra8_viewer_reader.c",
+                "src/ra8_viewer_host_fd.c",
                 "src/ra8_viewer_comic.c",
                 "src/ra8_viewer_jof.c",
                 "src/ra8_viewer_reflow.c",
@@ -365,12 +399,29 @@ pub fn build(b: *std.Build) void {
             },
             .extra_includes = &.{"inc"},
         },
+        .{
+            .name = "test_viewer_portable_arena",
+            .files = &.{
+                "tests/src/test_viewer_portable_arena.c",
+                "src/ra8_viewer_reader.c",
+                "src/ra8_viewer_comic.c",
+                "src/ra8_viewer_jof.c",
+                "src/ra8_viewer_reflow.c",
+                "src/ra8_viewer_output.c",
+            },
+            .extra_includes = &.{"inc"},
+            .sanitize_c = false,
+        },
     };
 
     const test_step = b.step("test", "Run the rabook_viewer unit tests");
     var test_exes: [units.len]*std.Build.Step.Compile = undefined;
     for (units, 0..) |unit, i| {
-        const tmod = b.createModule(.{ .target = target, .optimize = optimize });
+        const tmod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .sanitize_c = if (unit.sanitize_c) null else .off,
+        });
         tmod.link_libc = true;
         linkZigLibs(b, tmod, target, optimize);
         addReaderIncludes(b, tmod);
@@ -384,9 +435,11 @@ pub fn build(b: *std.Build) void {
     // The C-era add_test set never ran the workspace JOF test bare because
     // run_workspace_test.sh drives it against a generated JOF fixture;
     // test_viewer_comic_workspace takes its CBZ on argv, and
-    // test_viewer_output / test_viewer_reflow_workspace are self-contained.
+    // test_viewer_output / test_viewer_reflow_workspace /
+    // test_viewer_portable_arena are self-contained.
     test_step.dependOn(&b.addRunArtifact(test_exes[2]).step);
     test_step.dependOn(&b.addRunArtifact(test_exes[3]).step);
+    test_step.dependOn(&b.addRunArtifact(test_exes[4]).step);
     const comic_test_run = b.addRunArtifact(test_exes[1]);
     comic_test_run.setCwd(b.path("."));
     comic_test_run.addArg("fixtures/sample.cbz");
@@ -419,6 +472,15 @@ pub fn build(b: *std.Build) void {
         const cmd = b.addSystemCommand(&.{ "bash", "tests/run_corpus.sh" });
         cmd.setCwd(b.path("."));
         cmd.addArtifactArg(exe);
+        integration_step.dependOn(&cmd.step);
+    }
+    {
+        const cmd = b.addSystemCommand(&.{ "sh", "tests/check_production_surface.sh" });
+        cmd.setCwd(b.path("."));
+        cmd.addArg(".");
+        cmd.addArtifactArg(exe);
+        cmd.addArtifactArg(reader);
+        cmd.addArtifactArg(test_exes[4]);
         integration_step.dependOn(&cmd.step);
     }
 }

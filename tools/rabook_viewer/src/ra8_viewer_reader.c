@@ -1,8 +1,9 @@
 /**
  * @file ra8_viewer_reader.c
- * @brief Requirements, workspace binding, descriptor lifecycle, and dispatch.
- * @details Implements the JOF/bare-comic requirements-to-bind lifecycle and
- * keeps host descriptor ownership at this composition edge.
+ * @brief Requirements, workspace binding, source lifecycle, and engine dispatch.
+ * @details Implements the device-portable JOF, comic, and reflow requirements-to-
+ * bind lifecycle over caller-owned memory and injected ::ra8_fmt_source_t
+ * callbacks, leaving POSIX descriptors in `ra8_viewer_host_fd.c`.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -10,36 +11,17 @@
 
 #include "ra8_viewer_reader.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "jof.h"
 #include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
+#include "ra8_fmt_io.h"
 #include "ra8_viewer_reader_internal.h"
-
-#ifndef O_CLOEXEC
-/** @brief No-op close-on-exec fallback for hosts lacking the flag. */
-#define O_CLOEXEC (0)
-#endif
-
-/** @brief Recognised filename classes at the host composition edge. */
-typedef enum : uint8_t {
-  k_viewer_fmt_unknown    = 0U, /**< Unrecognised extension.            */
-  k_viewer_fmt_jof        = 1U, /**< Supported streamed JOF.            */
-  k_viewer_fmt_comic      = 2U, /**< Supported bare CBZ/CBR/CBT.        */
-  k_viewer_fmt_comic_wrap = 3U, /**< Gzip/XZ whole-output seam remains. */
-  k_viewer_fmt_epub       = 4U, /**< Streamed EPUB reflowable book.     */
-  k_viewer_fmt_rabook     = 5U, /**< Compiled RBKC/RABOOK1 reflow book. */
-} viewer_fmt_t;
 
 /** @brief Mutable cursor used to calculate or bind one aligned layout. */
 typedef struct {
@@ -244,165 +226,65 @@ RA8_INTERNAL static bool internal_ends_with(const char* path, const char* suffix
   return true;
 }
 
-/**
- * @brief Classify a path without opening it.
- * @details Recognises JOF, comic/wrapper, and reflow extension families.
- * @param[in] path NUL-terminated path.
- * @return Recognised filename class.
- * @retval k_viewer_fmt_unknown No recognised extension matched.
- * @pre @p path is non-NULL.
- * @pre @p path is NUL-terminated.
- * @post No descriptor is opened.
- * @post No state is mutated.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static viewer_fmt_t internal_classify(const char* path)
+ra8_viewer_format_t ra8_viewer_classify_path(const char* path)
 {
+  if (path == nullptr) {
+    return k_ra8_viewer_format_unknown;
+  }
   if (internal_ends_with(path, ".jof")) {
-    return k_viewer_fmt_jof;
+    return k_ra8_viewer_format_jof;
   }
   if (internal_ends_with(path, ".cbz") || internal_ends_with(path, ".cbr") ||
       internal_ends_with(path, ".cbt")) {
-    return k_viewer_fmt_comic;
+    return k_ra8_viewer_format_comic;
   }
   if (internal_ends_with(path, ".gz") || internal_ends_with(path, ".xz")) {
-    return k_viewer_fmt_comic_wrap;
+    return k_ra8_viewer_format_comic_wrap;
   }
   if (internal_ends_with(path, ".epub") || internal_ends_with(path, ".epb")) {
-    return k_viewer_fmt_epub;
+    return k_ra8_viewer_format_epub;
   }
   if (internal_ends_with(path, ".rabook") || internal_ends_with(path, ".rbk")) {
-    return k_viewer_fmt_rabook;
+    return k_ra8_viewer_format_rabook;
   }
-  return k_viewer_fmt_unknown;
-}
-
-/**
- * @brief Best-effort exact diagnostic fragment over standard error.
- * @details Advances across short writes and retries interrupted writes.
- * @param[in] text NUL-terminated diagnostic fragment.
- * @pre @p text is non-NULL.
- * @pre Standard error may accept descriptor writes.
- * @post The complete fragment was attempted.
- * @post Reader state remains unchanged.
- * @note Concurrent fragments may interleave.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_stderr_write(const char* text)
-{
-  size_t       offset = 0U;
-  const size_t length = strlen(text);
-  while (offset < length) {
-    const ssize_t written = write(STDERR_FILENO, &text[offset], length - offset);
-    if ((written < 0) && (errno == EINTR)) {
-      continue;
-    }
-    if (written <= 0) {
-      return;
-    }
-    offset += (size_t)written;
-  }
-}
-
-/**
- * @brief Emit the truthful unsupported-format reason.
- * @details Distinguishes codec-contract and unknown formats.
- * @param[in] format Classified path family.
- * @param[in] path NUL-terminated path for the diagnostic.
- * @return Always unsupported.
- * @retval k_ra8_err_not_supported The format cannot open in this checkpoint.
- * @pre @p path is non-NULL and terminated.
- * @pre @p format came from ::internal_classify.
- * @post A reason naming @p path was attempted.
- * @post No reader state is mutated.
- * @note Descriptor output is best-effort.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_reject(viewer_fmt_t format, const char* path)
-{
-  internal_stderr_write("ra8_viewer: '");
-  internal_stderr_write(path);
-  if (format == k_viewer_fmt_comic_wrap) {
-    internal_stderr_write("' recognised but wrapped comics require a streaming or "
-                          "descriptor-spooled gzip/XZ output seam");
-  } else {
-    internal_stderr_write("' has an unsupported file type");
-  }
-  internal_stderr_write("\n");
-  return k_ra8_err_not_supported;
-}
-
-/**
- * @brief Open and size one non-empty regular host file.
- * @details Acquires a close-on-exec descriptor and records its stat size.
- * @param[out] file Descriptor context.
- * @param[in] path NUL-terminated host path.
- * @return Open status.
- * @retval k_ra8_ok A non-empty regular file is owned by @p file.
- * @retval k_ra8_err_not_found Open or validation failed.
- * @pre @p file is writable.
- * @pre @p path is non-NULL and terminated.
- * @post Success publishes one owned descriptor.
- * @post Failure leaves no acquired descriptor.
- * @note The caller must close success.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_file_open(viewer_file_ctx_t* file, const char* path)
-{
-  const int descriptor = open(path, O_RDONLY | O_CLOEXEC);
-  if (descriptor < 0) {
-    return k_ra8_err_not_found;
-  }
-  struct stat metadata = {};
-  if ((fstat(descriptor, &metadata) != 0) || !S_ISREG(metadata.st_mode) ||
-      (metadata.st_size <= 0)) {
-    (void)close(descriptor);
-    return k_ra8_err_not_found;
-  }
-  *file =
-    (viewer_file_ctx_t){.size = (uint64_t)metadata.st_size, .fd = descriptor, .is_open = true};
-  return k_ra8_ok;
+  return k_ra8_viewer_format_unknown;
 }
 
 ra8_err_t
 priv_viewer_pread(void* ctx, uint64_t offset, uint8_t* buffer, size_t length, size_t* out_read)
 {
-  viewer_file_ctx_t* file = (viewer_file_ctx_t*)ctx;
+  const ra8_fmt_source_t* source = (const ra8_fmt_source_t*)ctx;
   if (out_read == nullptr) {
     return k_ra8_err_null_ptr;
   }
   *out_read = 0U;
-  if ((file == nullptr) || (buffer == nullptr)) {
+  if ((source == nullptr) || (source->read_at == nullptr) ||
+      ((buffer == nullptr) && (length != 0U))) {
     return k_ra8_err_null_ptr;
   }
-  if (!file->is_open || (offset > (uint64_t)INT64_MAX)) {
-    return k_ra8_err_invalid_state;
-  }
-  if (offset >= file->size) {
+  if ((offset >= source->size) || (length == 0U)) {
     return k_ra8_ok;
   }
-  const uint64_t available = file->size - offset;
-  size_t         requested = ((uint64_t)length > available) ? (size_t)available : length;
+  const uint64_t available = source->size - offset;
+  const size_t   requested = ((uint64_t)length > available) ? (size_t)available : length;
   size_t         completed = 0U;
   while (completed < requested) {
-    size_t pass = requested - completed;
-    if (pass > (size_t)SSIZE_MAX) {
-      pass = (size_t)SSIZE_MAX;
+    size_t          pass  = 0U;
+    const ra8_err_t error = source->read_at(source->ctx,
+                                            offset + (uint64_t)completed,
+                                            &buffer[completed],
+                                            requested - completed,
+                                            &pass);
+    if (error != k_ra8_ok) {
+      return error;
     }
-    const ssize_t got =
-      pread(file->fd, &((uint8_t*)buffer)[completed], pass, (off_t)(offset + (uint64_t)completed));
-    if ((got < 0) && (errno == EINTR)) {
-      continue;
+    if (pass == 0U) {
+      break;
     }
-    if (got <= 0) {
-      if (got == 0) {
-        *out_read = completed;
-        return k_ra8_ok;
-      }
-      return k_ra8_err_not_found;
+    if (pass > (requested - completed)) {
+      return k_ra8_err_invalid_size;
     }
-    completed += (size_t)got;
+    completed += pass;
   }
   *out_read = completed;
   return k_ra8_ok;
@@ -534,33 +416,34 @@ RA8_INTERNAL static bool internal_requirements_valid(const ra8_viewer_reader_req
 }
 
 /**
- * @brief Populate JOF-specific requirements from one open descriptor.
+ * @brief Populate JOF-specific requirements from one positioned source.
  * @details Parses geometry, validates the declared decoded band, and sizes one
  * cache cell plus the exact compressed-band staging bound.
- * @param[in,out] file Open regular JOF descriptor.
+ * @param[in] source Active positioned JOF source.
  * @param[out] out Requirements object with common fields initialized.
  * @return Parse or geometry status.
  * @retval k_ra8_ok Canonical JOF requirements were published.
  * @retval k_ra8_err_invalid_size Decoded band geometry is invalid.
- * @pre @p file is open and non-empty.
- * @pre @p out is writable and zero-initialized.
+ * @pre @p source is non-empty and valid.
+ * @pre @p out is writable and initialized.
  * @post Success publishes a canonical JOF engine shape.
- * @post Failure acquires no memory or descriptor.
- * @note The caller retains descriptor ownership.
+ * @post Failure acquires no memory.
+ * @note The caller retains source ownership.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_require_jof(viewer_file_ctx_t*                file,
+RA8_INTERNAL static ra8_err_t internal_require_jof(const ra8_fmt_source_t*           source,
                                                    ra8_viewer_reader_requirements_t* out)
 {
-  jof_info_t     info  = {};
-  ra8_err_t      error = jof_parse(priv_viewer_pread, file, file->size, &info);
-  const uint64_t band  = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
+  ra8_fmt_source_t bounded = *source;
+  jof_info_t       info    = {};
+  ra8_err_t        error   = jof_parse(priv_viewer_pread, &bounded, bounded.size, &info);
+  const uint64_t   band    = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
   if ((error == k_ra8_ok) && (band == 0U)) {
     error = k_ra8_err_invalid_size;
   }
   const ra8_decomp_limits_t limits = ra8_decomp_limits_default();
   if (error == k_ra8_ok) {
-    error = ra8_decomp_check_declared(&limits, file->size, band);
+    error = ra8_decomp_check_declared(&limits, bounded.size, band);
   }
   if (error != k_ra8_ok) {
     return error;
@@ -617,34 +500,35 @@ RA8_INTERNAL static void internal_require_reflow(ra8_viewer_reader_requirements_
   out->engine              = (uint32_t)k_ra8_viewer_engine_reflow;
 }
 
-ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_requirements_t* out)
+ra8_err_t ra8_viewer_reader_requirements_source(ra8_viewer_format_t               format,
+                                                const ra8_fmt_source_t*           source,
+                                                ra8_viewer_reader_requirements_t* out)
 {
-  if ((path == nullptr) || (out == nullptr)) {
+  if (out == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  *out                      = (ra8_viewer_reader_requirements_t){};
-  const viewer_fmt_t format = internal_classify(path);
-  if ((format != k_viewer_fmt_jof) && (format != k_viewer_fmt_comic) &&
-      (format != k_viewer_fmt_epub) && (format != k_viewer_fmt_rabook)) {
-    return internal_reject(format, path);
+  *out = (ra8_viewer_reader_requirements_t){};
+  if ((source == nullptr) || (source->read_at == nullptr)) {
+    return k_ra8_err_null_ptr;
   }
-  viewer_file_ctx_t file  = {.fd = -1};
-  ra8_err_t         error = internal_file_open(&file, path);
-  if (error == k_ra8_ok) {
-    out->required_alignment = alignof(max_align_t);
-    out->framebuffer_bytes =
-      (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height * sizeof(uint16_t);
-    out->layout_version = (uint32_t)k_viewer_layout_version;
-    if (format == k_viewer_fmt_jof) {
-      error = internal_require_jof(&file, out);
-    } else if (format == k_viewer_fmt_comic) {
-      internal_require_comic(out);
-    } else {
-      internal_require_reflow(out);
-    }
+  if ((format != k_ra8_viewer_format_jof) && (format != k_ra8_viewer_format_comic) &&
+      (format != k_ra8_viewer_format_epub) && (format != k_ra8_viewer_format_rabook)) {
+    return k_ra8_err_not_supported;
   }
-  if (file.is_open) {
-    (void)close(file.fd);
+  if (source->size == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  out->required_alignment = alignof(max_align_t);
+  out->framebuffer_bytes =
+    (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height * sizeof(uint16_t);
+  out->layout_version = (uint32_t)k_viewer_layout_version;
+  ra8_err_t error     = k_ra8_ok;
+  if (format == k_ra8_viewer_format_jof) {
+    error = internal_require_jof(source, out);
+  } else if (format == k_ra8_viewer_format_comic) {
+    internal_require_comic(out);
+  } else {
+    internal_require_reflow(out);
   }
   if (error != k_ra8_ok) {
     *out = (ra8_viewer_reader_requirements_t){};
@@ -700,20 +584,20 @@ ra8_err_t ra8_viewer_reader_bind(ra8_viewer_reader_t**                   out,
   if (!layout.valid || (layout.used != requirements->required_bytes)) {
     return k_ra8_err_invalid_size;
   }
-  *reader = (ra8_viewer_reader_t){.file     = {.fd = -1},
-                                  .is_bound = true,
-                                  .engine   = requirements->engine,
-                                  .limits   = ra8_decomp_limits_default(),
-                                  .fb       = framebuffer,
-                                  .tile_wpx = widths,
-                                  .tile_hpx = heights,
-                                  .tile_cap = requirements->tile_count,
-                                  .rt565    = framebuffer,
-                                  .rt_w     = (uint32_t)k_ra8_viewer_fb_width,
-                                  .rt_h     = (uint32_t)k_ra8_viewer_fb_height,
-                                  .jof      = jof,
-                                  .comic    = comic,
-                                  .reflow   = reflow};
+  *reader = (ra8_viewer_reader_t){.host_file = {.fd = -1},
+                                  .is_bound  = true,
+                                  .engine    = requirements->engine,
+                                  .limits    = ra8_decomp_limits_default(),
+                                  .fb        = framebuffer,
+                                  .tile_wpx  = widths,
+                                  .tile_hpx  = heights,
+                                  .tile_cap  = requirements->tile_count,
+                                  .rt565     = framebuffer,
+                                  .rt_w      = (uint32_t)k_ra8_viewer_fb_width,
+                                  .rt_h      = (uint32_t)k_ra8_viewer_fb_height,
+                                  .jof       = jof,
+                                  .comic     = comic,
+                                  .reflow    = reflow};
   *out    = reader;
   return k_ra8_ok;
 }
@@ -782,33 +666,40 @@ RA8_INTERNAL static ra8_err_t internal_open_selected(ra8_viewer_reader_t* reader
  * @note Pure and thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_engine_matches(const ra8_viewer_reader_t* reader,
-                                                 viewer_fmt_t               format)
+bool priv_viewer_engine_matches(const ra8_viewer_reader_t* reader, ra8_viewer_format_t format)
 {
-  return ((reader->engine == (uint32_t)k_ra8_viewer_engine_jof) && (format == k_viewer_fmt_jof)) ||
+  if (reader == nullptr) {
+    return false;
+  }
+  return ((reader->engine == (uint32_t)k_ra8_viewer_engine_jof) &&
+          (format == k_ra8_viewer_format_jof)) ||
          ((reader->engine == (uint32_t)k_ra8_viewer_engine_comic) &&
-          (format == k_viewer_fmt_comic)) ||
+          (format == k_ra8_viewer_format_comic)) ||
          ((reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) &&
-          ((format == k_viewer_fmt_epub) || (format == k_viewer_fmt_rabook)));
+          ((format == k_ra8_viewer_format_epub) || (format == k_ra8_viewer_format_rabook)));
 }
 
-ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
+ra8_err_t priv_viewer_open_bound_source(ra8_viewer_reader_t*    reader,
+                                        ra8_viewer_format_t     format,
+                                        const ra8_fmt_source_t* source,
+                                        viewer_source_close_fn  close_fn)
 {
-  if ((reader == nullptr) || (path == nullptr)) {
+  if ((reader == nullptr) || (source == nullptr) || (source->read_at == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!reader->is_bound || reader->is_open || reader->file.is_open) {
+  if (!reader->is_bound || reader->is_open || (reader->source.read_at != nullptr)) {
     return k_ra8_err_invalid_state;
   }
-  const viewer_fmt_t format = internal_classify(path);
-  if (!internal_engine_matches(reader, format)) {
+  if (source->size == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (!priv_viewer_engine_matches(reader, format)) {
     return k_ra8_err_invalid_state;
   }
-  reader->reflow.is_epub = (format == k_viewer_fmt_epub);
-  ra8_err_t error        = internal_file_open(&reader->file, path);
-  if (error == k_ra8_ok) {
-    error = internal_open_selected(reader);
-  }
+  reader->source         = *source;
+  reader->source_close   = close_fn;
+  reader->reflow.is_epub = (format == k_ra8_viewer_format_epub);
+  const ra8_err_t error  = internal_open_selected(reader);
   if (error == k_ra8_ok) {
     reader->is_open = true;
     return k_ra8_ok;
@@ -818,12 +709,20 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
   } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
     priv_viewer_close_reflow(reader);
   }
-  if (reader->file.is_open) {
-    (void)close(reader->file.fd);
-  }
-  reader->file   = (viewer_file_ctx_t){.fd = -1};
-  reader->tile_n = 0U;
+  reader->source       = (ra8_fmt_source_t){};
+  reader->source_close = nullptr;
+  reader->tile_n       = 0U;
   return error;
+}
+
+ra8_err_t ra8_viewer_open_source(ra8_viewer_reader_t*    reader,
+                                 ra8_viewer_format_t     format,
+                                 const ra8_fmt_source_t* source)
+{
+  if ((reader == nullptr) || (source == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  return priv_viewer_open_bound_source(reader, format, source, nullptr);
 }
 
 uint32_t ra8_viewer_page_count(const ra8_viewer_reader_t* reader)
@@ -964,18 +863,22 @@ void ra8_viewer_close(ra8_viewer_reader_t* reader)
   if (reader == nullptr) {
     return;
   }
-  if (reader->file.is_open) {
+  if (reader->is_open) {
     if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
       (void)comic_close(&reader->comic.archive);
     } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
       priv_viewer_close_reflow(reader);
     }
-    (void)close(reader->file.fd);
+    if (reader->source_close != nullptr) {
+      reader->source_close(reader->source.ctx);
+    }
   }
-  reader->file    = (viewer_file_ctx_t){.fd = -1};
-  reader->is_open = false;
-  reader->tile_n  = 0U;
-  reader->rt565   = reader->fb;
-  reader->rt_w    = (uint32_t)k_ra8_viewer_fb_width;
-  reader->rt_h    = (uint32_t)k_ra8_viewer_fb_height;
+  reader->source       = (ra8_fmt_source_t){};
+  reader->source_close = nullptr;
+  reader->host_file    = (viewer_file_ctx_t){.fd = -1};
+  reader->is_open      = false;
+  reader->tile_n       = 0U;
+  reader->rt565        = reader->fb;
+  reader->rt_w         = (uint32_t)k_ra8_viewer_fb_width;
+  reader->rt_h         = (uint32_t)k_ra8_viewer_fb_height;
 }
