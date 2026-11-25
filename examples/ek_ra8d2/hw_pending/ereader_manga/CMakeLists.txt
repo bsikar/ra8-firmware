@@ -36,10 +36,27 @@ ra8_add_app(
   NAME ereader_manga
   STACK_BYTES 32768
   DESCRIPTION "Manga reader: baked PNG to JOF tile atlas, pan/zoom over ra8_tile_cache"
-  LIBS ra8_gfx
+  LIBS ra8_translate
+       ra8_ui
+       ra8_widget
+       ra8_box
+       ra8_gfx
        ra8_display_pal
        jof
        ra8_mem
        ra8_io_bus
        miniz
 )
+
+# Force the board's weak ra8_io GT911 I2C-compat facade symbols into the link
+# (mirrors cmake/ra8_add_app.cmake's ra8_camera --undefined workaround) so
+# ra8_board_touch_open() resolves bind/as_ops even when the app calls only
+# ra8_touch_open/read via the board HAL.
+if(TARGET ereader_manga.elf)
+  target_link_options(
+    ereader_manga.elf
+    PRIVATE
+    -Wl,--undefined=ra8_io_i2c_bus_bind_i3c_compat
+    -Wl,--undefined=ra8_io_i2c_bus_as_ops
+  )
+endif()

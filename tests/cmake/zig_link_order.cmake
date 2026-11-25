@@ -27,6 +27,7 @@ target_link_libraries(
          ra8_zig::ra8_touch_cal
          ra8_zig::ra8_devcfg
          ra8_zig::ra8_batt
+         ra8_zig::ra8_translate
          ra8_zig::ra8_ui
          ra8_zig::ra8_app
          ra8_zig::ra8_wdt_supervisor
@@ -89,6 +90,7 @@ link_libraries(
   ra8_zig::ra8_epd_cal
   ra8_zig::ra8_touch_cal
   ra8_zig::ra8_devcfg
+  ra8_zig::ra8_translate
   ra8_zig::ra8_ui
   ra8_zig::ra8_app
   ra8_zig::ra8_wdt_supervisor

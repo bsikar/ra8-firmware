@@ -83,6 +83,17 @@ ra8_add_zig_library(
   ra8_batt
 )
 
+# Freestanding manga translation library: TRN1 sidecars, TGL1 glossaries,
+# script selection, OCR preprocessing, overlay typesetting, and chapter jobs.
+ra8_add_zig_library(
+  NAME
+  ra8_translate
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_translate
+  LIBRARY_NAME
+  ra8_translate
+)
+
 # Fully migrated: hit-testing, the screen-id stack and the page cursor are Zig
 # now, so libs/ra8_ui/src has no .c left and the RA8_UI_SOURCES glob is gone
 # from library_sources.cmake and core_hal.cmake.

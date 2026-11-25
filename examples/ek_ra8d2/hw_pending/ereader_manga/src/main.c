@@ -45,6 +45,7 @@
 #include "jof_produce.h"
 #include "mg_page_fixture.h"
 #include "mg_reader.h"
+#include "mg_translate_fixture.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_board_ek_ra8d2_touch.h"
@@ -256,6 +257,7 @@ static mg_png_cursor_t s_png_cursor;
 /* Console banner fragments. */
 static const uint8_t k_msg_boot[]  = "ereader-manga: boot\r\n";
 static const uint8_t k_msg_fail[]  = "ereader-manga: FAIL init\r\n";
+static const uint8_t k_msg_touch[] = "ereader-manga: FAIL touch\r\n";
 static const uint8_t k_msg_atl[]   = "ereader-manga: FAIL atlas\r\n";
 static const uint8_t k_msg_rend[]  = "ereader-manga: FAIL render\r\n";
 static const uint8_t k_msg_pre[]   = "ereader-manga: page ";
@@ -358,7 +360,9 @@ static void mg_bringup_touch(void)
 {
   const ra8_board_touch_cfg_t cfg = {.max_points = (uint8_t)k_mg_touch_max_points,
                                      .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset};
-  (void)ra8_board_touch_open(&cfg);
+  if (ra8_board_touch_open(&cfg) != k_ra8_ok) {
+    mg_print(k_msg_touch, (uint32_t)sizeof(k_msg_touch) - 1U);
+  }
 }
 
 /* ===========================================================================
@@ -463,26 +467,59 @@ static void mg_print_banner(void)
   mg_print(k_msg_ok, (uint32_t)sizeof(k_msg_ok) - 1U);
 }
 
-/** @brief Poll the GT911 once; on a fresh tap, mutate + redraw the viewport. */
-static void mg_poll_touch(bool* was_touching)
+/** @brief Emit a NUL-terminated ASCII string on the console. */
+static void mg_print_cstr(const char* s)
+{
+  if (s != nullptr) {
+    mg_print((const uint8_t*)s, (uint32_t)strlen(s));
+  }
+}
+
+/** @brief Emit concise UART trace for tap interactions on emulator/silicon. */
+static void mg_print_tap_state(void)
+{
+  const mg_translate_ctx_t* trn = mg_translate_fixture_ctx();
+  if (trn == nullptr) {
+    return;
+  }
+  char mode_lbl[k_mg_trn_label_cap] = {};
+  char chap_lbl[k_mg_trn_label_cap] = {};
+  (void)mg_translate_format_mode_pill(trn, mode_lbl, (uint32_t)sizeof(mode_lbl));
+  (void)mg_translate_format_chapter_pill(trn, chap_lbl, (uint32_t)sizeof(chap_lbl));
+  mg_print_cstr("ereader-manga: trn mode=");
+  mg_print_cstr(mode_lbl);
+  mg_print_cstr(" chap=");
+  mg_print_cstr(chap_lbl);
+  if (trn->popup.open) {
+    char hdr[k_mg_trn_label_cap] = {};
+    (void)mg_translate_format_popup_header(&trn->popup, hdr, (uint32_t)sizeof(hdr));
+    mg_print_cstr(" popup=");
+    mg_print_cstr(hdr);
+  }
+  mg_print_cstr(" crc=");
+  mg_print_hex(mg_fnv1a(s_framebuffer, (uint32_t)sizeof(s_framebuffer)));
+  mg_print_cstr("\r\n");
+}
+
+/** @brief Poll the GT911 once; dispatch one discrete tap per delivered frame. */
+static void mg_poll_touch(void)
 {
   ra8_touch_point_t pt  = {};
   uint8_t           got = 0U;
   if (ra8_touch_read(&pt, 1U, &got) != k_ra8_ok) {
     return;
   }
-  const bool touching = (got > 0U);
-  if (touching && !(*was_touching)) {
+  if (got > 0U) {
     if (mg_reader_tap(&s_reader, (int32_t)pt.x, (int32_t)pt.y)) {
       if (mg_reader_render(&s_reader) == k_ra8_ok) {
         mg_present();
+        mg_print_tap_state();
         /* Idle-window read-ahead: warm the next pan step's tiles so a follow-on
          * pan finds them resident instead of stalling on a cold decode. */
         (void)mg_reader_prefetch(&s_reader);
       }
     }
   }
-  *was_touching = touching;
 }
 
 /**
@@ -519,11 +556,14 @@ void main(void)
   }
   mg_present();
   mg_print_banner();
+  if (mg_translate_fixture_attach(&s_reader) && (mg_reader_render(&s_reader) == k_ra8_ok)) {
+    mg_present();
+    mg_print_tap_state();
+  }
 
-  bool     was_touching = false;
-  uint32_t ticks        = 0U;
+  uint32_t ticks = 0U;
   while (1) {
-    mg_poll_touch(&was_touching);
+    mg_poll_touch();
     if ((ticks % (uint32_t)k_mg_led_every) == 0U) {
       (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     }

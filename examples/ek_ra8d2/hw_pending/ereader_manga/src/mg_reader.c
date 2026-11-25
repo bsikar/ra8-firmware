@@ -329,6 +329,22 @@ static void mg_render_minimap(mg_reader_t* r)
                      false);
 }
 
+/** @brief Populate decoupled viewport snapshot handed to mg_translate. */
+static void mg_build_trn_view(const mg_reader_t* r, mg_trn_view_t* out)
+{
+  int32_t ox = 0;
+  int32_t oy = 0;
+  mg_offsets(r, &ox, &oy);
+  *out = (mg_trn_view_t){.fb_w       = r->fb_w,
+                         .fb_h       = r->fb_h,
+                         .content_y0 = (int32_t)k_mg_statusbar_h,
+                         .view_x     = r->view_x,
+                         .view_y     = r->view_y,
+                         .scale      = mg_scale(r),
+                         .ox         = ox,
+                         .oy         = oy};
+}
+
 ra8_err_t mg_reader_render(mg_reader_t* r)
 {
   RA8_CHECK_NULL_PTR(r, k_mg_tag, "reader");
@@ -338,11 +354,22 @@ ra8_err_t mg_reader_render(mg_reader_t* r)
   if (e != k_ra8_ok) {
     return e;
   }
+  if (r->trn != nullptr) {
+    mg_trn_view_t view = {};
+    mg_build_trn_view(r, &view);
+    const ra8_err_t oe = mg_translate_render_overlays(r->trn, &view);
+    if (oe != k_ra8_ok) {
+      return oe;
+    }
+  }
   const ra8_err_t s = mg_render_status(r);
   if (s != k_ra8_ok) {
     return s;
   }
   mg_render_minimap(r);
+  if (r->trn != nullptr) {
+    return mg_translate_render_chrome(r->trn, r->fb_w, r->fb_h);
+  }
   return k_ra8_ok;
 }
 
@@ -426,6 +453,16 @@ mg_zone_t mg_zone_hit(const mg_reader_t* r, int32_t x, int32_t y)
     return k_mg_zone_none;
   }
   if (y < (int32_t)k_mg_statusbar_h) {
+    if (r->trn != nullptr) {
+      const mg_trn_bar_hit_t hit =
+        mg_translate_hit_bar(r->trn, r->fb_w, (int32_t)k_mg_statusbar_h, x, y);
+      if (hit == k_mg_trn_bar_toggle_mode) {
+        return k_mg_zone_trn_toggle;
+      }
+      if (hit == k_mg_trn_bar_next_chapter) {
+        return k_mg_zone_chapter_next;
+      }
+    }
     return k_mg_zone_none; /* status bar */
   }
   if (y >= r->fb_h) {
@@ -463,7 +500,21 @@ bool mg_reader_tap(mg_reader_t* r, int32_t x, int32_t y)
   if (r == nullptr) {
     return false;
   }
-  switch (mg_zone_hit(r, x, y)) {
+  const mg_zone_t zone = mg_zone_hit(r, x, y);
+  if (zone == k_mg_zone_trn_toggle) {
+    return mg_translate_toggle_mode(r->trn);
+  }
+  if (zone == k_mg_zone_chapter_next) {
+    return mg_translate_next_chapter(r->trn);
+  }
+  if ((r->trn != nullptr) && (y >= (int32_t)k_mg_statusbar_h)) {
+    mg_trn_view_t view = {};
+    mg_build_trn_view(r, &view);
+    if (mg_translate_tap_page(r->trn, &view, x, y)) {
+      return true;
+    }
+  }
+  switch (zone) {
     case k_mg_zone_zoom:
       return mg_reader_toggle_zoom(r);
     case k_mg_zone_pan_up:
@@ -628,6 +679,14 @@ ra8_err_t mg_reader_init(mg_reader_t* r, const mg_reader_cfg_t* cfg)
   }
   mg_reader_bind(r, cfg);
   return k_ra8_ok;
+}
+
+void mg_reader_set_translate(mg_reader_t* r, mg_translate_ctx_t* trn)
+{
+  if (r == nullptr) {
+    return;
+  }
+  r->trn = trn;
 }
 
 ra8_err_t mg_tile_decode(void*                 ctx,
