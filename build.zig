@@ -234,7 +234,15 @@ pub fn build(b: *std.Build) void {
         "ra8: -Dbuild-type={s} is not a configuration this graph declares; it knows {s}",
         .{ build_type_name, build_type.names(b.allocator) },
     );
-    arm = build_type.globals(b.allocator, selected, cross_image.base());
+    const production_build = b.option(
+        bool,
+        "production-build",
+        "Arm ship-only guards (-DRA8_PRODUCTION_BUILD) and require RelWithDebInfo or Release",
+    ) orelse false;
+    if (build_type.validateProductionBuild(production_build, selected)) |reason| {
+        std.debug.panic("{s}", .{reason});
+    }
+    arm = build_type.globalsWithProduction(b.allocator, selected, cross_image.base(), production_build);
 
     const test_step = b.step("test", "Build and run the whole migrated-library slice");
     const c_test_step = b.step("test-c", "Run the unmodified C suites against the Zig archives");
@@ -292,6 +300,15 @@ pub fn build(b: *std.Build) void {
     graph_test_module.addAnonymousImport("ra8_add_app_cmake_source", .{
         .root_source_file = b.path("cmake/ra8_add_app.cmake"),
     });
+    graph_test_module.addAnonymousImport("cmake_presets_source", .{
+        .root_source_file = b.path("CMakePresets.json"),
+    });
+    graph_test_module.addAnonymousImport("ereader_cmakelists_source", .{
+        .root_source_file = b.path("apps/board/stand_alone/ereader/CMakeLists.txt"),
+    });
+    graph_test_module.addAnonymousImport("dfu_bootloader_cmakelists_source", .{
+        .root_source_file = b.path("examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/CMakeLists.txt"),
+    });
 
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
@@ -323,10 +340,17 @@ pub fn build(b: *std.Build) void {
     }).artifact(core_artifact_name);
 
     for (slice) |member| {
-        const dependency = b.dependency(member.dependency_name, .{
-            .target = target,
-            .optimize = optimize,
-        });
+        const dependency = if (std.mem.eql(u8, member.dependency_name, "ra8_epd_cal"))
+            b.dependency(member.dependency_name, .{
+                .target = target,
+                .optimize = optimize,
+                .@"production-build" = production_build,
+            })
+        else
+            b.dependency(member.dependency_name, .{
+                .target = target,
+                .optimize = optimize,
+            });
         const archive = dependency.artifact(member.artifact_name);
         b.installArtifact(archive);
 
@@ -582,7 +606,6 @@ pub const cross_image = @import("tests/zig_build_graph/cross_image.zig");
 pub const device = @import("tests/zig_build_graph/device.zig");
 pub const off_target = @import("tests/zig_build_graph/off_target.zig");
 const arm_cpu_flags = arm_flags.cpu_flags;
-const arm_global_defines = arm_flags.global_defines;
 const arm_dialect_flags = arm_flags.dialect_flags;
 const arm_target_dialect_flags = arm_flags.target_dialect_flags;
 pub const armWarningFlags = arm_flags.warningFlags;
@@ -754,6 +777,8 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     // count on `zig build parity` is what shows which of the two you got.
     if (findArmTools(b)) |tools| {
         for (cross_apps) |app| {
+            const app_globals = build_type.globalsForTarget(b.allocator, arm, app.min_build_type, cross_image.base());
+            const global_defines = arm_flags.globalDefines(app_globals.production_build);
             const middlewares = middleware.resolve(b.allocator, app.uses);
             // A middleware's exports change the app's OWN rows, so an analysis
             // gate reading this database sees the same preprocessor view the
@@ -762,8 +787,9 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             var app_flags: std.ArrayList([]const u8) = .empty;
             app_flags.appendSlice(b.allocator, &arm_cpu_flags) catch @panic("OOM");
             app_flags.appendSlice(b.allocator, device.compileFlags(app.board)) catch @panic("OOM");
-            app_flags.appendSlice(b.allocator, arm.config_flags) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, app_globals.config_flags) catch @panic("OOM");
             app_flags.appendSlice(b.allocator, &arm_dialect_flags) catch @panic("OOM");
+            if (app_globals.production_build) app_flags.append(b.allocator, arm_flags.production_define) catch @panic("OOM");
             if (app.trust_zone) app_flags.append(b.allocator, arm_flags.trust_zone.define) catch @panic("OOM");
             app_flags.appendSlice(b.allocator, middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
             // Same reason for the app's own CMakeLists: its vendored
@@ -811,12 +837,12 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // across every app that names the same middleware, so the
             // deduplicator collapses them to one set of rows.
             for (middlewares) |mw| {
-                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, cross_build.middlewareToolchain(tools, app_globals, global_defines));
             }
             // And the app-local vendored library's, at the bar a target with
             // no project profile really gets.
             if (app.local.vendored) |lib| {
-                app_local.appendCompileDbEntries(b, compile_db.Entry, &candidates, lib, cross_build.appLocalToolchain(tools, arm, &arm_global_defines));
+                app_local.appendCompileDbEntries(b, compile_db.Entry, &candidates, lib, cross_build.appLocalToolchain(tools, app_globals, global_defines));
             }
             // The second image's TUs are compiled at a different bar entirely
             // (no warning profile, -Os over -O0, an M33 -mcpu after the M85
@@ -827,16 +853,16 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
                 .size = tools.size,
                 .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
                 .image = image,
-                .global_compile_flags = arm.c_flags,
-                .global_link_flags = arm.link_flags,
+                .global_compile_flags = app_globals.c_flags,
+                .global_link_flags = app_globals.link_flags,
             });
             // And the Non-Secure image's, which are their own rows for the
             // same reason: a different define set, a different include path,
             // and per-set vendored suppressions the secure half never carries.
             if (app.ns) |image| {
-                const ctx = cross_build.nsContext(b, tools, app, image, arm, &arm_global_defines);
+                const ctx = cross_build.nsContext(b, tools, app, image, app_globals, global_defines);
                 ns_image.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx);
-                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx.middleware, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx.middleware, cross_build.middlewareToolchain(tools, app_globals, global_defines));
             }
         }
     }

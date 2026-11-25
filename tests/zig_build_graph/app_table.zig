@@ -196,7 +196,9 @@ pub const CrossApp = struct {
     /// for every app that is not the secure half of such a build. See
     /// ns_image.zig.
     ns: ?ns_image_mod.NsImage = null,
-    /// Libraries the app names in `OFF_TARGET_LIBS`, in the order it names
+    /// Minimum build type for shipping/MRAM-constrained apps; null keeps `-Dbuild-type`.
+    min_build_type: ?@import("build_type.zig").BuildType = null,
+    /// Off-target libraries the app names in `OFF_TARGET_LIBS`, in the order it names
     /// them. Their translation units are compiled INTO this app like any
     /// `LIBS` unit, but with `RA8_OFF_TARGET` additionally defined on those
     /// units alone (cmake/ra8_add_app.cmake does it with
@@ -385,6 +387,7 @@ pub const cross_apps = [_]CrossApp{
         // second non-default frame budget in the table.
         .name = "secure_boot_hil",
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
+        .min_build_type = .relwithdebinfo,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_psa_crypto", "ra8_rot_launch", "ra8_rot" },

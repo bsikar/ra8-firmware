@@ -36,6 +36,7 @@ const interface_archive = @import("interface_archive.zig");
 const migrated_libs = @import("migrated_libs.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
+pub const mram_budget_check = @import("mram_budget_check.zig");
 const device = @import("device.zig");
 const ld_fragments = @import("ld_fragments.zig");
 const middleware = @import("middleware.zig");
@@ -53,7 +54,6 @@ const CrossApp = cross_sources.CrossApp;
 
 /// The flag sets, under the names every call site below already uses.
 const arm_cpu_flags = arm_flags.cpu_flags;
-const arm_global_defines = arm_flags.global_defines;
 const arm_dialect_flags = arm_flags.dialect_flags;
 const arm_target_dialect_flags = arm_flags.target_dialect_flags;
 const arm_link_flags = arm_flags.link_flags;
@@ -90,7 +90,15 @@ pub fn addCrossBuild(
         arm_step.dependOn(&notice.step);
         return;
     };
-    for (cross_sources.cross_apps) |app| addCrossApp(b, arm_step, tools, app, globals);
+    const budget_checker = b.addExecutable(.{
+        .name = "mram_budget_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/mram_budget_check.zig"),
+            .target = b.graph.host,
+            .optimize = build_type.release_tool_optimize,
+        }),
+    });
+    for (cross_sources.cross_apps) |app| addCrossApp(b, arm_step, tools, budget_checker, app, globals);
 }
 
 /// The `threadx-m33` step: the CPU1 ThreadX kernel archive (RA8FW-396), built
@@ -101,7 +109,7 @@ pub fn addThreadxM33(b: *std.Build, step: *std.Build.Step, globals: build_type.G
         step.dependOn(&notice.step);
         return;
     };
-    cpu1_threadx.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+    cpu1_threadx.add(b, step, cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build)));
 }
 
 pub fn addThreadxM33Modules(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
@@ -110,7 +118,7 @@ pub fn addThreadxM33Modules(b: *std.Build, step: *std.Build.Step, globals: build
         step.dependOn(&notice.step);
         return;
     };
-    cpu1_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+    cpu1_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build)));
 }
 
 /// The `txm-m33` step: the library a CPU1 module links (RA8FW-413).
@@ -120,7 +128,7 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
         step.dependOn(&notice.step);
         return;
     };
-    cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+    cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build)));
 }
 
 /// The packed module a CPU1 image names, else nothing (RA8FW-431, RA8FW-458).
@@ -145,7 +153,7 @@ fn cpu1ZigArchives(b: *std.Build, image: cpu1_image.Cpu1Image, globals: build_ty
 fn txmModuleObjects(b: *std.Build, named: ?[]const u8, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
     const wanted = named orelse return &.{};
     const module = cpu1_txm_hello.find(wanted) orelse @panic("an image names a ThreadX module with no entry in cpu1_txm_hello.modules");
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
     return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, built.bin)}) catch @panic("OOM");
 }
@@ -159,7 +167,7 @@ fn txmModuleObjects(b: *std.Build, named: ?[]const u8, tools: cross_build.Tools,
 fn ra8appModuleObjects(b: *std.Build, step: *std.Build.Step, named: ?[]const u8, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
     const wanted = named orelse return &.{};
     const module = cpu1_txm_hello.find(wanted) orelse @panic("an image names a ThreadX module with no entry in cpu1_txm_hello.modules");
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
     const identity: txm_ra8app.Identity = if (std.mem.eql(u8, wanted, "txm_translate_m33"))
         txm_ra8app.translate
@@ -187,7 +195,7 @@ pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Buil
         test_step.dependOn(&notice.step);
         return;
     };
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.hello_world);
     txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, cpu1_txm_hello.hello_world.name, built.bin, txm_ra8app.hello));
     const fault = cpu1_txm_hello.image(b, module_tc, tools.objcopy, cpu1_txm_hello.fault);
@@ -203,7 +211,7 @@ pub fn addTxmTourM33(b: *std.Build, step: *std.Build.Step, globals: build_type.G
         step.dependOn(&notice.step);
         return;
     };
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.tour);
     _ = txm_ra8app.add(b, step, cpu1_txm_hello.tour.name, built.bin, txm_ra8app.tour);
 }
@@ -217,7 +225,7 @@ pub fn addTxmTranslateM33(b: *std.Build, step: *std.Build.Step, globals: build_t
         step.dependOn(&notice.step);
         return;
     };
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.translate);
     _ = txm_ra8app.add(b, step, cpu1_txm_hello.translate.name, built.bin, txm_ra8app.translate);
 }
@@ -230,7 +238,7 @@ pub fn addTxmTouchLedM33(b: *std.Build, step: *std.Build.Step, globals: build_ty
         step.dependOn(&notice.step);
         return;
     };
-    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module_tc = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.touch_led);
     _ = txm_ra8app.add(b, step, cpu1_txm_hello.touch_led.name, built.bin, txm_ra8app.touch_led);
 }
@@ -250,7 +258,7 @@ pub fn addTxmModuleCheck(
         return;
     };
     const tools: ArmTools = .{ .gcc = gnu.gcc, .objcopy = gnu.objcopy, .size = "", .ar = gnu.ar };
-    const m85 = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const m85 = cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build));
     txm_module_check.add(b, step, gnu, m85);
 }
 
@@ -261,16 +269,19 @@ pub fn addThreadxM85Modules(b: *std.Build, step: *std.Build.Step, globals: build
         step.dependOn(&notice.step);
         return;
     };
-    m85_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+    m85_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, arm_flags.globalDefines(globals.production_build)));
 }
 
 fn addCrossApp(
     b: *std.Build,
     arm_step: *std.Build.Step,
     tools: ArmTools,
+    budget_checker: *std.Build.Step.Compile,
     app: CrossApp,
     globals: build_type.Globals,
 ) void {
+    const app_globals = build_type.globalsForTarget(b.allocator, globals, app.min_build_type, base());
+    const global_defines = arm_flags.globalDefines(app_globals.production_build);
 
     // The target zig_libs.cmake derives from the toolchain's own -mcpu and
     // -mfloat-abi (cortex-m85 + hard float -> thumb-freestanding-eabihf,
@@ -294,7 +305,7 @@ fn addCrossApp(
         if (std.mem.eql(u8, lib_name, board_lib)) names_board = true;
         const dependency = b.dependency(lib_name, .{
             .target = arm_target,
-            .optimize = globals.configuration.zig_optimize,
+            .optimize = app_globals.configuration.zig_optimize,
         });
         archives.append(b.allocator, dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
@@ -315,7 +326,7 @@ fn addCrossApp(
         archives.append(b.allocator, core_archive.forTarget(
             b,
             arm_target,
-            globals.configuration.zig_optimize,
+            app_globals.configuration.zig_optimize,
         )) catch @panic("OOM");
     }
 
@@ -332,7 +343,7 @@ fn addCrossApp(
     if (!names_usb_pal and migrated_libs.contributesArchive(b, universal_usb_pal)) {
         const dependency = b.dependency(universal_usb_pal, .{
             .target = arm_target,
-            .optimize = globals.configuration.zig_optimize,
+            .optimize = app_globals.configuration.zig_optimize,
         });
         archives.append(b.allocator, dependency.artifact(universal_usb_pal).getEmittedBin()) catch @panic("OOM");
     }
@@ -347,7 +358,7 @@ fn addCrossApp(
     if (!names_hal and migrated_libs.contributesArchive(b, universal_hal)) {
         const dependency = b.dependency(universal_hal, .{
             .target = arm_target,
-            .optimize = globals.configuration.zig_optimize,
+            .optimize = app_globals.configuration.zig_optimize,
         });
         archives.append(b.allocator, dependency.artifact(universal_hal).getEmittedBin()) catch @panic("OOM");
     }
@@ -370,7 +381,7 @@ fn addCrossApp(
             b,
             app.board,
             arm_target,
-            globals.configuration.zig_optimize,
+            app_globals.configuration.zig_optimize,
         )) catch @panic("OOM");
     }
 
@@ -393,7 +404,7 @@ fn addCrossApp(
             archives.append(b.allocator, board_archive.chipClockAdapterForTarget(
                 b,
                 arm_target,
-                globals.configuration.zig_optimize,
+                app_globals.configuration.zig_optimize,
             )) catch @panic("OOM");
         }
     }
@@ -419,7 +430,7 @@ fn addCrossApp(
             archives.append(b.allocator, interface_archive.forTarget(
                 b,
                 arm_target,
-                globals.configuration.zig_optimize,
+                app_globals.configuration.zig_optimize,
             )) catch @panic("OOM");
         }
     }
@@ -469,11 +480,15 @@ fn addCrossApp(
             if (!migrated_libs.contributesArchive(b, library)) continue;
             const dependency = if (group.off_target) b.dependency(library, .{
                 .target = arm_target,
-                .optimize = globals.configuration.zig_optimize,
+                .optimize = app_globals.configuration.zig_optimize,
                 .@"off-target" = true,
+            }) else if (std.mem.eql(u8, library, "ra8_epd_cal")) b.dependency(library, .{
+                .target = arm_target,
+                .optimize = app_globals.configuration.zig_optimize,
+                .@"production-build" = app_globals.production_build,
             }) else b.dependency(library, .{
                 .target = arm_target,
-                .optimize = globals.configuration.zig_optimize,
+                .optimize = app_globals.configuration.zig_optimize,
             });
             archives.append(b.allocator, dependency.artifact(library).getEmittedBin()) catch @panic("OOM");
         }
@@ -492,7 +507,7 @@ fn addCrossApp(
         if (superseded) continue;
         const dependency = b.dependency(archive, .{
             .target = arm_target,
-            .optimize = globals.configuration.zig_optimize,
+            .optimize = app_globals.configuration.zig_optimize,
         });
         archives.append(b.allocator, dependency.artifact(archive).getEmittedBin()) catch @panic("OOM");
     }
@@ -514,7 +529,7 @@ fn addCrossApp(
     var middleware_archives: std.ArrayList(std.Build.LazyPath) = .empty;
     var middleware_objects: std.ArrayList(std.Build.LazyPath) = .empty;
     for (middlewares) |mw| {
-        const mw_toolchain = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+        const mw_toolchain = cross_build.middlewareToolchain(tools, app_globals, global_defines);
         if (mw.link_objects) {
             middleware_objects.appendSlice(b.allocator, middleware.addObjects(b, mw, mw_toolchain)) catch @panic("OOM");
         } else {
@@ -529,7 +544,7 @@ fn addCrossApp(
     // defines and -isystem directories it exports onto the app's translation
     // units. Silent when missed, see app_local.zig.
     const local_archive: ?std.Build.LazyPath = if (app.local.vendored) |lib|
-        app_local.add(b, lib, cross_build.appLocalToolchain(tools, globals, &arm_global_defines))
+        app_local.add(b, lib, cross_build.appLocalToolchain(tools, app_globals, global_defines))
     else
         null;
     const local_defines = app_local.appDefines(b.allocator, app.local);
@@ -549,13 +564,13 @@ fn addCrossApp(
     var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     // A Zig main goes first, where main.c would (RA8FW-408).
     if (app.zig_main) |root| {
-        objects.append(b.allocator, zigMain(b, app, root, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+        objects.append(b.allocator, zigMain(b, app, root, arm_target, app_globals.configuration.zig_optimize)) catch @panic("OOM");
     }
     // Board boot units written in Zig, each its own object where the C one
     // would sit (RA8FW-616): a strong handler has to beat the vector table's
     // weak alias, which an archive member cannot.
     for (cross_sources.crossBootZigUnits(b, app)) |unit| {
-        objects.append(b.allocator, zigBootObject(b, app, unit, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+        objects.append(b.allocator, zigBootObject(b, app, unit, arm_target, app_globals.configuration.zig_optimize)) catch @panic("OOM");
     }
     for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
@@ -564,8 +579,9 @@ fn addCrossApp(
         // after the shared CPU flags (so its -mfpu wins) and before the
         // configuration's own set. Empty for every ek_ra8d2 app.
         compile.addArgs(device.compileFlags(app.board));
-        compile.addArgs(globals.config_flags);
+        compile.addArgs(app_globals.config_flags);
         compile.addArgs(&arm_dialect_flags);
+        if (app_globals.production_build) compile.addArg(arm_flags.production_define);
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
         compile.addArgs(middleware_defines);
         compile.addArgs(local_defines);
@@ -614,24 +630,24 @@ fn addCrossApp(
         .core_archive = core_archive.forCpu(
             b,
             &std.Target.arm.cpu.cortex_m33,
-            globals.configuration.zig_optimize,
+            app_globals.configuration.zig_optimize,
         ),
-        .global_compile_flags = globals.c_flags,
-        .global_link_flags = globals.link_flags,
-        .zig_optimize = globals.configuration.zig_optimize,
+        .global_compile_flags = app_globals.c_flags,
+        .global_link_flags = app_globals.link_flags,
+        .zig_optimize = app_globals.configuration.zig_optimize,
         .middleware_archives = cpu1_threadx.archives(
             b,
             image.uses,
-            cross_build.middlewareToolchain(tools, globals, &arm_global_defines),
+            cross_build.middlewareToolchain(tools, app_globals, global_defines),
         ),
-        .extra_objects = txmModuleObjects(b, image.txm_module, tools, globals),
-        .zig_archives = cpu1ZigArchives(b, image, globals),
+        .extra_objects = txmModuleObjects(b, image.txm_module, tools, app_globals),
+        .zig_archives = cpu1ZigArchives(b, image, app_globals),
     }) else null;
 
     // An app that does not link in a Debug configure under EITHER build system
     // still compiles every one of its translation units here; only the final
     // link is held back, with the reason printed rather than a red step.
-    if (!app.links_in_debug) {
+    if (!app.links_in_debug and app_globals.configuration.build_type == .debug) {
         for (objects.items) |object| object.addStepDependencies(arm_step);
         if (local_archive) |archive| archive.addStepDependencies(arm_step);
         const notice = b.addSystemCommand(&.{
@@ -648,7 +664,7 @@ fn addCrossApp(
     const link = b.addSystemCommand(&.{tools.gcc});
     link.addArgs(&arm_cpu_flags);
     link.addArgs(device.linkFlags(app.board));
-    link.addArgs(globals.config_flags);
+    link.addArgs(app_globals.config_flags);
     link.addArgs(&arm_link_flags);
     // The middleware's INTERFACE link options. Dropping these does not fail
     // the link, it produces a firmware image whose kernel time base never
@@ -686,10 +702,10 @@ fn addCrossApp(
     if (cpu1_blob) |blob| link.addFileArg(blob);
     // The M85 manager's own module blob, pinned by the app script's
     // `.txm_module` section the way the CPU1 image pins its own.
-    for (txmModuleObjects(b, app.txm_module, tools, globals)) |blob| link.addFileArg(blob);
+    for (txmModuleObjects(b, app.txm_module, tools, app_globals)) |blob| link.addFileArg(blob);
     // An image carrying a signed `.ra8app` (RA8FW-680) links it the same
     // way: objcopied into `.txm_module`, the image verifies and loads it.
-    for (ra8appModuleObjects(b, arm_step, app.ra8app_module, tools, globals)) |blob| link.addFileArg(blob);
+    for (ra8appModuleObjects(b, arm_step, app.ra8app_module, tools, app_globals)) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
     for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
@@ -713,6 +729,17 @@ fn addCrossApp(
 
     const hex = objcopyTo(b, tools.objcopy, "ihex", elf, b.fmt("{s}.hex", .{app.name}));
     const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{app.name}));
+    if (app.mram_length) |mram_spec| {
+        if (!app.cpu1_image) {
+            const budget = build_type.parseMramBytes(mram_spec) orelse
+                std.debug.panic("ra8: invalid mram_length '{s}' for {s}", .{ mram_spec, app.name });
+            const check = b.addRunArtifact(budget_checker);
+            check.addArg(app.name);
+            check.addFileArg(bin);
+            check.addArg(b.fmt("{d}", .{budget}));
+            arm_step.dependOn(&check.step);
+        }
+    }
 
     arm_step.dependOn(&b.addInstallFileWithDir(elf, .{ .custom = "arm" }, b.fmt("{s}.elf", .{app.name})).step);
     // Only when this app has no Non-Secure half. When it does, the hex a flash
@@ -733,8 +760,8 @@ fn addCrossApp(
     // the .gnu.sgstubs veneers, and the Secure ELF is an input of the hex
     // merge. Both are declared outputs above rather than paths by convention.
     if (app.ns) |image| {
-        var ctx = cross_build.nsContext(b, tools, app, image, globals, &arm_global_defines);
-        ctx.core_archive = core_archive.forTarget(b, arm_target, globals.configuration.zig_optimize);
+        var ctx = cross_build.nsContext(b, tools, app, image, app_globals, global_defines);
+        ctx.core_archive = core_archive.forTarget(b, arm_target, app_globals.configuration.zig_optimize);
         // One archive per entry, in the app's call order. An entry marked in
         // `zig_libraries_ns_alias` builds with -Dperiph_ns_alias=true
         // (RA8FW-832), the NS image's HAL view at the IDAU alias; the option
@@ -746,18 +773,18 @@ fn addCrossApp(
             const dependency = if (ns_alias)
                 b.dependency(library, .{
                     .target = arm_target,
-                    .optimize = globals.configuration.zig_optimize,
+                    .optimize = app_globals.configuration.zig_optimize,
                     .periph_ns_alias = true,
                 })
             else
                 b.dependency(library, .{
                     .target = arm_target,
-                    .optimize = globals.configuration.zig_optimize,
+                    .optimize = app_globals.configuration.zig_optimize,
                 });
             ns_archives[index] = dependency.artifact(library).getEmittedBin();
         }
         ctx.library_archives = ns_archives;
-        ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+        ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, app_globals, global_defines));
         ctx.implib = implib;
         ctx.secure_elf = elf;
         ctx.merge_tool = ns_image.mergeTool(b);

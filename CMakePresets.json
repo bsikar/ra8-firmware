@@ -23,7 +23,22 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "RA8_PRODUCTION_BUILD": "ON"
+        "RA8_PRODUCTION_BUILD": "ON",
+        "RA8_ZIG_OPTIMIZE": "ReleaseSmall"
+      }
+    },
+    {
+      "name": "ra8d2-shipping",
+      "displayName": "RA8D2 Shipping (-Os)",
+      "description": "Size-optimized shipping cross-compile for RA8D2 (Cortex-M85)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-shipping",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-ra8d2.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "RA8_PRODUCTION_BUILD": "ON",
+        "RA8_ZIG_OPTIMIZE": "ReleaseSmall"
       }
     },
     {
@@ -61,6 +76,20 @@
       "name": "ra8d2-release",
       "displayName": "RA8D2 Release",
       "configurePreset": "ra8d2-release"
+    },
+    {
+      "name": "ra8d2-shipping",
+      "displayName": "RA8D2 Shipping (-Os)",
+      "configurePreset": "ra8d2-shipping"
+    },
+    {
+      "name": "ra8d2-ereader-release",
+      "displayName": "RA8D2 E-Reader Shipping Images",
+      "configurePreset": "ra8d2-release",
+      "targets": [
+        "ra8d2-ereader.elf",
+        "ra8d2-ereader_ns.elf"
+      ]
     },
     {
       "name": "host-debug",
