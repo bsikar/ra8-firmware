@@ -31,6 +31,72 @@ pub const global_tensor_count: usize = 8;
 pub const enc_layer_tensor_count: usize = 16;
 pub const dec_layer_tensor_count: usize = 26;
 
+pub const shortlist_magic: u32 = 0x544C_5354; // Little-endian "TSLT".
+pub const shortlist_version: u16 = 1;
+pub const shortlist_header_bytes: usize = 16;
+
+/// Validated CSR lexical shortlist view embedded inside `TMNT`.
+pub const ShortlistView = struct {
+    bytes: []const u8,
+    src_vocab_size: u32,
+    entry_count: u32,
+
+    /// Parse and bounds-validate a serialized `TSLT` lexical shortlist blob.
+    pub fn parse(bytes: []const u8, vocab_size: u32) Error!ShortlistView {
+        if (bytes.len < shortlist_header_bytes) return Error.InvalidSize;
+        if (readU32(bytes, 0) != shortlist_magic) return Error.ValidationFailed;
+        const ver = readU16(bytes, 4);
+        const flags = readU16(bytes, 6);
+        const src_vocab = readU32(bytes, 8);
+        const entry_count = readU32(bytes, 12);
+        if (ver != shortlist_version or flags != 0) return Error.ValidationFailed;
+        if (src_vocab != vocab_size) return Error.ValidationFailed;
+
+        const row_offs_count = try checkedAdd(@as(usize, src_vocab), 1);
+        const total_u32 = try checkedAdd(row_offs_count, @as(usize, entry_count));
+        const expected_bytes = try checkedAdd(shortlist_header_bytes, try checkedMul(total_u32, 4));
+        if (bytes.len != expected_bytes) return Error.InvalidSize;
+
+        var prev: u32 = readU32(bytes, shortlist_header_bytes);
+        if (prev != 0) return Error.ValidationFailed;
+        var i: usize = 1;
+        while (i < row_offs_count) : (i += 1) {
+            const cur = readU32(bytes, shortlist_header_bytes + i * 4);
+            if (cur < prev or cur > entry_count) return Error.ValidationFailed;
+            prev = cur;
+        }
+        if (prev != entry_count) return Error.ValidationFailed;
+
+        const entries_off = shortlist_header_bytes + row_offs_count * 4;
+        var e: usize = 0;
+        while (e < entry_count) : (e += 1) {
+            if (readU32(bytes, entries_off + e * 4) >= vocab_size) return Error.ValidationFailed;
+        }
+
+        return .{
+            .bytes = bytes,
+            .src_vocab_size = src_vocab,
+            .entry_count = entry_count,
+        };
+    }
+
+    /// Return CSR `(start, end)` entry range for `src_tok`.
+    pub fn rowRange(self: ShortlistView, src_tok: u32) Error!struct { start: u32, end: u32 } {
+        if (src_tok >= self.src_vocab_size) return Error.OutOfRange;
+        const base = shortlist_header_bytes + @as(usize, src_tok) * 4;
+        return .{
+            .start = readU32(self.bytes, base),
+            .end = readU32(self.bytes, base + 4),
+        };
+    }
+
+    /// Read alignment-safe `u32` candidate target token ID at entry index `idx`.
+    pub fn entryAt(self: ShortlistView, idx: u32) u32 {
+        const off = shortlist_header_bytes + (@as(usize, self.src_vocab_size) + 1 + @as(usize, idx)) * 4;
+        return readU32(self.bytes, off);
+    }
+};
+
 /// Wire element encoding inside `TMNT` tensor descriptors.
 pub const DType = enum(u8) {
     none = 0,
@@ -278,6 +344,14 @@ pub const TmntView = struct {
         return readF32(self.bytes, ref.data_off + idx * 4);
     }
 
+    /// Return validated optional `TSLT` CSR shortlist view, or `null` when absent.
+    pub fn shortlist(self: TmntView) Error!?ShortlistView {
+        if (self.header.shortlist_off == 0 and self.header.shortlist_bytes == 0) return null;
+        const off: usize = @intCast(self.header.shortlist_off);
+        const len: usize = @intCast(self.header.shortlist_bytes);
+        return try ShortlistView.parse(self.bytes[off .. off + len], self.header.vocab_size);
+    }
+
     fn validateAllTensors(self: TmntView) Error!void {
         const h = self.header;
         const d: usize = @intCast(h.d_model);
@@ -383,6 +457,16 @@ pub fn writeContainer(
     inputs: []const TensorInput,
     out: []u8,
 ) Error!usize {
+    return writeContainerWithShortlist(opts, inputs, null, out);
+}
+
+/// Serialize a deterministic `TMNT` container with optional `TSLT` CSR shortlist section.
+pub fn writeContainerWithShortlist(
+    opts: WriteOpts,
+    inputs: []const TensorInput,
+    shortlist_rows: ?[]const []const u32,
+    out: []u8,
+) Error!usize {
     const exp_count = expectedTensorCount(opts.num_enc_layers, opts.num_dec_layers);
     if (inputs.len != exp_count) return Error.InvalidArg;
 
@@ -432,13 +516,46 @@ pub fn writeContainer(
         }
     }
 
-    const total_bytes = alignUp4(cursor);
-    if (out.len < total_bytes) return Error.InvalidSize;
-    @memset(out[cursor..total_bytes], 0);
-    const weights_bytes = total_bytes - weights_off;
+    const weights_end = alignUp4(cursor);
+    if (out.len < weights_end) return Error.InvalidSize;
+    @memset(out[cursor..weights_end], 0);
+    const weights_bytes = weights_end - weights_off;
     const dir_end = header_bytes + dir_bytes;
     if (weights_off > dir_end) {
         @memset(out[dir_end..weights_off], 0);
+    }
+
+    var sl_off: u32 = 0;
+    var sl_bytes: u32 = 0;
+    var total_bytes: usize = weights_end;
+    if (shortlist_rows) |rows| {
+        if (rows.len != opts.vocab_size) return Error.InvalidArg;
+        var entry_total: usize = 0;
+        for (rows) |r| entry_total += r.len;
+        const sl_sz = shortlist_header_bytes + (rows.len + 1 + entry_total) * 4;
+        if (out.len < weights_end + sl_sz) return Error.InvalidSize;
+        sl_off = @intCast(weights_end);
+        sl_bytes = @intCast(sl_sz);
+        total_bytes = weights_end + sl_sz;
+
+        writeU32(out, weights_end + 0, shortlist_magic);
+        writeU16(out, weights_end + 4, shortlist_version);
+        writeU16(out, weights_end + 6, 0);
+        writeU32(out, weights_end + 8, opts.vocab_size);
+        writeU32(out, weights_end + 12, @intCast(entry_total));
+
+        var running: u32 = 0;
+        var ent_cursor: usize = weights_end + shortlist_header_bytes + (rows.len + 1) * 4;
+        for (rows, 0..) |r, idx| {
+            writeU32(out, weights_end + shortlist_header_bytes + idx * 4, running);
+            for (r) |tok| {
+                if (tok >= opts.vocab_size) return Error.InvalidArg;
+                writeU32(out, ent_cursor, tok);
+                ent_cursor += 4;
+            }
+            running += @intCast(r.len);
+        }
+        writeU32(out, weights_end + shortlist_header_bytes + rows.len * 4, running);
     }
 
     @memset(out[0..header_bytes], 0);
@@ -460,6 +577,8 @@ pub fn writeContainer(
     writeU32(out, 44, opts.eos_id);
     writeU32(out, 48, opts.pad_id);
     writeF32(out, 52, opts.ln_eps);
+    writeU32(out, 64, sl_off);
+    writeU32(out, 68, sl_bytes);
     writeU32(out, 72, @intCast(exp_count));
     writeU32(out, 76, @intCast(weights_off));
     writeU32(out, 80, @intCast(weights_bytes));

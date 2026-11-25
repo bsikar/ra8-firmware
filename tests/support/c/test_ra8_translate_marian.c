@@ -360,6 +360,210 @@ static void test_marian_step_logits_and_greedy_decode(void)
   TEST_ASSERT(fabsf(logits[0] + 42.0F) < 1e-6F);
 }
 
+static size_t attach_test_shortlist(uint8_t* buf, size_t old_len, size_t cap, uint32_t tok_hint)
+{
+  enum : uint32_t {
+    k_vocab      = 8U,
+    k_slots      = 8U + 16U + 26U,
+    k_header     = k_ra8_translate_marian_header_bytes,
+    k_desc       = k_ra8_translate_marian_tensor_desc_bytes,
+    k_dir_end    = k_header + k_slots * k_desc,
+    k_weights_at = (k_dir_end + 3U) & ~3U,
+    k_sl_bytes   = 16U + (k_vocab + 1U + 1U) * 4U,
+  };
+  TEST_ASSERT(old_len + k_sl_bytes <= cap);
+  wr_u32(buf, old_len + 0U, k_ra8_translate_marian_shortlist_magic);
+  wr_u16(buf, old_len + 4U, (uint16_t)k_ra8_translate_marian_shortlist_version);
+  wr_u16(buf, old_len + 6U, 0U);
+  wr_u32(buf, old_len + 8U, k_vocab);
+  wr_u32(buf, old_len + 12U, 1U);
+  for (uint32_t i = 0U; i <= k_vocab; ++i) {
+    wr_u32(buf, old_len + 16U + i * 4U, (i <= 4U) ? 0U : 1U);
+  }
+  wr_u32(buf, old_len + 16U + (k_vocab + 1U) * 4U, tok_hint);
+
+  const size_t new_len = old_len + k_sl_bytes;
+  wr_u32(buf, 8U, (uint32_t)new_len);
+  wr_u32(buf, 64U, (uint32_t)old_len);
+  wr_u32(buf, 68U, k_sl_bytes);
+  wr_u32(buf, 16U, ieee_crc32(buf + k_weights_at, new_len - k_weights_at));
+  wr_u32(buf, 12U, 0U);
+  wr_u32(buf, 12U, ieee_crc32(buf, k_dir_end));
+  return new_len;
+}
+
+static void test_marian_batch_shortlist_and_queue_refill(void)
+{
+  uint8_t      buf[4096] = {};
+  const size_t len       = build_test_tmnt(buf, sizeof(buf), 5);
+  const size_t len_sl    = attach_test_shortlist(buf, len, sizeof(buf), 5U);
+
+  const uint32_t                         src_pool[7] = {4U, 6U, 7U, 4U, 5U, 6U, 7U};
+  const ra8_translate_marian_batch_cfg_t cfg_full    = {
+    .max_src_len = 3U,
+    .max_tgt_len = 3U,
+    .flags       = k_ra8_translate_marian_batch_flag_none,
+    .batch_size  = 2U,
+    .beam_width  = 1U,
+  };
+  const ra8_translate_marian_batch_cfg_t cfg_sl = {
+    .max_src_len = 3U,
+    .max_tgt_len = 3U,
+    .flags       = k_ra8_translate_marian_batch_flag_use_shortlist,
+    .batch_size  = 2U,
+    .beam_width  = 1U,
+  };
+
+  size_t wb_full = 0U;
+  size_t wb_sl   = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_marian_batch_work_bytes(buf, len_sl, &cfg_full, &wb_full));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_marian_batch_work_bytes(buf, len_sl, &cfg_sl, &wb_sl));
+  TEST_ASSERT(wb_full <= 32768U && wb_sl <= 32768U);
+  static uint8_t work[32768];
+
+  ra8_translate_marian_batch_job_t jobs_full[3] = {
+    {.src_off = 0U, .src_len = 3U, .tgt_off = 0U, .tgt_cap = 2U},
+    {.src_off = 3U, .src_len = 2U, .tgt_off = 3U, .tgt_cap = 3U},
+    {.src_off = 5U, .src_len = 2U, .tgt_off = 6U, .tgt_cap = 3U},
+  };
+  ra8_translate_marian_batch_job_t   jobs_sl[3]    = {jobs_full[0], jobs_full[1], jobs_full[2]};
+  uint32_t                           tgt_full[9]   = {};
+  uint32_t                           tgt_sl[9]     = {};
+  uint64_t                           steps_full[9] = {};
+  uint64_t                           steps_sl[9]   = {};
+  ra8_translate_marian_batch_stats_t st_full       = {};
+  ra8_translate_marian_batch_stats_t st_sl         = {};
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_marian_batch_decode(buf,
+                                                   len_sl,
+                                                   &cfg_full,
+                                                   src_pool,
+                                                   7U,
+                                                   jobs_full,
+                                                   3U,
+                                                   work,
+                                                   wb_full,
+                                                   tgt_full,
+                                                   9U,
+                                                   steps_full,
+                                                   9U,
+                                                   &st_full));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_marian_batch_decode(buf,
+                                                   len_sl,
+                                                   &cfg_sl,
+                                                   src_pool,
+                                                   7U,
+                                                   jobs_sl,
+                                                   3U,
+                                                   work,
+                                                   wb_sl,
+                                                   tgt_sl,
+                                                   9U,
+                                                   steps_sl,
+                                                   9U,
+                                                   &st_sl));
+
+  TEST_ASSERT_EQ(3U, st_sl.completed_jobs);
+  TEST_ASSERT(st_sl.decoder_steps >= 3U);
+  TEST_ASSERT(steps_sl[0] > 0U && steps_sl[0] < steps_full[0]);
+  TEST_ASSERT(st_sl.total_weight_bytes_read < st_full.total_weight_bytes_read);
+
+  /* Compare directly against single-sequence RA8FW-676 greedy decode. */
+  uint32_t                     ref_out[3] = {};
+  ra8_translate_marian_stats_t ref_st     = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_marian_greedy_decode(buf,
+                                                    len_sl,
+                                                    src_pool + 3U,
+                                                    2U,
+                                                    3U,
+                                                    work,
+                                                    sizeof(work),
+                                                    ref_out,
+                                                    3U,
+                                                    &ref_st));
+  TEST_ASSERT_EQ(ref_st.generated_tokens, jobs_full[1].out_len);
+  TEST_ASSERT_EQ(jobs_full[1].out_len, jobs_sl[1].out_len);
+  for (uint32_t i = 0U; i < ref_st.generated_tokens; ++i) {
+    TEST_ASSERT_EQ(ref_out[i], tgt_full[3U + i]);
+    TEST_ASSERT_EQ(ref_out[i], tgt_sl[3U + i]);
+  }
+}
+
+static void test_marian_batch_beam_and_error_guards(void)
+{
+  uint8_t      buf[4096] = {};
+  const size_t len       = build_test_tmnt(buf, sizeof(buf), 2);
+  const size_t len_sl    = attach_test_shortlist(buf, len, sizeof(buf), 5U);
+
+  const uint32_t                         src_pool[4] = {4U, 6U, 4U, 7U};
+  const ra8_translate_marian_batch_cfg_t cfg_beam    = {
+    .max_src_len = 2U,
+    .max_tgt_len = 3U,
+    .flags       = k_ra8_translate_marian_batch_flag_beam_search |
+                   k_ra8_translate_marian_batch_flag_use_shortlist,
+    .batch_size  = 2U,
+    .beam_width  = 2U,
+  };
+  size_t wb = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_marian_batch_work_bytes(buf, len_sl, &cfg_beam, &wb));
+  static uint8_t work[65536];
+  TEST_ASSERT(wb <= sizeof(work));
+
+  ra8_translate_marian_batch_job_t jobs[2] = {
+    {.src_off = 0U, .src_len = 2U, .tgt_off = 0U, .tgt_cap = 3U},
+    {.src_off = 2U, .src_len = 2U, .tgt_off = 3U, .tgt_cap = 3U},
+  };
+  uint32_t                           tgt[6] = {};
+  ra8_translate_marian_batch_stats_t stats  = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_marian_batch_decode(buf,
+                                                   len_sl,
+                                                   &cfg_beam,
+                                                   src_pool,
+                                                   4U,
+                                                   jobs,
+                                                   2U,
+                                                   work,
+                                                   wb,
+                                                   tgt,
+                                                   6U,
+                                                   nullptr,
+                                                   0U,
+                                                   &stats));
+  TEST_ASSERT_EQ(2U, stats.completed_jobs);
+  TEST_ASSERT_EQ(1U, jobs[0].stopped_on_eos);
+  TEST_ASSERT_EQ(2U, tgt[0]);
+
+  /* Error guards preserve out_stats / out_tgt_pool sentinels cleanly. */
+  tgt[0]               = 7777U;
+  stats.completed_jobs = 99U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_translate_marian_batch_decode(nullptr,
+                                                   len_sl,
+                                                   &cfg_beam,
+                                                   src_pool,
+                                                   4U,
+                                                   jobs,
+                                                   2U,
+                                                   work,
+                                                   wb,
+                                                   tgt,
+                                                   6U,
+                                                   nullptr,
+                                                   0U,
+                                                   &stats));
+  TEST_ASSERT_EQ(7777U, tgt[0]);
+  TEST_ASSERT_EQ(99U, stats.completed_jobs);
+
+  ra8_translate_marian_batch_cfg_t bad_beam = cfg_beam;
+  bad_beam.beam_width                       = 6U;
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed,
+                 ra8_translate_marian_batch_work_bytes(buf, len_sl, &bad_beam, &wb));
+}
+
 int main(void)
 {
   TEST_BEGIN("test_marian_open_and_error_guards");
@@ -369,5 +573,13 @@ int main(void)
   TEST_BEGIN("test_marian_step_logits_and_greedy_decode");
   test_marian_step_logits_and_greedy_decode();
   TEST_END("test_marian_step_logits_and_greedy_decode");
+
+  TEST_BEGIN("test_marian_batch_shortlist_and_queue_refill");
+  test_marian_batch_shortlist_and_queue_refill();
+  TEST_END("test_marian_batch_shortlist_and_queue_refill");
+
+  TEST_BEGIN("test_marian_batch_beam_and_error_guards");
+  test_marian_batch_beam_and_error_guards();
+  TEST_END("test_marian_batch_beam_and_error_guards");
   return 0;
 }

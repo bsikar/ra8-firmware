@@ -233,6 +233,151 @@ ra8_err_t ra8_translate_marian_greedy_decode(const uint8_t*                tmnt_
                                              size_t                        tgt_cap,
                                              ra8_translate_marian_stats_t* out_stats);
 
+/** @brief Wire constants for `TSLT` CSR lexical shortlists and batched Marian bounds. */
+typedef enum : uint32_t {
+  k_ra8_translate_marian_shortlist_magic        = 0x544C5354U, /**< LE "TSLT".        */
+  k_ra8_translate_marian_shortlist_version      = 1U,          /**< Format version.   */
+  k_ra8_translate_marian_shortlist_header_bytes = 16U,         /**< CSR header bytes. */
+  k_ra8_translate_marian_max_batch              = 16U,         /**< Max batch width.  */
+  k_ra8_translate_marian_max_beam               = 4U,          /**< Max beam width.   */
+} ra8_translate_marian_batch_const_t;
+
+/** @brief Execution mode bitmask for batched Marian decoding. */
+typedef enum : uint16_t {
+  k_ra8_translate_marian_batch_flag_none          = 0U,       /**< Full-vocab greedy.    */
+  k_ra8_translate_marian_batch_flag_use_shortlist = 1U << 0U, /**< Enable `TSLT` prune.  */
+  k_ra8_translate_marian_batch_flag_beam_search   = 1U << 1U, /**< Enable beam (`2..4`). */
+} ra8_translate_marian_batch_flag_t;
+
+static_assert(sizeof(ra8_translate_marian_batch_flag_t) == 2U,
+              "ra8_translate_marian_batch_flag_t width");
+
+/**
+ * @brief Execution configuration for batched Marian NMT queue decoding.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t max_src_len; /**< Maximum source tokens per bubble (`[1, max_seq_len]`).    */
+  uint16_t max_tgt_len; /**< Maximum generated target tokens per bubble (`>= 1`).      */
+  uint16_t flags;       /**< `ra8_translate_marian_batch_flag_t` bitmask.              */
+  uint8_t  batch_size;  /**< Max concurrent bubbles in flight (`[1, 16]`).             */
+  uint8_t  beam_width;  /**< Beam width (`1` if beam flag clear, `[2, 4]` if enabled). */
+  uint8_t  reserved[4]; /**< Zero padding.                                             */
+} ra8_translate_marian_batch_cfg_t;
+
+static_assert(sizeof(ra8_translate_marian_batch_cfg_t) == 12U, "marian batch cfg size");
+static_assert(alignof(ra8_translate_marian_batch_cfg_t) == 2U, "marian batch cfg align");
+static_assert(offsetof(ra8_translate_marian_batch_cfg_t, max_tgt_len) == 2U, "batch cfg tgt");
+static_assert(offsetof(ra8_translate_marian_batch_cfg_t, flags) == 4U, "batch cfg flags");
+static_assert(offsetof(ra8_translate_marian_batch_cfg_t, batch_size) == 6U, "batch cfg batch");
+static_assert(offsetof(ra8_translate_marian_batch_cfg_t, beam_width) == 7U, "batch cfg beam");
+static_assert(offsetof(ra8_translate_marian_batch_cfg_t, reserved) == 8U, "batch cfg rsv");
+
+/**
+ * @brief Flat-pool queue descriptor for one source bubble in batched decoding.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t src_off;        /**< Start index in `src_pool`.               */
+  uint32_t src_len;        /**< Source token count (`[1, max_src_len]`). */
+  uint32_t tgt_off;        /**< Start index in `out_tgt_pool`.           */
+  uint32_t tgt_cap;        /**< Writable token capacity (`>= 1`).        */
+  uint32_t out_len;        /**< Output tokens written on completion.     */
+  uint8_t  stopped_on_eos; /**< 1 if terminated on `eos_id`, else 0.     */
+  uint8_t  completed;      /**< 1 once decoded and written, else 0.      */
+  uint8_t  reserved[2];    /**< Zero padding.                            */
+} ra8_translate_marian_batch_job_t;
+
+static_assert(sizeof(ra8_translate_marian_batch_job_t) == 24U, "marian batch job size");
+static_assert(alignof(ra8_translate_marian_batch_job_t) == 4U, "marian batch job align");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, src_len) == 4U, "batch job srclen");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, tgt_off) == 8U, "batch job tgtoff");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, tgt_cap) == 12U, "batch job tgtcap");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, out_len) == 16U, "batch job outlen");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, stopped_on_eos) == 20U, "batch job eos");
+static_assert(offsetof(ra8_translate_marian_batch_job_t, completed) == 21U, "batch job done");
+
+/**
+ * @brief Summary counters emitted after draining a batched Marian bubble queue.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint64_t total_weight_bytes_read; /**< Cumulative weight/bias/shortlist bytes. */
+  uint32_t completed_jobs;          /**< Total chapter queue jobs decoded.       */
+  uint32_t decoder_steps;           /**< Number of batched decoder steps run.    */
+  uint32_t total_generated_tokens;  /**< Sum of generated tokens across jobs.    */
+  uint8_t  used_helium_mve;         /**< 1 if Helium MVE kernel executed.        */
+  uint8_t  reserved[3];             /**< Zero padding.                           */
+} ra8_translate_marian_batch_stats_t;
+
+static_assert(sizeof(ra8_translate_marian_batch_stats_t) == 24U, "marian batch stats size");
+static_assert(alignof(ra8_translate_marian_batch_stats_t) == 8U, "marian batch stats align");
+static_assert(offsetof(ra8_translate_marian_batch_stats_t, completed_jobs) == 8U, "stats jobs");
+static_assert(offsetof(ra8_translate_marian_batch_stats_t, decoder_steps) == 12U, "stats steps");
+static_assert(offsetof(ra8_translate_marian_batch_stats_t, total_generated_tokens) == 16U,
+              "stats tokens");
+static_assert(offsetof(ra8_translate_marian_batch_stats_t, used_helium_mve) == 20U, "stats mve");
+
+/**
+ * @brief Compute conservative scratch workspace bytes for batched Marian decode.
+ *
+ * @details Calling context: `task-safe-reentrant`. Sizes `batch_size * beam_width`
+ * self-attention KV caches, `batch_size` encoder/cross-KV buffers, active shortlist
+ * sets, and per-step batched activation scratch inside caller memory.
+ *
+ * @param[in] tmnt_buf Validated `TMNT` container bytes.
+ * @param[in] tmnt_len Byte length of @p tmnt_buf.
+ * @param[in] cfg Validated ::ra8_translate_marian_batch_cfg_t configuration.
+ * @param[out] out_work_bytes Non-null destination receiving required workspace bytes.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_marian_batch_work_bytes(const uint8_t*                          tmnt_buf,
+                                                size_t                                  tmnt_len,
+                                                const ra8_translate_marian_batch_cfg_t* cfg,
+                                                size_t* out_work_bytes);
+
+/**
+ * @brief Drain a bubble queue using shared-weight batched decoding and optional shortlist/beam.
+ *
+ * @details Calling context: `task-safe-reentrant`. Refills completed slots
+ * immediately from @p jobs while other sequences remain in flight, streams each
+ * decoder weight tensor once per step across active beams, optionally prunes the
+ * output projection via `TSLT` lexical shortlists, and logs per-step weight bytes
+ * when @p out_step_bytes is provided. Leaves all caller outputs untouched on any error.
+ *
+ * @param[in] tmnt_buf Validated `TMNT` container bytes.
+ * @param[in] tmnt_len Byte length of @p tmnt_buf.
+ * @param[in] cfg Batch/shortlist/beam configuration.
+ * @param[in] src_pool Concatenated source token IDs indexed by ::ra8_translate_marian_batch_job_t.
+ * @param[in] src_pool_len Element count of @p src_pool.
+ * @param[in,out] jobs Non-null queue descriptors (`job_count >= 1`).
+ * @param[in] job_count Number of jobs in @p jobs.
+ * @param[in,out] work_buf Non-null scratch buffer sized by ::ra8_translate_marian_batch_work_bytes.
+ * @param[in] work_cap Byte capacity of @p work_buf.
+ * @param[out] out_tgt_pool Destination pool receiving decoded token IDs per job offset.
+ * @param[in] tgt_pool_cap Element capacity of @p out_tgt_pool.
+ * @param[out] out_step_bytes Optional per-step weight-bytes log (NULL allowed only if @p step_bytes_cap == 0).
+ * @param[in] step_bytes_cap Element capacity of @p out_step_bytes (`>= sum(min(max_tgt_len, tgt_cap))` when non-null).
+ * @param[out] out_stats Non-null summary struct receiving cumulative bytes and step counts.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_marian_batch_decode(const uint8_t*                          tmnt_buf,
+                                            size_t                                  tmnt_len,
+                                            const ra8_translate_marian_batch_cfg_t* cfg,
+                                            const uint32_t*                         src_pool,
+                                            size_t                                  src_pool_len,
+                                            ra8_translate_marian_batch_job_t*       jobs,
+                                            size_t                                  job_count,
+                                            uint8_t*                                work_buf,
+                                            size_t                                  work_cap,
+                                            uint32_t*                               out_tgt_pool,
+                                            size_t                                  tgt_pool_cap,
+                                            uint64_t*                               out_step_bytes,
+                                            size_t                                  step_bytes_cap,
+                                            ra8_translate_marian_batch_stats_t*     out_stats);
+
 #ifdef __cplusplus
 }
 #endif

@@ -201,6 +201,32 @@ pub fn build(b: *std.Build) void {
     marian_mod.addImport("marian_container", marian_cont_mod);
     marian_mod.addImport("err", err_mod);
 
+    const marian_batch_plan_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/marian_batch_plan.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    marian_batch_plan_mod.addImport("marian_container", marian_cont_mod);
+    marian_batch_plan_mod.addImport("err", err_mod);
+
+    const marian_batch_step_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/marian_batch_step.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    marian_batch_step_mod.addImport("marian_ops", marian_ops_mod);
+    marian_batch_step_mod.addImport("marian_container", marian_cont_mod);
+    marian_batch_step_mod.addImport("marian_batch_plan", marian_batch_plan_mod);
+
+    const marian_batch_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/marian_batch.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    marian_batch_mod.addImport("marian_ops", marian_ops_mod);
+    marian_batch_mod.addImport("marian_batch_plan", marian_batch_plan_mod);
+    marian_batch_mod.addImport("marian_batch_step", marian_batch_step_mod);
+
     const marian_abi_mod = b.createModule(.{
         .root_source_file = b.path("src/marian_abi.zig"),
         .target = target,
@@ -208,6 +234,7 @@ pub fn build(b: *std.Build) void {
         .pic = true,
     });
     marian_abi_mod.addImport("marian", marian_mod);
+    marian_abi_mod.addImport("marian_batch", marian_batch_mod);
     marian_abi_mod.addImport("err", err_mod);
 
     const root_mod = b.createModule(.{
@@ -430,4 +457,18 @@ pub fn build(b: *std.Build) void {
     const run_marian = b.addRunArtifact(marian_tests);
     ra8_build.configureHostTestRun(b, test_step, marian_tests, run_marian);
     test_step.dependOn(&run_marian.step);
+
+    const marian_batch_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/marian_batch_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    marian_batch_tmod.addImport("marian_ops", marian_ops_mod);
+    marian_batch_tmod.addImport("marian_container", marian_cont_mod);
+    marian_batch_tmod.addImport("marian", marian_mod);
+    marian_batch_tmod.addImport("marian_batch", marian_batch_mod);
+    const marian_batch_tests = b.addTest(.{ .root_module = marian_batch_tmod });
+    const run_marian_batch = b.addRunArtifact(marian_batch_tests);
+    ra8_build.configureHostTestRun(b, test_step, marian_batch_tests, run_marian_batch);
+    test_step.dependOn(&run_marian_batch.step);
 }
