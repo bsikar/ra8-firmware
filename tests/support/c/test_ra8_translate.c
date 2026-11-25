@@ -614,6 +614,303 @@ static void test_tokenizer_unigram_bpe_and_errors(void)
   TEST_ASSERT_EQ(77U, id_count);
 }
 
+typedef enum : uint32_t {
+  k_ovl_page_w         = 200U,
+  k_ovl_page_h         = 260U,
+  k_ovl_art_bg         = 0x707070U,
+  k_ovl_white          = 0xFFFFFFU,
+  k_ovl_black          = 0x000000U,
+  k_ovl_b0_x           = 16U,
+  k_ovl_b0_y           = 20U,
+  k_ovl_b0_w           = 140U,
+  k_ovl_b0_h           = 70U,
+  k_ovl_b1_x           = 20U,
+  k_ovl_b1_y           = 110U,
+  k_ovl_b1_w           = 64U,
+  k_ovl_b1_h           = 130U,
+  k_ovl_pad            = 4U,
+  k_ovl_cap_breaks     = 32U,
+  k_ovl_trn1_cap       = 1024U,
+  k_ovl_dmg_cap        = 4U,
+  k_ovl_font_px_small  = 16U,
+  k_ovl_font_px_medium = 32U,
+  k_ovl_font_px_large  = 45U,
+  k_ovl_glyph_w_small  = 8U,
+  k_ovl_glyph_w_medium = 14U,
+  k_ovl_glyph_w_large  = 22U,
+} test_ovl_const_t;
+
+typedef struct {
+  uint32_t pixels[k_ovl_page_w * k_ovl_page_h];
+  uint32_t draw_calls;
+  uint32_t fill_calls;
+} test_ovl_canvas_t;
+
+static void ovl_fill_rect(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  test_ovl_canvas_t* cv = (test_ovl_canvas_t*)user;
+  cv->fill_calls++;
+  for (int32_t py = y; py < y + h; ++py) {
+    if (py < 0 || py >= (int32_t)k_ovl_page_h) {
+      continue;
+    }
+    for (int32_t px = x; px < x + w; ++px) {
+      if (px < 0 || px >= (int32_t)k_ovl_page_w) {
+        continue;
+      }
+      cv->pixels[(size_t)py * k_ovl_page_w + (size_t)px] = color;
+    }
+  }
+}
+
+static uint32_t ovl_style_metrics(ra8_widget_text_size_t sz, uint32_t* out_char_w)
+{
+  if (sz == k_ra8_widget_text_size_ui_26) {
+    *out_char_w = k_ovl_glyph_w_medium;
+    return k_ovl_font_px_medium;
+  }
+  if (sz == k_ra8_widget_text_size_body_38 || sz == k_ra8_widget_text_size_3) {
+    *out_char_w = k_ovl_glyph_w_large;
+    return k_ovl_font_px_large;
+  }
+  *out_char_w = k_ovl_glyph_w_medium;
+  return k_ovl_font_px_medium;
+}
+
+static void ovl_text_size(void* user, const char* str, int32_t* out_w, int32_t* out_h)
+{
+  (void)user;
+  *out_w = (int32_t)(strlen(str) * k_ovl_glyph_w_small);
+  *out_h = (int32_t)k_ovl_font_px_small;
+}
+
+static void ovl_text_size_style(void*                    user,
+                                const char*              str,
+                                ra8_widget_text_face_t   face,
+                                ra8_widget_text_weight_t weight,
+                                ra8_widget_text_size_t   sz,
+                                int32_t*                 out_w,
+                                int32_t*                 out_h)
+{
+  (void)user;
+  (void)face;
+  (void)weight;
+  uint32_t cw = 0U;
+  *out_h      = (int32_t)ovl_style_metrics(sz, &cw);
+  *out_w      = (int32_t)(strlen(str) * (size_t)cw);
+}
+
+static void
+ovl_draw_text(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg)
+{
+  test_ovl_canvas_t* cv = (test_ovl_canvas_t*)user;
+  (void)bg;
+  cv->draw_calls++;
+  if (y >= 0 && y < (int32_t)k_ovl_page_h && x >= 0 && x < (int32_t)k_ovl_page_w &&
+      str[0] != '\0') {
+    cv->pixels[(size_t)y * k_ovl_page_w + (size_t)x] = fg;
+  }
+}
+
+static void ovl_draw_text_style(void*                    user,
+                                int32_t                  x,
+                                int32_t                  y,
+                                const char*              str,
+                                ra8_widget_text_face_t   face,
+                                ra8_widget_text_weight_t weight,
+                                ra8_widget_text_size_t   sz,
+                                uint32_t                 fg,
+                                uint32_t                 bg)
+{
+  (void)face;
+  (void)weight;
+  (void)sz;
+  ovl_draw_text(user, x, y, str, fg, bg);
+}
+
+static void test_overlay_fit_render_and_damage(void)
+{
+  test_ovl_canvas_t cv = {};
+  for (size_t i = 0U; i < k_ovl_page_w * k_ovl_page_h; ++i) {
+    cv.pixels[i] = k_ovl_art_bg;
+  }
+
+  const ra8_widget_paint_t paint = {
+    .user            = &cv,
+    .fill_rect       = ovl_fill_rect,
+    .draw_text       = ovl_draw_text,
+    .text_size       = ovl_text_size,
+    .draw_text_style = ovl_draw_text_style,
+    .text_size_style = ovl_text_size_style,
+  };
+  const ra8_translate_overlay_style_t style = {
+    .fg_color = k_ovl_black,
+    .bg_color = k_ovl_white,
+    .pad      = (int16_t)k_ovl_pad,
+    .align    = k_ra8_widget_align_center,
+    .face     = k_ra8_widget_text_face_sans,
+    .weight   = k_ra8_widget_text_weight_regular,
+  };
+  const ra8_translate_overlay_bubble_spec_t wide_b = {
+    .x     = (uint16_t)k_ovl_b0_x,
+    .y     = (uint16_t)k_ovl_b0_y,
+    .w     = (uint16_t)k_ovl_b0_w,
+    .h     = (uint16_t)k_ovl_b0_h,
+    .shape = k_ra8_translate_shape_rect,
+  };
+  const ra8_translate_overlay_bubble_spec_t narrow_b = {
+    .x                = (uint16_t)k_ovl_b1_x,
+    .y                = (uint16_t)k_ovl_b1_y,
+    .w                = (uint16_t)k_ovl_b1_w,
+    .h                = (uint16_t)k_ovl_b1_h,
+    .shape            = k_ra8_translate_shape_ellipse,
+    .text_orientation = k_ra8_translate_orient_vertical_rl,
+  };
+
+  ra8_ui_rect_t safe = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_overlay_safe_rect(&narrow_b, &style, &safe));
+  TEST_ASSERT(safe.w > 0 && safe.h > 0 && safe.w < (int32_t)k_ovl_b1_w);
+
+  const uint8_t               eng0[]                = "Hey!";
+  const uint8_t               eng1[]                = "Wait for me!";
+  uint16_t                    br0[k_ovl_cap_breaks] = {};
+  uint16_t                    br1[k_ovl_cap_breaks] = {};
+  ra8_translate_overlay_fit_t fit0                  = {};
+  ra8_translate_overlay_fit_t fit1                  = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_overlay_fit_text(&paint,
+                                                &wide_b,
+                                                &style,
+                                                eng0,
+                                                sizeof(eng0) - 1U,
+                                                br0,
+                                                k_ovl_cap_breaks,
+                                                &fit0));
+  TEST_ASSERT_EQ(k_ovl_font_px_large, fit0.font_size_px);
+  TEST_ASSERT_EQ(1U, fit0.line_count);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_overlay_fit_text(&paint,
+                                                &narrow_b,
+                                                &style,
+                                                eng1,
+                                                sizeof(eng1) - 1U,
+                                                br1,
+                                                k_ovl_cap_breaks,
+                                                &fit1));
+  TEST_ASSERT_EQ(k_ovl_font_px_small, fit1.font_size_px);
+  TEST_ASSERT(fit1.line_count >= 2U);
+
+  ra8_ui_rect_t direct_dmg = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_overlay_render_bubble(&paint,
+                                                     &wide_b,
+                                                     &style,
+                                                     fit0.font_size_px,
+                                                     eng0,
+                                                     sizeof(eng0) - 1U,
+                                                     br0,
+                                                     fit0.line_count,
+                                                     &direct_dmg));
+  TEST_ASSERT_EQ((int32_t)k_ovl_b0_x, direct_dmg.x);
+  TEST_ASSERT_EQ((int32_t)k_ovl_b0_w, direct_dmg.w);
+  TEST_ASSERT_EQ(k_ovl_white,
+                 cv.pixels[(size_t)(k_ovl_b0_y + 1U) * k_ovl_page_w + k_ovl_b0_x + 1U]);
+  TEST_ASSERT_EQ(k_ovl_art_bg, cv.pixels[0]);
+
+  for (size_t i = 0U; i < k_ovl_page_w * k_ovl_page_h; ++i) {
+    cv.pixels[i] = k_ovl_art_bg;
+  }
+
+  const ra8_translate_sidecar_key_t  key     = make_key(k_ra8_translate_lang_japanese);
+  const ra8_translate_sidecar_page_t pages[] = {
+    {.page_index   = 0U,
+     .bubble_count = 2U,
+     .first_bubble = 0U,
+     .page_width   = (uint16_t)k_ovl_page_w,
+     .page_height  = (uint16_t)k_ovl_page_h},
+  };
+  uint8_t pool[k_ovl_cap_breaks * 2U] = {};
+  memcpy(pool, eng0, sizeof(eng0) - 1U);
+  memcpy(pool + (sizeof(eng0) - 1U), eng1, sizeof(eng1) - 1U);
+  uint16_t all_breaks[k_ovl_cap_breaks * 2U] = {};
+  for (size_t i = 0U; i < fit0.line_count; ++i) {
+    all_breaks[i] = br0[i];
+  }
+  for (size_t i = 0U; i < fit1.line_count; ++i) {
+    all_breaks[fit0.line_count + i] = br1[i];
+  }
+  const ra8_translate_sidecar_bubble_t recs[] = {
+    {.x                  = wide_b.x,
+     .y                  = wide_b.y,
+     .w                  = wide_b.w,
+     .h                  = wide_b.h,
+     .shape              = wide_b.shape,
+     .text_orientation   = wide_b.text_orientation,
+     .reading_order      = 0U,
+     .ocr_confidence_bps = 9500U,
+     .font_size_px       = fit0.font_size_px,
+     .line_count         = fit0.line_count,
+     .first_line_break   = 0U,
+     .source_text_off    = 0U,
+     .source_text_len    = 0U,
+     .english_text_off   = 0U,
+     .english_text_len   = (uint32_t)(sizeof(eng0) - 1U)},
+    {.x                  = narrow_b.x,
+     .y                  = narrow_b.y,
+     .w                  = narrow_b.w,
+     .h                  = narrow_b.h,
+     .shape              = narrow_b.shape,
+     .text_orientation   = narrow_b.text_orientation,
+     .reading_order      = 1U,
+     .ocr_confidence_bps = 9200U,
+     .font_size_px       = fit1.font_size_px,
+     .line_count         = fit1.line_count,
+     .first_line_break   = fit0.line_count,
+     .source_text_off    = 0U,
+     .source_text_len    = 0U,
+     .english_text_off   = (uint32_t)(sizeof(eng0) - 1U),
+     .english_text_len   = (uint32_t)(sizeof(eng1) - 1U)},
+  };
+  uint8_t trn1[k_ovl_trn1_cap] = {};
+  size_t  trn1_len             = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_sidecar_write(&key,
+                                             pages,
+                                             1U,
+                                             recs,
+                                             2U,
+                                             all_breaks,
+                                             (uint32_t)fit0.line_count + fit1.line_count,
+                                             pool,
+                                             (uint32_t)((sizeof(eng0) - 1U) + (sizeof(eng1) - 1U)),
+                                             trn1,
+                                             sizeof(trn1),
+                                             &trn1_len));
+
+  ra8_ui_rect_t dmgs[k_ovl_dmg_cap] = {};
+  size_t        dmg_count           = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_translate_overlay_render_page(&paint, trn1, trn1_len, 0U, &style, dmgs, 1U, &dmg_count));
+  TEST_ASSERT_EQ(k_ovl_art_bg,
+                 cv.pixels[(size_t)(k_ovl_b0_y + 1U) * k_ovl_page_w + k_ovl_b0_x + 1U]);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_overlay_render_page(&paint,
+                                                   trn1,
+                                                   trn1_len,
+                                                   0U,
+                                                   &style,
+                                                   dmgs,
+                                                   k_ovl_dmg_cap,
+                                                   &dmg_count));
+  TEST_ASSERT_EQ(2U, dmg_count);
+  TEST_ASSERT_EQ((int32_t)k_ovl_b0_x, dmgs[0].x);
+  TEST_ASSERT_EQ((int32_t)k_ovl_b1_x, dmgs[1].x);
+  TEST_ASSERT_EQ(k_ovl_art_bg, cv.pixels[(size_t)k_ovl_b1_y * k_ovl_page_w + k_ovl_b1_x]);
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -639,5 +936,9 @@ int main(void)
   TEST_BEGIN("test_tokenizer_unigram_bpe_and_errors");
   test_tokenizer_unigram_bpe_and_errors();
   TEST_END("test_tokenizer_unigram_bpe_and_errors");
+
+  TEST_BEGIN("test_overlay_fit_render_and_damage");
+  test_overlay_fit_render_and_damage();
+  TEST_END("test_overlay_fit_render_and_damage");
   return 0;
 }

@@ -167,6 +167,7 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_translate",
         .include_path = "libs/ra8_translate/inc",
         .c_suite_path = "tests/support/c/test_ra8_translate.c",
+        .extra_include_paths = &.{ "libs/ra8_widget/inc", "libs/ra8_box/inc" },
     },
 };
 

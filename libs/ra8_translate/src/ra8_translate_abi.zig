@@ -12,6 +12,7 @@ const lang = @import("lang");
 const glossary = @import("glossary");
 const ocr = @import("ocr");
 const tokenizer = @import("tokenizer");
+const overlay = @import("overlay");
 
 pub const SidecarKey = sidecar.SidecarKey;
 pub const SidecarHeader = sidecar.SidecarHeader;
@@ -23,6 +24,11 @@ pub const OcrRect = ocr.Rect;
 pub const OcrImageSpec = ocr.ImageSpec;
 pub const OcrPreprocessCfg = ocr.PreprocessCfg;
 pub const OcrQuantParams = ocr.QuantParams;
+pub const OverlayRect = overlay.Rect;
+pub const OverlayPaint = overlay.Paint;
+pub const OverlayStyle = overlay.Style;
+pub const OverlayBubbleSpec = overlay.BubbleSpec;
+pub const OverlayFit = overlay.FitResult;
 
 /// Public C ABI representation of `ra8_translate_vocab_header_t`.
 pub const VocabHeader = extern struct {
@@ -215,6 +221,44 @@ comptime {
     assert(@offsetOf(VocabHeader, "model_type") == 32);
     assert(@offsetOf(VocabHeader, "flags") == 33);
     assert(@offsetOf(VocabHeader, "reserved") == 34);
+
+    assert(@sizeOf(OverlayRect) == 16);
+    assert(@alignOf(OverlayRect) == 4);
+
+    assert(@sizeOf(OverlayStyle) == 24);
+    assert(@alignOf(OverlayStyle) == 4);
+    assert(@offsetOf(OverlayStyle, "fg_color") == 0);
+    assert(@offsetOf(OverlayStyle, "bg_color") == 4);
+    assert(@offsetOf(OverlayStyle, "border_color") == 8);
+    assert(@offsetOf(OverlayStyle, "pad") == 12);
+    assert(@offsetOf(OverlayStyle, "border_w") == 14);
+    assert(@offsetOf(OverlayStyle, "line_gap") == 16);
+    assert(@offsetOf(OverlayStyle, "alignment") == 18);
+    assert(@offsetOf(OverlayStyle, "face") == 19);
+    assert(@offsetOf(OverlayStyle, "weight") == 20);
+    assert(@offsetOf(OverlayStyle, "flags") == 21);
+    assert(@offsetOf(OverlayStyle, "reserved") == 22);
+
+    assert(@sizeOf(OverlayBubbleSpec) == 16);
+    assert(@alignOf(OverlayBubbleSpec) == 4);
+    assert(@offsetOf(OverlayBubbleSpec, "x") == 0);
+    assert(@offsetOf(OverlayBubbleSpec, "y") == 2);
+    assert(@offsetOf(OverlayBubbleSpec, "w") == 4);
+    assert(@offsetOf(OverlayBubbleSpec, "h") == 6);
+    assert(@offsetOf(OverlayBubbleSpec, "shape") == 8);
+    assert(@offsetOf(OverlayBubbleSpec, "text_orientation") == 9);
+    assert(@offsetOf(OverlayBubbleSpec, "corner_radius") == 10);
+    assert(@offsetOf(OverlayBubbleSpec, "reserved") == 12);
+
+    assert(@sizeOf(OverlayFit) == 12);
+    assert(@alignOf(OverlayFit) == 2);
+    assert(@offsetOf(OverlayFit, "font_size_px") == 0);
+    assert(@offsetOf(OverlayFit, "line_count") == 2);
+    assert(@offsetOf(OverlayFit, "max_line_width") == 4);
+    assert(@offsetOf(OverlayFit, "total_height") == 6);
+    assert(@offsetOf(OverlayFit, "size_enum") == 8);
+    assert(@offsetOf(OverlayFit, "fit_flags") == 9);
+    assert(@offsetOf(OverlayFit, "reserved") == 10);
 }
 
 fn inputSlice(comptime T: type, ptr_opt: ?[*]const T, count: usize) ?[]const T {
@@ -754,5 +798,107 @@ pub export fn ra8_translate_tok_decode(
         return err_mod.toRa8Err(e);
     };
     out_len.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_overlay_safe_rect()`.
+pub export fn ra8_translate_overlay_safe_rect(
+    bubble_opt: ?*const OverlayBubbleSpec,
+    style_opt: ?*const OverlayStyle,
+    out_rect_opt: ?*OverlayRect,
+) callconv(.c) u16 {
+    const out_rect = out_rect_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const bubble = bubble_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const style = style_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const rect = overlay.safeTextRect(bubble.*, style.*) catch |e| return err_mod.toRa8Err(e);
+    out_rect.* = rect;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_overlay_fit_text()`.
+pub export fn ra8_translate_overlay_fit_text(
+    paint_opt: ?*const OverlayPaint,
+    bubble_opt: ?*const OverlayBubbleSpec,
+    style_opt: ?*const OverlayStyle,
+    english_opt: ?[*]const u8,
+    english_len: usize,
+    out_breaks_opt: ?[*]u16,
+    break_cap: usize,
+    out_fit_opt: ?*OverlayFit,
+) callconv(.c) u16 {
+    const out_fit = out_fit_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_breaks = out_breaks_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const paint = paint_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const bubble = bubble_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const style = style_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const english = inputSlice(u8, english_opt, english_len) orelse return err_mod.k_ra8_err_null_ptr;
+
+    const fit = overlay.fitText(
+        paint,
+        bubble.*,
+        style.*,
+        english,
+        out_breaks[0..break_cap],
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_fit.* = fit;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_overlay_render_bubble()`.
+pub export fn ra8_translate_overlay_render_bubble(
+    paint_opt: ?*const OverlayPaint,
+    bubble_opt: ?*const OverlayBubbleSpec,
+    style_opt: ?*const OverlayStyle,
+    font_size_px: u16,
+    english_opt: ?[*]const u8,
+    english_len: usize,
+    breaks_opt: ?[*]const u16,
+    line_count: usize,
+    out_damage_opt: ?*OverlayRect,
+) callconv(.c) u16 {
+    const out_damage = out_damage_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const paint = paint_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const bubble = bubble_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const style = style_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const english = inputSlice(u8, english_opt, english_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const breaks = inputSlice(u16, breaks_opt, line_count) orelse return err_mod.k_ra8_err_null_ptr;
+
+    const damage = overlay.renderBubble(
+        paint,
+        bubble.*,
+        style.*,
+        font_size_px,
+        english,
+        breaks,
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_damage.* = damage;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_overlay_render_page()`.
+pub export fn ra8_translate_overlay_render_page(
+    paint_opt: ?*const OverlayPaint,
+    trn1_opt: ?[*]const u8,
+    trn1_len: usize,
+    page_index: u16,
+    style_opt: ?*const OverlayStyle,
+    out_damage_opt: ?[*]OverlayRect,
+    damage_cap: usize,
+    out_damage_count_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_count = out_damage_count_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_damage = out_damage_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const paint = paint_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const style = style_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const trn1 = inputSlice(u8, trn1_opt, trn1_len) orelse return err_mod.k_ra8_err_null_ptr;
+
+    const count = overlay.renderPage(
+        paint,
+        trn1,
+        page_index,
+        style.*,
+        out_damage[0..damage_cap],
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_count.* = count;
     return err_mod.k_ra8_ok;
 }

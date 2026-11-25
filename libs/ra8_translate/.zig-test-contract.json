@@ -6,6 +6,7 @@
     "tests/glossary_test.zig",
     "tests/ocr_preprocess_test.zig",
     "tests/tokenizer_test.zig",
+    "tests/overlay_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
@@ -14,6 +15,7 @@
     "src/internal/glossary.zig",
     "src/internal/lang.zig",
     "src/internal/ocr_preprocess.zig",
+    "src/internal/overlay.zig",
     "src/internal/sidecar.zig",
     "src/internal/tokenizer.zig",
     "src/internal/vocab.zig",
@@ -23,6 +25,7 @@
     "tests/glossary_test.zig",
     "tests/lang_test.zig",
     "tests/ocr_preprocess_test.zig",
+    "tests/overlay_test.zig",
     "tests/sidecar_test.zig",
     "tests/tokenizer_test.zig"
   ],
@@ -102,6 +105,20 @@
       "-Mcrc32=src/internal/crc32.zig",
       "-Merr=src/internal/err.zig"
     ],
+    "src/internal/overlay.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mroot=src/internal/overlay.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig"
+    ],
     "src/ra8_translate_abi.zig": [
       "--dep",
       "err",
@@ -115,6 +132,8 @@
       "ocr",
       "--dep",
       "tokenizer",
+      "--dep",
+      "overlay",
       "-Mroot=src/ra8_translate_abi.zig",
       "-Merr=src/internal/err.zig",
       "--dep",
@@ -149,7 +168,12 @@
       "crc32",
       "--dep",
       "err",
-      "-Mvocab=src/internal/vocab.zig"
+      "-Mvocab=src/internal/vocab.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Moverlay=src/internal/overlay.zig"
     ],
     "tests/crc32_test.zig": [
       "--dep",
@@ -240,6 +264,36 @@
       "-Mcrc32=src/internal/crc32.zig",
       "-Merr=src/internal/err.zig"
     ],
+    "tests/overlay_test.zig": [
+      "--dep",
+      "overlay",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "ra8_gfx",
+      "--dep",
+      "panel_paint",
+      "--dep",
+      "widget_paint_abi",
+      "-Mroot=tests/overlay_test.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Moverlay=src/internal/overlay.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Mra8_gfx=../ra8_gfx/src/ra8_gfx.zig",
+      "--dep",
+      "ra8_gfx",
+      "-Mpanel_paint=../ra8_widget/src/panel_paint.zig",
+      "-Mwidget_paint_abi=../ra8_widget/src/widget_paint_abi.zig"
+    ],
     "tests/abi_test.zig": [
       "--dep",
       "err",
@@ -261,6 +315,8 @@
       "ocr",
       "--dep",
       "tokenizer",
+      "--dep",
+      "overlay",
       "-Mra8_translate_abi=src/ra8_translate_abi.zig",
       "--dep",
       "crc32",
@@ -294,8 +350,13 @@
       "crc32",
       "--dep",
       "err",
-      "-Mvocab=src/internal/vocab.zig"
+      "-Mvocab=src/internal/vocab.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Moverlay=src/internal/overlay.zig"
     ]
   },
-  "minimum_tests": 35
+  "minimum_tests": 39
 }
