@@ -4,9 +4,13 @@
  *
  * @note RA8P1 board layer (issue RA8FW-260): this chip-boot TU started as a copy of
  *       the EK-RA8D2 one. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 Cortex-M85
- *       core, cache/MPU, and CGC-reset state (see libs/ra8_core/inc/ra8_device.h),
- *       so the core bring-up is common; HUM citations reference the RA8D2 manual
- *       (R01UH1065EJ), which documents the byte-identical registers.
+ *       core, cache/MPU/TCM geometry (16 KiB I-cache + 16 KiB D-cache,
+ *       128 KiB ITCM + 128 KiB DTCM physical ECC capacity with 64 KiB linker
+ *       floor; M33 64 KiB CTCM/STCM + 16 KiB C-Cache/S-Cache bus caches per
+ *       RA8P1 HUM R01UH1064EJ0130 Sec 2.1.1 & Sec 2.16.1.1 Table 2.34), and
+ *       CGC-reset state (see libs/ra8_core/inc/ra8_device.h), so the core
+ *       bring-up is common; register/boot citations match R01UH1065EJ /
+ *       R01UH1064EJ0130.
  *
  * @note The two copies are NO LONGER byte-identical, so do not read one as the
  *       other. Two divergences, both deliberate on the EK-RA8D2 side:
@@ -404,8 +408,11 @@ static void internal_set_priority_grouping(void)
  * RLAR = LIMIT[31:5] | AttrIndx[3:1] | EN[0], where AttrIndx selects the
  * MAIR byte that sets the region's memory TYPE (cacheable vs Device).
  *
- * @note The shared SRAM bank (region 4) is non-cacheable, so cross-core
- * hand-offs need no software cache maintenance (the M33 is cacheless). The
+ * @note The shared SRAM bank (region 4) is non-cacheable on the M85, so M85<->M33
+ * hand-offs need no M85 cache maintenance; the M33's Renesas external bus
+ * caches (16 KiB C-Cache + 16 KiB S-Cache, HUM R01UH1064EJ0130 Sec 2.1.1 /
+ * Sec 2.16.1.1 Table 2.34) remain disabled out of reset in this boot profile
+ * (enablement requires S-Cache bypass or software maintenance on Region 4). The
  * private SRAM limit is now tight (ends at 0x220FFFFF). SDRAM (region 2)
  * stays cacheable -- DMA buffers there still need a non-cacheable placement
  * or an explicit clean/invalidate at the DMA boundary (T4-02).

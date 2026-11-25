@@ -14,7 +14,12 @@
  *                               byte of Figure 6's user area)
  * SRAM_CPU1 0x22190000  64 KiB  .data, .bss, M33 main stack: CPU1's private
  *                               bank inside system_init's non-cacheable
- *                               region 4 (0x22100000..0x2219FFFF)
+ *                               region 4 (0x22100000..0x2219FFFF).
+ *
+ * CPU1 hardware TCM/cache geometry (RA8P1 HUM R01UH1064EJ0130 Sec 2.1.1 p 112
+ * and Sec 2.16.1.1 Table 2.34 p 160): M33 carries 64 KiB CTCM + 64 KiB STCM
+ * plus 16 KiB C-Cache + 16 KiB S-Cache (external Renesas bus caches, disabled
+ * out of reset here).
  *
  * Everything from ENTRY down is byte-identical to the EK-RA8D2 CPU1 script;
  * tests/zig_build_graph/ra8p1_cpu1_ld_test.zig holds it that way.

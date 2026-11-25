@@ -2,7 +2,8 @@
   "test_roots": [
     "tests/pins_test.zig",
     "tests/identity_test.zig",
-    "tests/console_test.zig"
+    "tests/console_test.zig",
+    "tests/memmap_test.zig"
   ],
   "covered_sources": [
     "src/boot/nmi_exception.zig",
@@ -19,6 +20,7 @@
     "src/standalone_build_config.zig",
     "tests/console_test.zig",
     "tests/identity_test.zig",
+    "tests/memmap_test.zig",
     "tests/pins_test.zig",
     "tests/sci_fake.zig"
   ],
@@ -40,7 +42,10 @@
       "build_config",
       "-Mroot=src/root.zig",
       "-Mbuild_config=src/standalone_build_config.zig"
+    ],
+    "tests/memmap_test.zig": [
+      "-Mroot=tests/memmap_test.zig"
     ]
   },
-  "minimum_tests": 22
+  "minimum_tests": 27
 }

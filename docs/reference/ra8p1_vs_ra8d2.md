@@ -222,8 +222,8 @@ RA8P1**, so it is not part of the delta set at all, and the M33 has two caches.
 | M85 (CPU0) L1 D-cache | 16 KB | yes | HUM 2.1.1 p 111 |
 | M33 (CPU1) CTCM | 64 KB | yes | HUM 2.1.1 p 112 |
 | M33 (CPU1) STCM | 64 KB | yes | HUM 2.1.1 p 112 |
-| M33 (CPU1) C-Cache (code bus) | 16 KB | yes | HUM 2.1.1 p 112 |
-| M33 (CPU1) S-Cache (system bus) | 16 KB | yes | HUM 2.1.1 p 112 |
+| M33 (CPU1) C-Cache (code bus) | 16 KB | yes | HUM 2.1.1 p 112 / 2.16.1.1 Table 2.34 p 160 |
+| M33 (CPU1) S-Cache (system bus) | 16 KB | yes | HUM 2.1.1 p 112 / 2.16.1.1 Table 2.34 p 160 |
 
 `DS` is the RA8P1 datasheet R01DS0439EJ0130 Rev.1.30, committed as
 [`ra8p1-datasheet.pdf`](ra8p1-datasheet.pdf), so every DS row above is
@@ -304,6 +304,32 @@ MPU conversion belongs to the system_init cache and boot-map conversions.
 `tests/core/src/test_ra8_device_geometry.c`
 pins the capacities, pins the floor, and fails if supported allocation ever
 exceeds capacity, so the distinction cannot quietly erode.
+
+### Board-layer and linker alignment (`libs/ra8_board_ra8p1/`)
+
+- `libs/ra8_board_ra8p1/inc/ra8_board_memmap.h` and `inc/ra8_board_ra8p1.h`
+  publish the `MEMORY { }` allocation constants
+  (`ra8_board_memmap_{base,size}_t`, retaining the 64 KiB M85 ITCM/DTCM floor)
+  and `ra8_board_ra8p1_limit_t` (silicon capacities, M85 16 KiB I/D-cache, M33
+  64 KiB CTCM/STCM, M33 16 KiB C-Cache/S-Cache, and supported CPU1 / SDRAM
+  limits).
+- `libs/ra8_board_ra8p1/ld/linker_script.ld` uses the canonical single-precision
+  FPU core profile (`fpv5-sp-d16`; DP-FPU is bench-gated via `-DRA8P1_DP_FPU=ON`)
+  and documents the 64 KiB TCM floor vs 128 KiB ECC capacity.
+- `libs/ra8_board_ra8p1/ld/linker_script_cpu1.ld` and `ld/cpu1_memory_map.cmake`
+  partition CPU1 at `0x020C0000` (256 KiB MRAM) and `0x22190000` (64 KiB SRAM
+  inside Region 4), noting CPU1's 64 KiB CTCM/STCM and 16 KiB bus C/S-Cache
+  stay disabled out of reset.
+- `libs/ra8_board_ra8p1/src/boot/system_init.c` configures the 5-region MPU
+  (with shared Region 4 non-cacheable on M85) and enables M85 16 KiB L1 I/D
+  caches behind `RA8_BOOT_ENABLE_CACHE_MPU`, while explicitly recording that
+  M33 C-Cache / S-Cache are external bus caches disabled by default (not a
+  cacheless core).
+- `libs/ra8_board_ra8p1/tests/memmap_test.zig` and
+  `tests/misc/src/test_ra8_board_ra8p1_cov.c` cross-pin the board headers,
+  linker scripts, and `ra8_device.h` capacities; final on-silicon verification
+  waits on RA8P1 hardware (`RA8FW-260`), and emulator parity is tracked in the
+  paired `RA8EMU` ticket.
 
 ### Known drift left alone, on purpose
 

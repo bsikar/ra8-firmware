@@ -2,26 +2,29 @@
  * GNU ld linker script for ra8-firmware -- ra8_board_ra8p1 default (issue RA8FW-260)
  *
  * Target: Renesas R7KA8P1KFLCAC (RA8P1)
- * - Arm Cortex-M85 primary core (double-precision FPU) + Arm Ethos-U55 NPU
- * - Arm Cortex-M33 secondary core (not used yet)
+ * - Arm Cortex-M85 primary core (single-precision FPU, fpv5-sp-d16; DP-FPU bench-gated via -DRA8P1_DP_FPU=ON) + Arm Ethos-U55 NPU
+ * - Arm Cortex-M33 secondary core (64 KiB CTCM + 64 KiB STCM, 16 KiB C-Cache + 16 KiB S-Cache; CPU1 image uses ld/linker_script_cpu1.ld)
  *
- * This map is byte-identical to the EK-RA8D2 canonical single-core script:
+ * This map retains the EK-RA8D2 canonical single-core allocation floor:
  * the RA8P1 shares the RA8D2 memory map (see libs/ra8_core/inc/ra8_device.h,
- * which mirrors this MEMORY block). Every RA8P1 app uses this map; the four
- * foundation apps (examples/ra8p1_foundation) each carried an identical
- * 310-line copy until RA8FW-309 deleted them.
+ * which separates silicon capacity ra8_device_mem_capacity_t from the
+ * supported software floor ra8_device_mem_size_t). Every RA8P1 app uses this
+ * map; the foundation apps (examples/ra8p1_foundation) each carried an
+ * identical copy until RA8FW-309 deleted them.
  *
- * Memory map (byte-identical on RA8D2 HUM R01UH1065EJ / RA8P1 HUM R01UH1064EJ):
+ * Memory map (RA8P1 HUM R01UH1064EJ0130 Sec 2.1.1 pp 111-112, Sec 2.16.1.1 Table 2.34 p 160):
  *
- * Region Start Size Usage
- * ------------ ---------- --------- ----------------------------
- * MRAM 0x02000000 1 MiB Code + rodata + vectors + OFS
- * ITCM 0x00000000 64 KiB Instruction tightly-coupled mem
- * DTCM 0x20000000 64 KiB Data tightly-coupled mem
- * SRAM (ECC) 0x22000000 1664 KiB SRAM0 1024K + SRAM1 640K (k_ra8_mem_sram_size).
- *            SRAM below is SRAM0 only, less the 256-byte crash-log
- *            reserve; SRAM1 is exposed separately as NS_SRAM.
- * SDRAM 0x68000000 64 MiB External SDRAM (EK board)
+ * Region     Start      Allocated  Silicon capacity / Notes
+ * ---------- ---------- ---------- --------------------------------------------------------
+ * MRAM       0x02000000 1 MiB      1 MiB Code MRAM (CPU0 768 KiB + CPU1 256 KiB when dual-core)
+ * ITCM       0x00000000 64 KiB     128 KiB ECC capacity (16 x 8 KiB blocks); 64 KiB floor
+ * DTCM       0x20000000 64 KiB     128 KiB ECC capacity (16 x 8 KiB blocks); 64 KiB floor
+ * M85 Caches (arch)     off/hal    16 KiB L1 I-cache + 16 KiB L1 D-cache (RA8_BOOT_ENABLE_CACHE_MPU)
+ * M33 TCM    --         (CPU1)     64 KiB CTCM + 64 KiB STCM (carved out of 2 MiB island)
+ * M33 Caches --         disabled   16 KiB C-Cache + 16 KiB S-Cache (Renesas external bus caches)
+ * SRAM (ECC) 0x22000000 1664 KiB   User SRAM: SRAM0 1024K (less 256 B NOINIT) + SRAM1 640K (NS_SRAM);
+ *                                  2048 KiB island = 1664 KiB user + 256 KiB M85 TCM + 128 KiB M33 TCM
+ * SDRAM      0x68000000 64 MiB     External SDRAM (EK board ceiling)
  *
  * =====================================================================
  * Option-setting addresses below are the real RA8D2 layout from HUM
@@ -63,8 +66,8 @@ MEMORY
      * secure-alias addresses so the flashing tool targets the right cells. */
     OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
     OFS_OTP (r) : ORIGIN = 0x02E07000, LENGTH = 68K
-    ITCM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
-    DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
+    ITCM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K   /* 64 KiB floor; 128 KiB ECC capacity (HUM 2.1.1). */
+    DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K   /* 64 KiB floor; 128 KiB ECC capacity (HUM 2.1.1). */
     /* Top 256 bytes of SRAM are carved off into NOINIT (below) for the
      * warm-reset-surviving crash-log record, so SRAM proper is 256 bytes
      * short of 1 MiB. Keeping it a distinct region (rather than pinning a

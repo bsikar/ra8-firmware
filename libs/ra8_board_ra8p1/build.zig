@@ -82,4 +82,14 @@ pub fn build(b: *std.Build) void {
         const tests = b.addTest(.{ .root_module = test_module });
         test_step.dependOn(&b.addRunArtifact(tests).step);
     }
+
+    const memmap_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/memmap_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const memmap_tests = b.addTest(.{ .root_module = memmap_tmod });
+    const run_memmap = b.addRunArtifact(memmap_tests);
+    run_memmap.setCwd(b.path("."));
+    test_step.dependOn(&run_memmap.step);
 }

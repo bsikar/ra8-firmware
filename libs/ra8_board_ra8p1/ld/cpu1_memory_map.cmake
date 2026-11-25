@@ -10,6 +10,10 @@
 #   CPU1 code  0x020C0000  256 KiB  (ends at the last byte of the user area)
 #   CPU1 data  0x22190000   64 KiB  (CPU1's bank in system_init region 4)
 #
+# Per RA8P1 HUM R01UH1064EJ0130 Sec 2.1.1 / Sec 2.16.1.1 Table 2.34, CPU1 (M33)
+# also includes 64 KiB CTCM + 64 KiB STCM and 16 KiB C-Cache + 16 KiB S-Cache
+# (bus caches disabled by default; see ld/linker_script_cpu1.ld).
+#
 # The M85 side stops at 0x020C0000 through the app's MRAM_LENGTH 768K.
 # No include_guard, for the reason the EK-RA8D2 module gives: it defines
 # variables, and each app that composes a CPU1 image needs them in its scope.
