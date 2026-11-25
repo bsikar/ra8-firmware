@@ -8,6 +8,7 @@
 //! refuses a tampered and a truncated copy (txm_ra8app_check.zig).
 
 const std = @import("std");
+const build_type = @import("build_type.zig");
 const test_key = @import("../../libs/ra8_app/tools/test_key.zig");
 
 const app_root = "libs/ra8_app/";
@@ -71,8 +72,8 @@ pub fn addCheck(b: *std.Build, test_step: *std.Build.Step, ra8app: std.Build.Laz
         .root_source_file = b.path("tests/zig_build_graph/txm_ra8app_check.zig"),
         .target = b.graph.host,
     });
-    root.addImport("module_pack", hostModule(b, module_pack_root));
-    root.addImport("test_key", hostModule(b, app_root ++ "tools/test_key.zig"));
+    root.addImport("module_pack", hostModule(b, module_pack_root, .Debug));
+    root.addImport("test_key", hostModule(b, app_root ++ "tools/test_key.zig", .Debug));
     root.addOptions("built", options);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = root })).step);
 }
@@ -80,12 +81,12 @@ pub fn addCheck(b: *std.Build, test_step: *std.Build.Step, ra8app: std.Build.Laz
 fn packTool(b: *std.Build) *std.Build.Step.Compile {
     const tool = b.addExecutable(.{
         .name = "ra8app_pack",
-        .root_module = hostModule(b, app_root ++ "tools/ra8app_pack.zig"),
+        .root_module = hostModule(b, app_root ++ "tools/ra8app_pack.zig", build_type.release_tool_optimize),
     });
-    tool.root_module.addImport("module_pack", hostModule(b, module_pack_root));
+    tool.root_module.addImport("module_pack", hostModule(b, module_pack_root, build_type.release_tool_optimize));
     return tool;
 }
 
-fn hostModule(b: *std.Build, path: []const u8) *std.Build.Module {
-    return b.createModule(.{ .root_source_file = b.path(path), .target = b.graph.host });
+fn hostModule(b: *std.Build, path: []const u8, optimize: std.lang.OptimizeMode) *std.Build.Module {
+    return b.createModule(.{ .root_source_file = b.path(path), .target = b.graph.host, .optimize = optimize });
 }

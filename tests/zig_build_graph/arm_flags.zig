@@ -72,6 +72,13 @@ pub const asm_flags = cpu_select_flags ++ [_][]const u8{"-g3"};
 /// was first spelled; this is the same define reaching a target that
 /// has no first-party profile at all.
 pub const global_defines = [_][]const u8{"-DRA8_FREESTANDING"};
+pub const production_define = "-DRA8_PRODUCTION_BUILD";
+const global_defines_production = [_][]const u8{ "-DRA8_FREESTANDING", production_define };
+
+/// Return directory-scope defines for normal or production (`-Dproduction-build`) builds.
+pub fn globalDefines(production_build: bool) []const []const u8 {
+    return if (production_build) &global_defines_production else &global_defines;
+}
 
 /// The Debug configuration ra8_add_app() sets for a standalone app build.
 pub const debug_flags = [_][]const u8{ "-O0", "-g3", "-DDEBUG" };

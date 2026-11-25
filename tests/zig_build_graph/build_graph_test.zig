@@ -978,6 +978,7 @@ test {
     _ = @import("cpu1_image_test.zig");
     _ = @import("boot_profile_test.zig");
     _ = @import("analysis_test.zig");
+    _ = @import("build_type_test.zig");
     _ = @import("command_surface_test.zig");
     _ = @import("zig_archive_test.zig");
     _ = @import("app_shapes_test.zig");

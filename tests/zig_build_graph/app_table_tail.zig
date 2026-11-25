@@ -51,6 +51,7 @@ pub const apps = [_]CrossApp{
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{ "ra8_dfu_device", "ra8_dfu", "ra8_psa_crypto", "ra8_rot_launch", "ra8_rot" },
         .zig_libraries = &.{},
+        .min_build_type = .relwithdebinfo,
         .stack_bytes = 32768,
         .uses = &.{ "threadx", "usbx" },
         .threadx_heap = "SDRAM",

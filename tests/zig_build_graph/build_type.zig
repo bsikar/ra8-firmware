@@ -130,6 +130,64 @@ pub const Base = struct {
     link_flags: []const []const u8,
 };
 
+/// Shipping build-type policy: keep Debug as the default for fast local
+/// iteration, pin shipping and HIL MRAM-constrained images to at least
+/// RelWithDebInfo (-Og -g3, ReleaseSmall Zig archives), and build host release
+/// tools with runtime safety enabled.
+pub const default_build_type: BuildType = .debug;
+pub const shipping_build_type: BuildType = .relwithdebinfo;
+pub const release_tool_optimize: std.lang.OptimizeMode = .ReleaseSafe;
+
+/// Ordering from unoptimized local iteration to size-optimized shipping.
+pub fn rank(build_type: BuildType) u8 {
+    return switch (build_type) {
+        .debug => 0,
+        .relwithdebinfo => 1,
+        .release => 2,
+    };
+}
+
+/// True when `build_type` optimizes code and drops `-DDEBUG` (`RelWithDebInfo`
+/// or `Release`), making it eligible for shipping/production/HIL packaging.
+pub fn isShippingCapable(build_type: BuildType) bool {
+    return build_type != .debug;
+}
+
+/// Effective build type for one target: promotes a `Debug` configure up to
+/// `min_build_type` when pinned, while still honoring stricter selections such
+/// as `Release`.
+pub fn resolveForTarget(selected: BuildType, min_build_type: ?BuildType) BuildType {
+    const required = min_build_type orelse return selected;
+    return if (rank(selected) >= rank(required)) selected else required;
+}
+
+/// Refuse `-Dproduction-build` when `-Dbuild-type=Debug`, returning an
+/// actionable error message so production packaging never ships `-O0 -DDEBUG`.
+pub fn validateProductionBuild(production_build: bool, selected: BuildType) ?[]const u8 {
+    if (production_build and !isShippingCapable(selected)) {
+        return "ra8: -Dproduction-build requires -Dbuild-type=RelWithDebInfo or Release (refusing Debug)";
+    }
+    return null;
+}
+
+/// Parse an MRAM bank size string from `MRAM_LENGTH` (e.g. `"128K"`, `"512K"`,
+/// `"1M"`) into bytes, returning null on malformed or overflowing specs.
+pub fn parseMramBytes(spec: []const u8) ?u32 {
+    const trimmed = std.mem.trim(u8, spec, " \t\r\n");
+    if (trimmed.len == 0) return null;
+    const last = trimmed[trimmed.len - 1];
+    const scale: u32 = switch (last) {
+        'K', 'k' => 1024,
+        'M', 'm' => 1024 * 1024,
+        '0'...'9' => 1,
+        else => return null,
+    };
+    const digits = if (scale == 1) trimmed else trimmed[0 .. trimmed.len - 1];
+    if (digits.len == 0) return null;
+    const count = std.fmt.parseInt(u32, digits, 10) catch return null;
+    return std.math.mul(u32, count, scale) catch null;
+}
+
 /// The four global sets a cross build hands out, at one configuration.
 /// Assembled once per invocation so the `arm` step, the second images and the
 /// compile-database rows cannot drift apart about which configuration they are.
@@ -146,9 +204,21 @@ pub const Globals = struct {
     /// What a link line carries: the CPU flags, the configuration, then the
     /// linker flags. CMake puts CMAKE_C_FLAGS_<CONFIG> on the link too.
     link_flags: []const []const u8,
+    /// Whether `-Dproduction-build` is armed (`-DRA8_PRODUCTION_BUILD`).
+    production_build: bool = false,
 };
 
 pub fn globals(allocator: std.mem.Allocator, build_type: BuildType, base: Base) Globals {
+    return globalsWithProduction(allocator, build_type, base, false);
+}
+
+/// Assemble configuration globals with explicit production-build guard state.
+pub fn globalsWithProduction(
+    allocator: std.mem.Allocator,
+    build_type: BuildType,
+    base: Base,
+    production_build: bool,
+) Globals {
     const configuration = forType(build_type);
     return .{
         .configuration = configuration,
@@ -156,7 +226,21 @@ pub fn globals(allocator: std.mem.Allocator, build_type: BuildType, base: Base) 
         .asm_flags = join(allocator, &.{ base.asm_flags, configuration.asm_flags }),
         .config_flags = configuration.c_flags,
         .link_flags = join(allocator, &.{ base.c_flags, configuration.c_flags, base.link_flags }),
+        .production_build = production_build,
     };
+}
+
+/// Resolve per-target globals against `min_build_type`, reusing `current` when
+/// no promotion is needed.
+pub fn globalsForTarget(
+    allocator: std.mem.Allocator,
+    current: Globals,
+    min_build_type: ?BuildType,
+    base: Base,
+) Globals {
+    const effective = resolveForTarget(current.configuration.build_type, min_build_type);
+    if (effective == current.configuration.build_type) return current;
+    return globalsWithProduction(allocator, effective, base, current.production_build);
 }
 
 fn join(allocator: std.mem.Allocator, sets: []const []const []const u8) []const []const u8 {
