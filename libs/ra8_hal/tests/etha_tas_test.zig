@@ -18,6 +18,8 @@ const Regs = struct {
     left: i32 = 0,
     learned: [8]u32 = undefined,
     nl: usize = 0,
+    force_eval: ?bool = null,
+    eval_calls: u32 = 0,
 
     pub fn read32(self: *Regs, off: usize) u32 {
         if (off == tas.off_glr or off == tas.off_grr) {
@@ -45,6 +47,10 @@ const Regs = struct {
             self.learned[self.nl] = self.mem[tas.off_gl0 / 4];
             self.nl += 1;
         }
+    }
+    pub fn eval(self: *Regs, _: usize, _: u32, cond: bool) bool {
+        self.eval_calls += 1;
+        return self.force_eval orelse cond;
     }
     fn lastWrite(self: *Regs, off: usize) ?u32 {
         var i = @min(self.n, self.log.len);
@@ -185,4 +191,15 @@ test "enable toggles only TASE" {
     try std.testing.expectEqual(@as(u32, 0x0010_0003), r.mem[tas.off_tasc / 4]);
     try std.testing.expectEqual(tas.ok, tas.enable(&r, false));
     try std.testing.expectEqual(@as(u32, 0x0010_0002), r.mem[tas.off_tasc / 4]);
+}
+
+test "wait honours Regs.eval override in ramReset" {
+    var o = Ops{};
+    var r_ok = Regs{ .ready_reads = -1, .force_eval = true };
+    try std.testing.expectEqual(tas.ok, tas.ramReset(&r_ok, &o));
+    try std.testing.expectEqual(@as(u32, 1), r_ok.eval_calls);
+
+    var r_fail = Regs{ .ready_reads = 0, .force_eval = false };
+    try std.testing.expectEqual(tas.hw_timeout, tas.ramReset(&r_fail, &o));
+    try std.testing.expectEqual(tas.spins, r_fail.eval_calls);
 }

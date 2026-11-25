@@ -23,7 +23,12 @@ extern fn ra8_mstp_disable(id: u16) u16;
 const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
 
 const tag = "ETHCMA";
-const window: coma.Window = .{};
+const HostEval = struct {
+    pub fn eval(_: HostEval, reg: *const volatile anyopaque, iter: u32, cond: bool) bool {
+        return common.waitEval(reg, iter, cond);
+    }
+};
+const window: coma.Window = .{ .delay_iters = if (common.hosted) 0 else 3_000_000 };
 
 var handler_fn: ?EventFn = null;
 var handler_ctx: ?*anyopaque = null;
@@ -51,7 +56,7 @@ export fn ra8_eth_coma_deinit() u16 {
 
 /// `ra8_err_t ra8_eth_coma_bringup(void)`.
 export fn ra8_eth_coma_bringup() u16 {
-    coma.bringup(window) catch {
+    coma.bringupEval(window, HostEval{}) catch {
         ra8_log_emit_error(tag, "coma_bringup: CABPIRM.BPR timeout");
         return k_ra8_err_hw_timeout;
     };

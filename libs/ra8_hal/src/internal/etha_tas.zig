@@ -53,11 +53,12 @@ pub fn portBase(port: u8) ?usize {
     return if (port < port_bases.len) port_bases[port] else null;
 }
 
-/// ra8_hw_wait_flag_set32 / clear32: `budget` reads, then hw_timeout.
+/// ra8_hw_wait_flag_set32 / clear32: `budget` reads via `regs.eval`, then hw_timeout.
 pub fn wait(regs: anytype, off: usize, mask: u32, want_set: bool, budget: u32) u16 {
     var i: u32 = 0;
     while (i < budget) : (i += 1) {
-        if ((regs.read32(off) & mask != 0) == want_set) return ok;
+        const cond = (regs.read32(off) & mask != 0) == want_set;
+        if (regs.eval(off, i, cond)) return ok;
     }
     return hw_timeout;
 }

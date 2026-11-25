@@ -67,13 +67,14 @@ pub fn start(regs: anytype, c: anytype, channel: u8, period: u32) u16 {
     return ok;
 }
 
-/// Request a stop, then wait for TCSTF low (ra8_hw_wait_flag_clear8).
+/// Request a stop, then wait for TCSTF low via `regs.eval` (ra8_hw_wait_flag_clear8).
 pub fn stop(regs: anytype, channel: u8) u16 {
     if (channel >= channel_count) return err_invalid_arg;
     regs.write8(channel, off_cr, cr_tstop);
     regs.write8(channel, off_cr, 0);
-    for (0..stop_poll_max) |_| {
-        if (regs.read8(channel, off_cr) & cr_tcstf == 0) return ok;
+    for (0..stop_poll_max) |iter| {
+        const cond = regs.read8(channel, off_cr) & cr_tcstf == 0;
+        if (regs.eval(channel, off_cr, @intCast(iter), cond)) return ok;
     }
     return err_hw_timeout;
 }

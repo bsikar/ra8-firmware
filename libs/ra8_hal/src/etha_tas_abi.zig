@@ -19,6 +19,10 @@ const Mmio = struct {
         const p: *volatile u32 = @ptrFromInt(self.base + off);
         p.* = v;
     }
+    pub fn eval(self: Mmio, off: usize, iter: u32, cond: bool) bool {
+        const reg: *const volatile u32 = @ptrFromInt(self.base + off);
+        return common.waitEval(reg, iter, cond);
+    }
 };
 
 const C = struct {

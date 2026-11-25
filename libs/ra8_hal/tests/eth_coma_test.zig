@@ -76,3 +76,28 @@ test "default window carries the hardware bases and C timing" {
     try std.testing.expectEqual(@as(u32, 3_000_000), w.delay_iters);
     try std.testing.expectEqual(@as(u32, 1_000_000), w.bpr_budget);
 }
+
+test "bringupEval honours the wait-eval hook over raw CABPIRM.BPR" {
+    const Hook = struct {
+        override: bool,
+        calls: u32 = 0,
+        last_reg: usize = 0,
+        pub fn eval(self: *@This(), reg: *const volatile anyopaque, _: u32, _: bool) bool {
+            self.calls += 1;
+            self.last_reg = @intFromPtr(reg);
+            return self.override;
+        }
+    };
+
+    var f: Fake = .{};
+    var allow: Hook = .{ .override = true };
+    try coma.bringupEval(f.window(4), &allow);
+    try std.testing.expectEqual(@as(u32, 1), allow.calls);
+    try std.testing.expectEqual(@intFromPtr(&f.agent) + coma.off_cabpirm, allow.last_reg);
+    try std.testing.expectEqual(coma.rcec_rce | coma.rcec_ace_mask, f.agent[coma.off_rcec / 4]);
+
+    var deny: Hook = .{ .override = false };
+    f.agent[coma.off_cabpirm / 4] = coma.cabpirm_bpr;
+    try std.testing.expectError(error.BprTimeout, coma.bringupEval(f.window(3), &deny));
+    try std.testing.expectEqual(@as(u32, 3), deny.calls);
+}

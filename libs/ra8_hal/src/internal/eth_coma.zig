@@ -80,11 +80,24 @@ fn settle(w: Window) void {
     while (i < w.delay_iters) : (i += 1) asm volatile ("nop");
 }
 
+const RawEval = struct {
+    pub fn eval(_: RawEval, _: *const volatile anyopaque, _: u32, cond: bool) bool {
+        return cond;
+    }
+};
+
 /// Poll CABPIRM.BPR within the budget (HUM Ch 31.3.2.7 p 1599).
 pub fn waitPool(w: Window) Error!void {
+    return waitPoolEval(w, RawEval{});
+}
+
+/// Poll CABPIRM.BPR through `ops.eval(reg, iter, cond)` (host fake-MMIO seam).
+pub fn waitPoolEval(w: Window, ops: anytype) Error!void {
+    const reg = w.agentReg(off_cabpirm);
     var i: u32 = 0;
     while (i < w.bpr_budget) : (i += 1) {
-        if (w.agentReg(off_cabpirm).* & cabpirm_bpr != 0) return;
+        const cond = (reg.* & cabpirm_bpr) != 0;
+        if (ops.eval(reg, i, cond)) return;
     }
     return error.BprTimeout;
 }
@@ -111,8 +124,13 @@ pub fn enableAgents(w: Window) void {
 
 /// Reset pulse, switch clock, buffer-pool init, then every agent clock.
 pub fn bringup(w: Window) Error!void {
+    return bringupEval(w, RawEval{});
+}
+
+/// Bring-up sequence delegating the CABPIRM.BPR wait decision to `ops.eval`.
+pub fn bringupEval(w: Window, ops: anytype) Error!void {
     resetAndClock(w);
     kickPool(w);
-    try waitPool(w);
+    try waitPoolEval(w, ops);
     enableAgents(w);
 }

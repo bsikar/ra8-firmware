@@ -39,12 +39,13 @@ pub const eswclk_hz: u32 = 250_000_000;
 pub const ok: u16 = 0;
 pub const hw_timeout: u16 = 0x203;
 
-/// Poll `off` until `mask` reads set (any bit) or clear (all bits), at most
+/// Poll `off` until `regs.eval(off, iter, cond)` returns true, at most
 /// poll_limit reads (ra8_hw_wait_flag_set8 / ra8_hw_wait_flag_clear8).
 fn wait(regs: anytype, off: usize, mask: u8, set: bool) u16 {
     var i: u32 = 0;
     while (i < poll_limit) : (i += 1) {
-        if ((regs.read8(off) & mask != 0) == set) return ok;
+        const cond = (regs.read8(off) & mask != 0) == set;
+        if (regs.eval(off, i, cond)) return ok;
     }
     return hw_timeout;
 }
