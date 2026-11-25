@@ -1,0 +1,502 @@
+{
+  "schema": 1,
+  "license": "MIT",
+  "provenance": "Author-original synthetic manga and webtoon evaluation corpus (RA8FW-672); zero third-party or academic-only dataset content.",
+  "languages": ["ja", "zh", "ko"],
+  "pages": [
+    {
+      "page_id": "ja_01_rainy_station",
+      "lang": "ja",
+      "layout": "manga_rtl",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 44, "y": 8, "w": 6, "h": 24, "prob": 0.92, "is_furigana": false },
+        { "x": 51, "y": 10, "w": 2, "h": 12, "prob": 0.89, "is_furigana": true },
+        { "x": 8, "y": 48, "w": 18, "h": 14, "prob": 0.88, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 440,
+          "y": 80,
+          "w": 60,
+          "h": 240,
+          "orientation": "vertical_rl",
+          "source_text": "\u4eca\u65e5\u306f\u96e8\u3067\u3059",
+          "english_ref": "Today it is raining.",
+          "ocr_margin": 0.35,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.45,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 80,
+          "y": 480,
+          "w": 180,
+          "h": 140,
+          "orientation": "horizontal",
+          "source_text": "\u99c5\u3067\u5f85\u3064",
+          "english_ref": "Wait at the station.",
+          "ocr_margin": 0.30,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.40,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "ja_02_morning_walk",
+      "lang": "ja",
+      "layout": "manga_rtl",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 42, "y": 12, "w": 8, "h": 26, "prob": 0.91, "is_furigana": false },
+        { "x": 10, "y": 54, "w": 16, "h": 12, "prob": 0.87, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 420,
+          "y": 120,
+          "w": 80,
+          "h": 260,
+          "orientation": "vertical_rl",
+          "source_text": "\u65e9\u304f\u884c\u3053\u3046",
+          "english_ref": "Let us go early.",
+          "ocr_margin": 0.008,
+          "ocr_distractor_sub": "\u8d70",
+          "nmt_quant_margin": 0.40,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 100,
+          "y": 540,
+          "w": 160,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u307e\u3060\u9593\u306b\u5408\u3046",
+          "english_ref": "We are still in time.",
+          "ocr_margin": 0.32,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.015,
+          "nmt_alt_token": "here"
+        }
+      ]
+    },
+    {
+      "page_id": "ja_03_bookshop_room",
+      "lang": "ja",
+      "layout": "manga_rtl",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 40, "y": 10, "w": 8, "h": 22, "prob": 0.90, "is_furigana": false },
+        { "x": 49, "y": 12, "w": 2, "h": 10, "prob": 0.86, "is_furigana": true },
+        { "x": 12, "y": 42, "w": 16, "h": 14, "prob": 0.93, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 400,
+          "y": 100,
+          "w": 80,
+          "h": 220,
+          "orientation": "vertical_rl",
+          "source_text": "\u672c\u3092\u8aad\u3080",
+          "english_ref": "Read the book.",
+          "ocr_margin": 0.40,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.45,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 120,
+          "y": 420,
+          "w": 160,
+          "h": 140,
+          "orientation": "horizontal",
+          "source_text": "\u9759\u304b\u306a\u90e8\u5c4b",
+          "english_ref": "A quiet room.",
+          "ocr_margin": 0.34,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.38,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "ja_04_night_sky",
+      "lang": "ja",
+      "layout": "manga_rtl",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 38, "y": 14, "w": 10, "h": 24, "prob": 0.94, "is_furigana": false },
+        { "x": 10, "y": 52, "w": 14, "h": 12, "prob": 0.304, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 380,
+          "y": 140,
+          "w": 100,
+          "h": 240,
+          "orientation": "vertical_rl",
+          "source_text": "\u661f\u304c\u898b\u3048\u308b",
+          "english_ref": "Stars are visible.",
+          "ocr_margin": 0.36,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.42,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 100,
+          "y": 520,
+          "w": 140,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u591c\u306e\u98a8",
+          "english_ref": "Night wind.",
+          "ocr_margin": 0.33,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.39,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "zh_01_tea_house",
+      "lang": "zh",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 10, "y": 10, "w": 22, "h": 12, "prob": 0.91, "is_furigana": false },
+        { "x": 28, "y": 46, "w": 24, "h": 12, "prob": 0.89, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 100,
+          "y": 100,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u8bf7\u559d\u70ed\u8336",
+          "english_ref": "Please drink hot tea.",
+          "ocr_margin": 0.38,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.44,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 280,
+          "y": 460,
+          "w": 240,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u4eca\u5929\u5f88\u51b7",
+          "english_ref": "Today is very cold.",
+          "ocr_margin": 0.31,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.41,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "zh_02_market_street",
+      "lang": "zh",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 12, "y": 14, "w": 20, "h": 10, "prob": 0.90, "is_furigana": false },
+        { "x": 26, "y": 50, "w": 22, "h": 12, "prob": 0.88, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 120,
+          "y": 140,
+          "w": 200,
+          "h": 100,
+          "orientation": "horizontal",
+          "source_text": "\u6211\u4eec\u51fa\u53d1\u5427",
+          "english_ref": "Let us set out.",
+          "ocr_margin": 0.008,
+          "ocr_distractor_sub": "\u53d1",
+          "nmt_quant_margin": 0.40,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 260,
+          "y": 500,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u524d\u9762\u6709\u6865",
+          "english_ref": "There is a bridge ahead.",
+          "ocr_margin": 0.36,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.015,
+          "nmt_alt_token": "road"
+        }
+      ]
+    },
+    {
+      "page_id": "zh_03_library_note",
+      "lang": "zh",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 8, "y": 12, "w": 22, "h": 12, "prob": 0.92, "is_furigana": false },
+        { "x": 24, "y": 48, "w": 20, "h": 12, "prob": 0.87, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 80,
+          "y": 120,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u8fd9\u672c\u4e66\u5f88\u597d",
+          "english_ref": "This book is good.",
+          "ocr_margin": 0.37,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.43,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 240,
+          "y": 480,
+          "w": 200,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u8bf7\u5b89\u9759\u4e00\u70b9",
+          "english_ref": "Please stay quiet.",
+          "ocr_margin": 0.35,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.42,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "zh_04_mountain_dawn",
+      "lang": "zh",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 14, "y": 10, "w": 22, "h": 12, "prob": 0.93, "is_furigana": false },
+        { "x": 26, "y": 54, "w": 22, "h": 12, "prob": 0.304, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 140,
+          "y": 100,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u592a\u9633\u5347\u8d77\u6765\u4e86",
+          "english_ref": "The sun rose up.",
+          "ocr_margin": 0.39,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.44,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 260,
+          "y": 540,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\u98ce\u505c\u4e86",
+          "english_ref": "The wind stopped.",
+          "ocr_margin": 0.34,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.39,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "ko_01_morning_bus",
+      "lang": "ko",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 10, "y": 10, "w": 24, "h": 12, "prob": 0.91, "is_furigana": false },
+        { "x": 26, "y": 46, "w": 22, "h": 12, "prob": 0.89, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 100,
+          "y": 100,
+          "w": 240,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\uc624\ub298 \ube44\uac00 \uc640\uc694",
+          "english_ref": "It is raining today.",
+          "ocr_margin": 0.37,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.43,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 260,
+          "y": 460,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\ubc84\uc2a4\uac00 \uc654\uc5b4\uc694",
+          "english_ref": "The bus has arrived.",
+          "ocr_margin": 0.35,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.41,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "ko_02_cafe_table",
+      "lang": "ko",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 12, "y": 12, "w": 22, "h": 12, "prob": 0.92, "is_furigana": false },
+        { "x": 24, "y": 50, "w": 24, "h": 12, "prob": 0.88, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 120,
+          "y": 120,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\uc5ec\uae30 \uc549\uc73c\uc138\uc694",
+          "english_ref": "Please sit here.",
+          "ocr_margin": 0.008,
+          "ocr_distractor_sub": "\uc11c",
+          "nmt_quant_margin": 0.40,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 240,
+          "y": 500,
+          "w": 240,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\ub530\ub73b\ud55c \ucc28 \uc8fc\uc138\uc694",
+          "english_ref": "Warm tea please.",
+          "ocr_margin": 0.34,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.015,
+          "nmt_alt_token": "cup"
+        }
+      ]
+    },
+    {
+      "page_id": "ko_03_book_corner",
+      "lang": "ko",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 10, "y": 14, "w": 22, "h": 12, "prob": 0.90, "is_furigana": false },
+        { "x": 28, "y": 48, "w": 22, "h": 12, "prob": 0.91, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 100,
+          "y": 140,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\uc774 \ucc45 \uc77d\uc5b4\uc694",
+          "english_ref": "Read this book.",
+          "ocr_margin": 0.38,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.44,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 280,
+          "y": 480,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\uc870\uc6a9\ud55c \ubc29",
+          "english_ref": "A quiet room.",
+          "ocr_margin": 0.36,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.42,
+          "nmt_alt_token": ""
+        }
+      ]
+    },
+    {
+      "page_id": "ko_04_evening_home",
+      "lang": "ko",
+      "layout": "webtoon_ttb",
+      "page_width": 640,
+      "page_height": 960,
+      "det_map_width": 64,
+      "det_map_height": 96,
+      "det_regions": [
+        { "x": 12, "y": 10, "w": 22, "h": 12, "prob": 0.93, "is_furigana": false },
+        { "x": 26, "y": 54, "w": 22, "h": 12, "prob": 0.304, "is_furigana": false }
+      ],
+      "bubbles": [
+        {
+          "x": 120,
+          "y": 100,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\uc9d1\uc5d0 \uac00\uc694",
+          "english_ref": "Going home now.",
+          "ocr_margin": 0.39,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.45,
+          "nmt_alt_token": ""
+        },
+        {
+          "x": 260,
+          "y": 540,
+          "w": 220,
+          "h": 120,
+          "orientation": "horizontal",
+          "source_text": "\ub0b4\uc77c \ub9cc\ub098\uc694",
+          "english_ref": "See you tomorrow.",
+          "ocr_margin": 0.35,
+          "ocr_distractor_sub": "",
+          "nmt_quant_margin": 0.40,
+          "nmt_alt_token": ""
+        }
+      ]
+    }
+  ]
+}
