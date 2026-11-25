@@ -54,8 +54,8 @@ static const char* const s_tag = "NPU-LOAD";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_npu_loader_align_mask = (uint32_t)k_ra8_npu_blob_arena_align -
-    1U, /**< RA8 npu loader align mask. */
+  k_ra8_npu_loader_align_mask =
+    (uint32_t)k_ra8_npu_blob_arena_align - 1U, /**< RA8 npu loader align mask. */
 } ra8_npu_loader_const_t;
 
 /**
@@ -463,10 +463,9 @@ static ra8_err_t internal_npu_place_alias(const uint8_t*       p,
     ra8_log_error(s_tag, "load: region is both baked and an alias");
     return k_ra8_err_invalid_arg;
   }
-  const uint32_t target =
-    ra8_npu_blob_read_word(p,
-                           desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_data_offset *
-                                       (uint32_t)k_ra8_npu_blob_word_bytes));
+  const uint32_t target = ra8_npu_blob_read_word(
+    p,
+    desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_ra8_npu_blob_word_bytes));
   if (target >= index) {
     ra8_log_error(s_tag, "load: alias target is not an earlier region");
     return k_ra8_err_invalid_arg;
@@ -633,6 +632,137 @@ ra8_err_t ra8_npu_arena_bytes(const void* blob, uint32_t blob_bytes, uint32_t* o
     return val;
   }
   return internal_npu_plan_arena(p, rcount, out_bytes);
+}
+
+RA8_STATIC_ASSERT((uint32_t)k_ra8_npu_xip_ospi_cs0_min == (uint32_t)k_ra8_mem_ospi_cs0_base,
+                  "OSPI0 CS0 XIP base must match ra8_device.h");
+RA8_STATIC_ASSERT((uint32_t)k_ra8_npu_xip_ospi_cs1_min == (uint32_t)k_ra8_mem_ospi_cs1_base,
+                  "OSPI0 CS1 XIP base must match ra8_device.h");
+
+/** @brief Return true when @p xip_base matches OSPI0 CS0 or CS1 XIP decode base. */
+RA8_INTERNAL
+static bool internal_npu_is_ospi_xip_base(uint32_t xip_base)
+{
+  if (xip_base == (uint32_t)k_ra8_mem_ospi_cs0_base) {
+    return true;
+  }
+  return xip_base == (uint32_t)k_ra8_mem_ospi_cs1_base;
+}
+
+/** @brief Validate caller-owned multi-model table descriptor and bounded count. */
+RA8_INTERNAL
+static ra8_err_t internal_npu_check_table(const ra8_npu_model_table_t* table)
+{
+  RA8_CHECK_NULL_PTR(table, s_tag, "table must not be nullptr");
+  RA8_CHECK_NULL_PTR(table->models, s_tag, "table->models must not be nullptr");
+  if (table->count == 0U) {
+    ra8_log_error(s_tag, "model table: count must be > 0");
+    return k_ra8_err_invalid_arg;
+  }
+  if (table->count > (uint32_t)k_ra8_npu_max_models) {
+    ra8_log_error(s_tag, "model table: count exceeds max models");
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_npu_model_from_flash(const ra8_npu_flash_window_t* window,
+                                   uint32_t                      xip_offset,
+                                   uint32_t                      blob_bytes,
+                                   ra8_npu_model_entry_t*        out_entry)
+{
+  RA8_CHECK_NULL_PTR(window, s_tag, "window must not be nullptr");
+  RA8_CHECK_NULL_PTR(window->mapped_base, s_tag, "window->mapped_base must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_entry, s_tag, "out_entry must not be nullptr");
+  if (!internal_npu_is_ospi_xip_base(window->xip_base)) {
+    ra8_log_error(s_tag, "flash bind: xip_base outside OSPI0 CS0/CS1");
+    return k_ra8_err_invalid_arg;
+  }
+  if (window->window_bytes == 0U) {
+    ra8_log_error(s_tag, "flash bind: empty window");
+    return k_ra8_err_invalid_size;
+  }
+  if (window->window_bytes > (uint32_t)k_ra8_npu_xip_ospi_cs_size) {
+    ra8_log_error(s_tag, "flash bind: window exceeds 256 MiB OSPI decode space");
+    return k_ra8_err_out_of_range;
+  }
+  if (blob_bytes < (uint32_t)k_ra8_npu_blob_header_bytes) {
+    ra8_log_error(s_tag, "flash bind: blob shorter than header");
+    return k_ra8_err_invalid_size;
+  }
+  if (xip_offset > window->window_bytes) {
+    ra8_log_error(s_tag, "flash bind: offset outside window");
+    return k_ra8_err_out_of_range;
+  }
+  if (blob_bytes > (window->window_bytes - xip_offset)) {
+    ra8_log_error(s_tag, "flash bind: blob span exceeds window");
+    return k_ra8_err_out_of_range;
+  }
+  const uint8_t*  p       = (const uint8_t*)window->mapped_base + xip_offset;
+  uint32_t        scratch = 0U;
+  const ra8_err_t err     = ra8_npu_arena_bytes(p, blob_bytes, &scratch);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *out_entry = (ra8_npu_model_entry_t){
+    .blob       = p,
+    .blob_bytes = blob_bytes,
+    .xip_addr   = window->xip_base + xip_offset,
+  };
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_npu_shared_arena_bytes(const ra8_npu_model_table_t* table, uint32_t* out_bytes)
+{
+  const ra8_err_t tbl = internal_npu_check_table(table);
+  if (tbl != k_ra8_ok) {
+    return tbl;
+  }
+  RA8_CHECK_NULL_PTR(out_bytes, s_tag, "out_bytes must not be nullptr");
+
+  uint32_t max_bytes = 0U;
+  for (uint32_t i = 0U; i < table->count; i++) {
+    RA8_CHECK_NULL_PTR(table->models[i].blob, s_tag, "table model blob must not be nullptr");
+    uint32_t        need = 0U;
+    const ra8_err_t err =
+      ra8_npu_arena_bytes(table->models[i].blob, table->models[i].blob_bytes, &need);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if (need > max_bytes) {
+      max_bytes = need;
+    }
+  }
+  *out_bytes = max_bytes;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_npu_table_load(const ra8_npu_model_table_t* table,
+                             uint32_t                     model_index,
+                             const ra8_npu_arena_t*       shared_arena,
+                             ra8_npu_job_t*               out_job)
+{
+  const ra8_err_t tbl = internal_npu_check_table(table);
+  if (tbl != k_ra8_ok) {
+    return tbl;
+  }
+  RA8_CHECK_NULL_PTR(shared_arena, s_tag, "shared_arena must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_job, s_tag, "out_job must not be nullptr");
+  if (model_index >= table->count) {
+    ra8_log_error(s_tag, "table_load: model index out of range");
+    return k_ra8_err_out_of_range;
+  }
+  if (shared_arena->bytes > 0U) {
+    RA8_CHECK_NULL_PTR(shared_arena->base, s_tag, "shared_arena->base must not be nullptr");
+    if (((uintptr_t)shared_arena->base & (uintptr_t)k_ra8_npu_loader_align_mask) != 0U) {
+      ra8_log_error(s_tag, "table_load: shared_arena->base must be 16-byte aligned");
+      return k_ra8_err_invalid_arg;
+    }
+  }
+  return ra8_npu_load(table->models[model_index].blob,
+                      table->models[model_index].blob_bytes,
+                      shared_arena,
+                      out_job);
 }
 
 #else
