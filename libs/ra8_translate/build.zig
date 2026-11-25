@@ -99,6 +99,20 @@ pub fn build(b: *std.Build) void {
     ctc_mod.addImport("err", err_mod);
     ctc_mod.addImport("lang", lang_mod);
 
+    const det_grp_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/detector_group.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const det_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/detector_post.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    det_mod.addImport("detector_group", det_grp_mod);
+    det_mod.addImport("err", err_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -122,6 +136,15 @@ pub fn build(b: *std.Build) void {
     ctc_abi_mod.addImport("ctc_decode", ctc_mod);
     ctc_abi_mod.addImport("err", err_mod);
 
+    const det_abi_mod = b.createModule(.{
+        .root_source_file = b.path("src/detector_post_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    det_abi_mod.addImport("detector_post", det_mod);
+    det_abi_mod.addImport("err", err_mod);
+
     const root_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -130,6 +153,7 @@ pub fn build(b: *std.Build) void {
     });
     root_mod.addImport("ra8_translate_abi", abi_mod);
     root_mod.addImport("ctc_decode_abi", ctc_abi_mod);
+    root_mod.addImport("detector_post_abi", det_abi_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -293,4 +317,17 @@ pub fn build(b: *std.Build) void {
     const run_ctc = b.addRunArtifact(ctc_tests);
     ra8_build.configureHostTestRun(b, test_step, ctc_tests, run_ctc);
     test_step.dependOn(&run_ctc.step);
+
+    const det_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/detector_post_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    det_tmod.addImport("detector_post_abi", det_abi_mod);
+    det_tmod.addImport("detector_post", det_mod);
+    det_tmod.addImport("err", err_mod);
+    const det_tests = b.addTest(.{ .root_module = det_tmod });
+    const run_det = b.addRunArtifact(det_tests);
+    ra8_build.configureHostTestRun(b, test_step, det_tests, run_det);
+    test_step.dependOn(&run_det.step);
 }

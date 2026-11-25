@@ -16,6 +16,9 @@ static_assert(sizeof(ra8_translate_overlay_bubble_spec_t) == 16U, "smoke overlay
 static_assert(sizeof(ra8_translate_overlay_fit_t) == 12U, "smoke overlay fit size");
 static_assert(sizeof(ra8_translate_ctc_charset_header_t) == 32U, "smoke ctc header size");
 static_assert(sizeof(ra8_translate_ctc_result_t) == 24U, "smoke ctc result size");
+static_assert(sizeof(ra8_translate_det_line_t) == 16U, "smoke det line size");
+static_assert(sizeof(ra8_translate_det_bubble_t) == 20U, "smoke det bubble size");
+static_assert(sizeof(ra8_translate_det_cfg_t) == 32U, "smoke det cfg size");
 
 int ra8_translate_header_contract_smoke(const ra8_translate_sidecar_header_t* hdr)
 {

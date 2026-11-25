@@ -6,4 +6,5 @@
 comptime {
     _ = @import("ra8_translate_abi");
     _ = @import("ctc_decode_abi");
+    _ = @import("detector_post_abi");
 }
