@@ -80,7 +80,7 @@ typedef enum : uint32_t {
   k_lt_pad_size      = 50U,         /**< Unaligned runtime size (forces padding). */
   k_lt_pad_expect    = 114U,        /**< 50 + align(50 -> 64) + 50.               */
   k_lt_huge_size     = 0xFFFFFFF0U, /**< Runtime size that overflows a sum.       */
-  k_lt_alias_bytes   = 32U,   /**< Region size used by the alias fixtures. */
+  k_lt_alias_bytes   = 32U,         /**< Region size used by the alias fixtures.  */
 } ra8_loader_test_const_t;
 
 /** @brief Runtime arena the loader carves output activations from. */
@@ -124,11 +124,11 @@ static uint32_t lt_fnv(const uint8_t* buf, uint32_t start, uint32_t end)
 
 /** @brief One region spec for the in-C blob builder. */
 typedef struct {
-  uint32_t role;   /**< ra8_npu_blob_role_t value.                        */
-  bool     baked;  /**< True: bytes baked into the blob.                  */
-  uint32_t size;   /**< Region size in bytes.                             */
-  bool     alias;  /**< True: region aliases @ref lt_region_t::target.    */
-  uint32_t target; /**< Alias target region index (alias regions only).   */
+  uint32_t role;   /**< ra8_npu_blob_role_t value.                      */
+  bool     baked;  /**< True: bytes baked into the blob.                */
+  uint32_t size;   /**< Region size in bytes.                           */
+  bool     alias;  /**< True: region aliases @ref lt_region_t::target.  */
+  uint32_t target; /**< Alias target region index (alias regions only). */
 } lt_region_t;
 
 /**
@@ -157,7 +157,7 @@ static uint32_t lt_build(uint8_t* buf, const lt_region_t* regs, uint32_t nreg)
   lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_const * (uint32_t)k_lt_word_bytes), 0U);
 
   for (uint32_t r = 0U; r < nreg; r++) {
-    const uint32_t desc = hdr + (r * rdb);
+    const uint32_t desc  = hdr + (r * rdb);
     uint32_t       flags = regs[r].baked ? (uint32_t)k_ra8_npu_blob_rflag_baked : 0U;
     uint32_t       doff  = regs[r].baked ? cursor : 0U;
     if (regs[r].alias) {
@@ -542,9 +542,9 @@ static void test_load_alias_shares_base(void)
   /* Region 1 aliases region 0: same size, no baked bytes, target index 0. */
   const lt_region_t regs[] = {
     {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .size = k_lt_alias_bytes},
-    {.role  = (uint32_t)k_ra8_npu_blob_role_output,
-     .size  = k_lt_alias_bytes,
-     .alias = true,
+    {.role   = (uint32_t)k_ra8_npu_blob_role_output,
+     .size   = k_lt_alias_bytes,
+     .alias  = true,
      .target = 0U},
   };
   const uint32_t total = lt_build(s_scratch, regs, 2U);
@@ -762,6 +762,201 @@ static void test_arena_bytes_refusals(void)
   TEST_END("arena query refuses null arguments, bad containers, and overflow");
 }
 
+static uint8_t s_xip_flash[4096U];
+alignas(16) static uint8_t s_shared_arena[512U];
+
+/** @brief Build a runnable add-constant `.npub` image inside a caller flash slot. */
+static uint32_t lt_build_addk_model(uint8_t*           buf,
+                                    const lt_region_t* regs,
+                                    uint32_t           nreg,
+                                    uint32_t           src_reg,
+                                    uint32_t           dst_reg,
+                                    uint32_t           count,
+                                    uint32_t           konst)
+{
+  const uint32_t total = lt_build(buf, regs, nreg);
+  const uint32_t coff =
+    (uint32_t)k_ra8_npu_blob_header_bytes + (nreg * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_src * (uint32_t)k_lt_word_bytes), src_reg);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_dst * (uint32_t)k_lt_word_bytes), dst_reg);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_count * (uint32_t)k_lt_word_bytes), count);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_const * (uint32_t)k_lt_word_bytes), konst);
+  lt_patch_checksum(buf, total);
+  return total;
+}
+
+/** @brief Execute a loaded table entry and verify output vs baked flash input. */
+static void lt_run_and_verify_model(const ra8_npu_model_table_t* table,
+                                    uint32_t                     idx,
+                                    const ra8_npu_arena_t*       arena,
+                                    uint32_t                     out_reg,
+                                    uint32_t                     out_bytes,
+                                    uint32_t                     konst)
+{
+  const uint8_t* blob = (const uint8_t*)table->models[idx].blob;
+  const uint32_t coff =
+    ra8_npu_blob_read_word(blob,
+                           (uint32_t)k_ra8_npu_blob_word_cmd_offset * (uint32_t)k_lt_word_bytes);
+  const uint32_t w_off = ra8_npu_blob_read_word(
+    blob,
+    (uint32_t)k_ra8_npu_blob_header_bytes +
+      ((uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes));
+  const uint32_t i_off = ra8_npu_blob_read_word(
+    blob,
+    (uint32_t)k_ra8_npu_blob_header_bytes + (uint32_t)k_ra8_npu_blob_region_desc_bytes +
+      ((uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes));
+  ra8_npu_job_t job                  = {};
+  *ra8_npu_reg(k_ra8_npu_off_status) = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_table_load(table, idx, arena, &job));
+  TEST_ASSERT_EQ((uint64_t)(uintptr_t)(blob + coff), (uint64_t)(uintptr_t)job.cmd_stream);
+  TEST_ASSERT_EQ((uint64_t)(uintptr_t)(blob + w_off), job.region_base[0U]);
+  TEST_ASSERT_EQ((uint64_t)(uintptr_t)(blob + i_off), job.region_base[1U]);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
+  lt_exec();
+  bool done = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_poll(&done));
+  TEST_ASSERT(done);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_clear_irq());
+
+  const uint8_t* in_ptr  = blob + i_off;
+  const uint8_t* out_ptr = (const uint8_t*)(uintptr_t)job.region_base[out_reg];
+  TEST_ASSERT((uintptr_t)out_ptr >= (uintptr_t)arena->base);
+  TEST_ASSERT_EQ((uintptr_t)0U, (uintptr_t)out_ptr & ((uintptr_t)k_ra8_npu_blob_arena_align - 1U));
+  for (uint32_t i = 0U; i < out_bytes; i++) {
+    TEST_ASSERT_EQ((uint8_t)((in_ptr[i] + konst) & (uint32_t)k_lt_byte_mask), out_ptr[i]);
+  }
+}
+
+static void test_flash_xip_bind_and_bounds(void)
+{
+  TEST_BEGIN("flash XIP model binding validates OSPI CS0/CS1 windows and blobs");
+  const lt_region_t regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_weights, .baked = true, .size = 16U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_input, .baked = true, .size = 24U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 24U},
+  };
+  const uint32_t len = lt_build_addk_model(&s_xip_flash[64U], regs, 3U, 1U, 2U, 24U, 3U);
+  const ra8_npu_flash_window_t cs0 = {.mapped_base  = s_xip_flash,
+                                      .xip_base     = k_ra8_mem_ospi_cs0_base,
+                                      .window_bytes = (uint32_t)sizeof(s_xip_flash)};
+  const ra8_npu_flash_window_t cs1 = {.mapped_base  = s_xip_flash,
+                                      .xip_base     = k_ra8_mem_ospi_cs1_base,
+                                      .window_bytes = (uint32_t)sizeof(s_xip_flash)};
+  ra8_npu_model_entry_t        e   = {};
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_model_from_flash(&cs0, 64U, len, &e));
+  TEST_ASSERT_EQ((uintptr_t)&s_xip_flash[64U], (uintptr_t)e.blob);
+  TEST_ASSERT_EQ(k_ra8_mem_ospi_cs0_base + 64U, e.xip_addr);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_model_from_flash(&cs1, 64U, len, &e));
+  TEST_ASSERT_EQ(k_ra8_mem_ospi_cs1_base + 64U, e.xip_addr);
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_model_from_flash(nullptr, 64U, len, &e));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_model_from_flash(&cs0, 64U, len, nullptr));
+  const ra8_npu_flash_window_t no_map = {.mapped_base  = nullptr,
+                                         .xip_base     = k_ra8_mem_ospi_cs0_base,
+                                         .window_bytes = 256U};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_model_from_flash(&no_map, 0U, len, &e));
+  const ra8_npu_flash_window_t bad_base = {.mapped_base  = s_xip_flash,
+                                           .xip_base     = (uint32_t)k_ra8_mem_mram_base,
+                                           .window_bytes = 256U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_model_from_flash(&bad_base, 64U, len, &e));
+  const ra8_npu_flash_window_t zero_win = {.mapped_base  = s_xip_flash,
+                                           .xip_base     = k_ra8_mem_ospi_cs0_base,
+                                           .window_bytes = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_npu_model_from_flash(&zero_win, 0U, len, &e));
+  const ra8_npu_flash_window_t huge_win = {.mapped_base = s_xip_flash,
+                                           .xip_base    = k_ra8_mem_ospi_cs0_base,
+                                           .window_bytes =
+                                             (uint32_t)k_ra8_npu_xip_ospi_cs_size + 1U};
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_npu_model_from_flash(&huge_win, 64U, len, &e));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_npu_model_from_flash(&cs0, (uint32_t)sizeof(s_xip_flash) - 16U, len, &e));
+
+  s_xip_flash[64U + len - 1U] ^= 0x5AU;
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, ra8_npu_model_from_flash(&cs0, 64U, len, &e));
+  TEST_END("flash XIP model binding validates OSPI CS0/CS1 windows and blobs");
+}
+
+static void test_shared_arena_alternating_flash_models(void)
+{
+  TEST_BEGIN("two external flash models alternate over one shared scratch arena");
+  const lt_region_t det_regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_weights, .baked = true, .size = 16U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_input, .baked = true, .size = 24U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .baked = false, .size = 32U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 24U},
+  };
+  const lt_region_t rec_regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_weights, .baked = true, .size = 32U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_input, .baked = true, .size = 40U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .baked = false, .size = 50U},
+    {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 40U},
+  };
+  const uint32_t det_off = 0U;
+  const uint32_t rec_off = 1024U;
+  const uint32_t det_len =
+    lt_build_addk_model(&s_xip_flash[det_off], det_regs, 4U, 1U, 3U, 24U, 5U);
+  const uint32_t rec_len =
+    lt_build_addk_model(&s_xip_flash[rec_off], rec_regs, 4U, 1U, 3U, 40U, 11U);
+
+  const ra8_npu_flash_window_t cs0        = {.mapped_base  = s_xip_flash,
+                                             .xip_base     = k_ra8_mem_ospi_cs0_base,
+                                             .window_bytes = (uint32_t)sizeof(s_xip_flash)};
+  ra8_npu_model_entry_t        entries[2] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_model_from_flash(&cs0, det_off, det_len, &entries[0]));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_model_from_flash(&cs0, rec_off, rec_len, &entries[1]));
+
+  const ra8_npu_model_table_t table        = {.models = entries, .count = 2U};
+  uint32_t                    det_need     = 0U;
+  uint32_t                    rec_need     = 0U;
+  uint32_t                    shared_bytes = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_arena_bytes(entries[0].blob, entries[0].blob_bytes, &det_need));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_arena_bytes(entries[1].blob, entries[1].blob_bytes, &rec_need));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_shared_arena_bytes(&table, &shared_bytes));
+  TEST_ASSERT(rec_need > det_need);
+  TEST_ASSERT_EQ(rec_need, shared_bytes);
+
+  const ra8_npu_arena_t shared = {.base = s_shared_arena, .bytes = shared_bytes};
+  lt_prep();
+  lt_run_and_verify_model(&table, 0U, &shared, 3U, 24U, 5U);
+  lt_run_and_verify_model(&table, 1U, &shared, 3U, 40U, 11U);
+  lt_run_and_verify_model(&table, 0U, &shared, 3U, 24U, 5U);
+  lt_run_and_verify_model(&table, 1U, &shared, 3U, 40U, 11U);
+
+  ra8_npu_job_t         job       = {};
+  const ra8_npu_arena_t too_short = {.base = s_shared_arena, .bytes = shared_bytes - 1U};
+  const ra8_npu_arena_t unaligned = {.base = &s_shared_arena[1U], .bytes = shared_bytes};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_npu_table_load(&table, 1U, &too_short, &job));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_table_load(&table, 0U, &unaligned, &job));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_npu_table_load(&table, 2U, &shared, &job));
+  TEST_END("two external flash models alternate over one shared scratch arena");
+}
+
+static void test_multi_model_table_guards(void)
+{
+  TEST_BEGIN("multi-model table planner and loader guard invalid tables");
+  uint32_t              canary      = 0xCAFEBABEU;
+  ra8_npu_model_entry_t bad_list[2] = {
+    {.blob = ra8_npu_model_addk_fake_blob(), .blob_bytes = ra8_npu_model_addk_fake_bytes()},
+    {.blob = s_scratch, .blob_bytes = 8U}};
+  const ra8_npu_model_table_t empty_tbl  = {.models = bad_list, .count = 0U};
+  const ra8_npu_model_table_t over_tbl   = {.models = bad_list,
+                                            .count  = (uint32_t)k_ra8_npu_max_models + 1U};
+  const ra8_npu_model_table_t corrupt_tb = {.models = bad_list, .count = 2U};
+  ra8_npu_job_t               job        = {};
+  const ra8_npu_arena_t arena = {.base = s_shared_arena, .bytes = (uint32_t)sizeof(s_shared_arena)};
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_shared_arena_bytes(nullptr, &canary));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_shared_arena_bytes(&empty_tbl, &canary));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_shared_arena_bytes(&over_tbl, &canary));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_npu_shared_arena_bytes(&corrupt_tb, &canary));
+  TEST_ASSERT_EQ(0xCAFEBABEU, canary);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_table_load(nullptr, 0U, &arena, &job));
+  TEST_END("multi-model table planner and loader guard invalid tables");
+}
+
 int main(void)
 {
   test_load_golden_maps_job();
@@ -776,5 +971,8 @@ int main(void)
   test_arena_bytes_is_exact();
   test_arena_bytes_counts_padding();
   test_arena_bytes_refusals();
+  test_flash_xip_bind_and_bounds();
+  test_shared_arena_alternating_flash_models();
+  test_multi_model_table_guards();
   return 0;
 }

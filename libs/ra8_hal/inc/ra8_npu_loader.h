@@ -174,6 +174,170 @@ typedef struct {
 [[nodiscard]] ra8_err_t
 ra8_npu_arena_bytes(const void* blob, uint32_t blob_bytes, uint32_t* out_bytes);
 
+/**
+ * @enum ra8_npu_loader_limit_t
+ * @brief Fixed bounds and OSPI XIP controller limits for multi-model loading.
+ *
+ * @details
+ * Bounds caller-provided multi-model tables (NASA Rule 2) and mirrors the
+ * hardware external OSPI0 CS0 / CS1 XIP decode windows (`0x80000000` and
+ * `0x90000000`, up to 256 MiB each per ADR-0021 and `ra8_device.h`).
+ *
+ * @invariant Every enumerator fits a `uint32_t`.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_npu_max_models       = 16U,         /**< Max models in one multi-model table.            */
+  k_ra8_npu_xip_ospi_cs0_min = 0x80000000U, /**< OSPI0 CS0 XIP base (`k_ra8_mem_ospi_cs0_base`). */
+  k_ra8_npu_xip_ospi_cs1_min = 0x90000000U, /**< OSPI0 CS1 XIP base (`k_ra8_mem_ospi_cs1_base`). */
+  k_ra8_npu_xip_ospi_cs_size = 0x10000000U, /**< Max 256 MiB per OSPI CS window (ADR-0021).      */
+} ra8_npu_loader_limit_t;
+
+/**
+ * @struct ra8_npu_flash_window_t
+ * @brief CPU-readable external OSPI flash XIP window for in-place `.npub` models.
+ *
+ * @details
+ * On RA8P1 silicon (or the emulator), `mapped_base` equals
+ * `(const void*)(uintptr_t)xip_base` once XIP is active so `BAKED` weights stay
+ * in external OSPI NOR with zero SRAM copy. On host unit tests, `mapped_base`
+ * points into a caller-supplied fake flash buffer while `xip_base` and
+ * `window_bytes` still enforce hardware CS0/CS1 window boundaries.
+ *
+ * @invariant `xip_base` is ::k_ra8_npu_xip_ospi_cs0_min or ::k_ra8_npu_xip_ospi_cs1_min.
+ * @since 0.1.0
+ */
+typedef struct ra8_npu_flash_window_s {
+  const void* mapped_base;  /**< CPU-readable base address of the XIP window.        */
+  uint32_t    xip_base;     /**< Target XIP window base (`0x80000000`/`0x90000000`). */
+  uint32_t    window_bytes; /**< Window byte capacity (1 .. 256 MiB).                */
+} ra8_npu_flash_window_t;
+
+/**
+ * @struct ra8_npu_model_entry_t
+ * @brief One `.npub` model registered in a caller-owned multi-model table.
+ *
+ * @details
+ * Holds the CPU-readable blob pointer (in external OSPI XIP flash, MRAM, or
+ * a host buffer), byte length, and recorded XIP address (or `0` when bound
+ * outside an OSPI XIP window).
+ *
+ * @since 0.1.0
+ */
+typedef struct ra8_npu_model_entry_s {
+  const void* blob;       /**< In-place `.npub` image pointer (read-only). */
+  uint32_t    blob_bytes; /**< Validated length of the `.npub` image.      */
+  uint32_t    xip_addr;   /**< Recorded target XIP address (0 if direct).  */
+} ra8_npu_model_entry_t;
+
+/**
+ * @struct ra8_npu_model_table_t
+ * @brief Caller-owned table of `count` `.npub` models sharing one scratch arena.
+ *
+ * @invariant `models` points to at least `count` initialized entries (`count <= ::k_ra8_npu_max_models`).
+ * @since 0.1.0
+ */
+typedef struct ra8_npu_model_table_s {
+  const ra8_npu_model_entry_t* models; /**< Array of registered models.       */
+  uint32_t                     count;  /**< Active entries (1 .. max_models). */
+} ra8_npu_model_table_t;
+
+/**
+ * @brief Bind and validate one external OSPI XIP `.npub` model into an entry.
+ *
+ * @details
+ * Verifies that @p window names OSPI0 CS0 (`0x80000000`) or CS1 (`0x90000000`)
+ * with a non-zero size <= ::k_ra8_npu_xip_ospi_cs_size, checks that
+ * `[xip_offset, xip_offset + blob_bytes)` fits inside @p window without
+ * overflow, validates the `.npub` container in place at `mapped_base +
+ * xip_offset` (so corrupt or incomplete flash writes are refused upfront), and
+ * writes @p out_entry with `BAKED` weights left in flash.
+ *
+ * @param[in]  window     External OSPI flash XIP window descriptor.
+ * @param[in]  xip_offset Byte offset within @p window where the `.npub` starts.
+ * @param[in]  blob_bytes Byte length of the `.npub` image.
+ * @param[out] out_entry  Populated model entry on k_ra8_ok.
+ *
+ * @return `ra8_err_t` status code.
+ * @retval k_ra8_ok Valid OSPI XIP `.npub` image bound to @p out_entry.
+ * @retval k_ra8_err_null_ptr Null @p window, @p window->mapped_base, or @p out_entry.
+ * @retval k_ra8_err_invalid_arg @p window->xip_base is not an OSPI XIP base, or bad blob header.
+ * @retval k_ra8_err_invalid_size Zero window size, tiny blob, or 0 command bytes.
+ * @retval k_ra8_err_out_of_range Window exceeds 256 MiB or blob span leaves window/buffer.
+ * @retval k_ra8_err_checksum_mismatch Payload checksum failed.
+ *
+ * @pre @p window and @p out_entry are non-NULL and @p window->mapped_base is readable.
+ * @post On k_ra8_ok @p out_entry points in place into @p window with `xip_addr = window->xip_base + xip_offset`.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_npu_model_from_flash(const ra8_npu_flash_window_t* window,
+                                                 uint32_t                      xip_offset,
+                                                 uint32_t                      blob_bytes,
+                                                 ra8_npu_model_entry_t*        out_entry);
+
+/**
+ * @brief Plan the shared scratch-arena byte budget across `N` `.npub` models.
+ *
+ * @details
+ * Validates every model in @p table (headers, descriptors, checksums, and
+ * 16-byte-aligned runtime region sizing) and returns the maximum arena size
+ * across all entries in @p out_bytes. A single caller-supplied 16-byte-aligned
+ * arena of `*out_bytes` bytes can then alternate any model in @p table without
+ * reallocation while `BAKED` weights stay in flash. Does not touch `*out_bytes`
+ * on error.
+ *
+ * @param[in]  table     Multi-model table (1 .. ::k_ra8_npu_max_models entries).
+ * @param[out] out_bytes Maximum 16-byte-aligned scratch bytes required across @p table.
+ *
+ * @return `ra8_err_t` status code.
+ * @retval k_ra8_ok All models validated; `*out_bytes` holds shared arena size.
+ * @retval k_ra8_err_null_ptr Null @p table, @p table->models, @p out_bytes, or entry blob.
+ * @retval k_ra8_err_invalid_arg Model count 0 / exceeds max, or invalid model header.
+ * @retval k_ra8_err_invalid_size Overflowing arena requirement or invalid blob length.
+ * @retval k_ra8_err_out_of_range Span outside blob buffer.
+ * @retval k_ra8_err_checksum_mismatch Corrupt model checksum.
+ *
+ * @pre @p table, @p table->models, and @p out_bytes are non-NULL.
+ * @post On k_ra8_ok `*out_bytes` holds the exact shared arena size for @p table.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_npu_shared_arena_bytes(const ra8_npu_model_table_t* table,
+                                                   uint32_t*                    out_bytes);
+
+/**
+ * @brief Load one model from @p table against the shared 16-byte-aligned arena.
+ *
+ * @details
+ * Resolves entry @p model_index from @p table into @p out_job against
+ * @p shared_arena so back-to-back models (e.g. text detector followed by OCR
+ * recognizer) reuse the same scratch memory without reallocation. `BAKED`
+ * weights and command streams stay in place inside the entry's blob (e.g. XIP
+ * OSPI flash); only `RUNTIME` regions bind into @p shared_arena. When
+ * `shared_arena->bytes > 0`, `shared_arena->base` must be 16-byte aligned.
+ *
+ * @param[in]  table        Multi-model table.
+ * @param[in]  model_index  Zero-based index `< table->count`.
+ * @param[in]  shared_arena Caller-owned shared scratch arena.
+ * @param[out] out_job      Populated NPU job ready for `ra8_npu_submit()`.
+ *
+ * @return `ra8_err_t` status code.
+ * @retval k_ra8_ok Job populated; ready to submit.
+ * @retval k_ra8_err_null_ptr Null pointer argument or NULL entry blob / non-empty arena base.
+ * @retval k_ra8_err_invalid_arg Bad table count, unaligned arena base, or malformed blob.
+ * @retval k_ra8_err_out_of_range @p model_index >= @p table->count or out-of-bounds span.
+ * @retval k_ra8_err_no_mem @p shared_arena is smaller than the model requires.
+ * @retval k_ra8_err_checksum_mismatch Corrupt model checksum.
+ *
+ * @pre @p table, @p table->models, @p shared_arena, and @p out_job are non-NULL.
+ * @post On k_ra8_ok @p out_job has all `RUNTIME` regions mapped into @p shared_arena
+ *       and all `BAKED` regions pointing in place into the model blob.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_npu_table_load(const ra8_npu_model_table_t* table,
+                                           uint32_t                     model_index,
+                                           const ra8_npu_arena_t*       shared_arena,
+                                           ra8_npu_job_t*               out_job);
+
 #ifdef __cplusplus
 }
 #endif
