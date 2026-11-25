@@ -235,9 +235,7 @@ pub fn build(b: *std.Build) void {
     // ones in addWidgetModules). A consumer in another repository pins a
     // tarball of this one and calls `dependency.module("ra8_rpc")`. No target
     // and no optimize mode: each takes both from whatever imports it.
-    _ = b.addModule("ra8_rpc", .{
-        .root_source_file = b.path("libs/ra8_rpc/src/ra8_rpc.zig"),
-    });
+    exportModule(b, "ra8_rpc", b.dependency("ra8_rpc", .{}).module("ra8_rpc"));
     addWidgetModules(b);
     // As a dependency, those modules are all this package offers: stop before any lazy dependency.
     if (b.pkg_hash.len != 0) return;
@@ -341,18 +339,13 @@ pub fn build(b: *std.Build) void {
     // so the pack, sign, verify and gate walkthrough runs under `zig build
     // test` against the same module_pack and test key the build graph packs
     // with.
+    const app_dep = b.dependency("ra8_app", .{});
     const ra8app_setup_module = b.createModule(.{
         .root_source_file = b.path("apps/board/threadx_modules/ra8app_setup_hello/setup_example.zig"),
         .target = b.graph.host,
     });
-    ra8app_setup_module.addImport("module_pack", b.createModule(.{
-        .root_source_file = b.path("libs/ra8_app/src/internal/module_pack.zig"),
-        .target = b.graph.host,
-    }));
-    ra8app_setup_module.addImport("test_key", b.createModule(.{
-        .root_source_file = b.path("libs/ra8_app/tools/test_key.zig"),
-        .target = b.graph.host,
-    }));
+    ra8app_setup_module.addImport("module_pack", app_dep.module("module_pack"));
+    ra8app_setup_module.addImport("test_key", app_dep.module("test_key"));
     const ra8app_setup_tests = b.addTest(.{ .root_module = ra8app_setup_module });
     zig_test_step.dependOn(&b.addRunArtifact(ra8app_setup_tests).step);
 
@@ -362,6 +355,27 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }).artifact(core_artifact_name);
+
+    const ui_include_dir = b.dependency("ra8_ui", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_ui").getEmittedIncludeTree();
+    const dfu_include_dir = b.dependency("ra8_dfu", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_dfu_boot").getEmittedIncludeTree();
+    const widget_include_dir = b.dependency("ra8_widget", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_widget").getEmittedIncludeTree();
+    const box_include_dir = b.dependency("ra8_box", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_box").getEmittedIncludeTree();
+    const jof_include_dir = b.dependency("jof", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("jof").getEmittedIncludeTree();
 
     for (slice) |member| {
         const dependency = if (std.mem.eql(u8, member.dependency_name, "ra8_epd_cal"))
@@ -388,12 +402,30 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
         });
-        suite_module.addIncludePath(b.path(member.include_path));
+        if (std.mem.eql(u8, member.dependency_name, "ra8_rot")) {
+            suite_module.addIncludePath(dfu_include_dir);
+        } else if (std.mem.eql(u8, member.dependency_name, "ra8_translate")) {
+            suite_module.addIncludePath(b.path(member.include_path));
+        }
         for (member.extra_include_paths) |include_path| {
-            suite_module.addIncludePath(b.path(include_path));
+            if (std.mem.eql(u8, include_path, "apps/shared_libs/jof/inc")) {
+                suite_module.addIncludePath(jof_include_dir);
+            } else if (std.mem.eql(u8, include_path, "libs/ra8_widget/inc")) {
+                suite_module.addIncludePath(widget_include_dir);
+            } else if (std.mem.eql(u8, include_path, "libs/ra8_box/inc")) {
+                suite_module.addIncludePath(box_include_dir);
+            } else {
+                suite_module.addIncludePath(b.path(include_path));
+            }
         }
         for (shared_include_paths) |include_path| {
-            suite_module.addIncludePath(b.path(include_path));
+            if (std.mem.eql(u8, include_path, "libs/ra8_core/inc")) {
+                continue;
+            } else if (std.mem.eql(u8, include_path, "libs/ra8_ui/inc")) {
+                suite_module.addIncludePath(ui_include_dir);
+            } else {
+                suite_module.addIncludePath(b.path(include_path));
+            }
         }
         suite_module.addCSourceFile(.{
             .file = b.path(member.c_suite_path),
@@ -900,38 +932,27 @@ fn addCompileDb(b: *std.Build, step: *std.Build.Step) usize {
     return compile_db.add(b, step, compileDbEntries(b));
 }
 
+fn exportModule(b: *std.Build, name: []const u8, module: *std.Build.Module) void {
+    const gop = b.modules.getOrPutValue(
+        b.graph.arena,
+        b.graph.dupeString(name),
+        module,
+    ) catch @panic("OOM");
+    if (gop.found_existing) {
+        std.debug.panic("ra8: duplicate exported module '{s}'", .{name});
+    }
+}
+
 /// The ra8_widget exports (RA8FW-828): `ra8_widget`, the widgets themselves,
 /// which paint through the `Paint` callbacks and touch no board; and
 /// `ra8_widget_host`, the CPU canvas plus the Zig box, rect and widget core
 /// symbols the widgets link against. Like `ra8_rpc`, both take target and
 /// optimize from whatever imports them.
 fn addWidgetModules(b: *std.Build) void {
-    const options = b.addOptions();
-    options.addOption(usize, "widget_debug_record_cap", 256);
-    const debug = b.createModule(.{ .root_source_file = b.path("libs/ra8_widget/src/widget_debug_abi.zig") });
-    debug.addOptions("build_options", options);
-    const widget = b.addModule("ra8_widget", .{
-        .root_source_file = b.path("libs/ra8_widget/src/ra8_widget_abi.zig"),
-        .imports = &.{.{ .name = "debug", .module = debug }},
-    });
-    // ra8_gfx's fonts and text layout (RA8FW-949). The widget host painter
-    // takes this same module, so a consumer importing both never compiles
-    // text.zig into two modules.
-    const gfx = b.addModule("ra8_gfx", .{
-        .root_source_file = b.path("libs/ra8_gfx/src/ra8_gfx.zig"),
-    });
-    const panel_paint = b.createModule(.{
-        .root_source_file = b.path("libs/ra8_widget/src/panel_paint.zig"),
-        .imports = &.{.{ .name = "ra8_gfx", .module = gfx }},
-    });
-    _ = b.addModule("ra8_widget_host", .{
-        .root_source_file = b.path("libs/ra8_widget/src/host_package.zig"),
-        .imports = &.{
-            .{ .name = "ra8_gfx", .module = gfx },
-            .{ .name = "panel_paint", .module = panel_paint },
-            .{ .name = "box", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_box/src/ra8_box_abi.zig") }) },
-            .{ .name = "ui", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_ui/src/ra8_ui_abi.zig") }) },
-            .{ .name = "ra8_widget", .module = widget },
-        },
-    });
+    const widget_dep = b.dependency("ra8_widget", .{});
+    const gfx_dep = b.dependency("ra8_gfx", .{});
+    exportModule(b, "ra8_widget", widget_dep.module("ra8_widget"));
+    exportModule(b, "ra8_gfx", gfx_dep.module("ra8_gfx"));
+    exportModule(b, "panel_paint", widget_dep.module("panel_paint"));
+    exportModule(b, "ra8_widget_host", widget_dep.module("ra8_widget_host"));
 }

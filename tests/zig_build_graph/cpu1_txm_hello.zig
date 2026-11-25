@@ -314,10 +314,6 @@ fn appApiModule(b: *std.Build) *std.Build.Module {
 /// The same shims built for `core`, the way a module built through C is
 /// (RA8FW-1023).
 fn appApiModuleCore(b: *std.Build, core: module_object.Core) *std.Build.Module {
-    return b.createModule(.{
-        .root_source_file = b.path("libs/ra8_app/src/internal/api/module.zig"),
-        .target = b.resolveTargetQuery(core.zigQuery()),
-        .optimize = .ReleaseSmall,
-        .unwind_tables = .none,
-    });
+    _ = core;
+    return b.dependency("ra8_app", .{}).module("app_api");
 }

@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("ra8_ui", .{
+        .root_source_file = b.path("src/ra8_ui_abi.zig"),
+    });
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_ui_abi.zig"),
         .target = target,
@@ -33,6 +37,7 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

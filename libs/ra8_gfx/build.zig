@@ -19,6 +19,10 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("ra8_gfx", .{
+        .root_source_file = b.path("src/ra8_gfx.zig"),
+    });
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_gfx_abi.zig"),
         .target = target,
@@ -38,6 +42,7 @@ pub fn build(b: *std.Build) void {
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

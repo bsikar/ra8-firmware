@@ -8,7 +8,12 @@ const Translator = @import("translate_c").Translator;
 /// The public C23 header as a Zig module. translate-c does not know the
 /// C23 keywords static_assert and alignof, so they are spelled as the C11
 /// keywords they replaced.
-fn translateHeader(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.lang.OptimizeMode) *std.Build.Module {
+fn translateHeader(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
+) *std.Build.Module {
     const header = b.addWriteFiles().add("abi_chain_c.h", "#include <stdbool.h>\n#include \"ra8_abi_chain.h\"\n");
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
         .c_source_file = header,
@@ -20,7 +25,7 @@ fn translateHeader(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     translator.defineCMacro("alignof", "_Alignof");
     translator.addIncludePath(b.path("inc"));
     translator.addIncludePath(b.path("../rust_abi_fixture/inc"));
-    translator.addIncludePath(b.path("../../libs/ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator.mod;
 }
 
@@ -29,13 +34,17 @@ pub fn build(b: *std.Build) void {
     // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
+    const core_include_dir = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core").getEmittedIncludeTree();
     const module = b.createModule(.{
         .root_source_file = b.path("tests/chain_adapter.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    const abi_chain_h = translateHeader(b, target, optimize);
+    const abi_chain_h = translateHeader(b, target, optimize, core_include_dir);
     module.addImport("abi_chain_h", abi_chain_h);
     const library = b.addLibrary(.{ .name = "ra8_abi_chain", .linkage = .static, .root_module = module });
     // The C consumer in tests/cmake/rust_abi_contract.cmake links this archive

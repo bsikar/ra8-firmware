@@ -6,6 +6,8 @@
     .dependencies = .{
         // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+        .@"if" = .{ .path = "../if" },
+        .ra8_core = .{ .path = "../ra8_core" },
     },
     .paths = .{
         "build.zig",

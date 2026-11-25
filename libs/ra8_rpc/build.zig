@@ -18,8 +18,6 @@ pub fn build(b: *std.Build) void {
 
     const module = b.addModule("ra8_rpc", .{
         .root_source_file = b.path("src/ra8_rpc.zig"),
-        .target = target,
-        .optimize = optimize,
     });
 
     const test_step = b.step("test", "Run Zig ra8_rpc tests");

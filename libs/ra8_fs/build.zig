@@ -27,6 +27,7 @@ fn translateHeaders(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
 ) *std.Build.Module {
     const header = b.addWriteFiles().add("fs_c.h", fs_header);
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
@@ -39,7 +40,7 @@ fn translateHeaders(
     translator.defineCMacro("alignas", "_Alignas");
     translator.addIncludePath(b.path("inc"));
     translator.addIncludePath(b.path("src"));
-    translator.addIncludePath(b.path("../ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator.mod;
 }
 
@@ -51,6 +52,9 @@ pub fn build(b: *std.Build) void {
     // No unwind tables in a freestanding archive, as in ra8_hal's (RA8FW-571).
     const unwind: ?std.lang.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
 
+    const core_dep = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
+    const core_lib = core_dep.artifact("ra8_core");
+
     const root = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -58,11 +62,12 @@ pub fn build(b: *std.Build) void {
         .pic = true,
         .unwind_tables = unwind,
     });
-    root.addImport("fs_h", translateHeaders(b, target, optimize));
+    root.addImport("fs_h", translateHeaders(b, target, optimize, core_lib.getEmittedIncludeTree()));
     const library = b.addLibrary(.{ .name = "ra8_fs", .linkage = .static, .root_module = root });
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.bundle_compiler_rt = false;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_fs tests");

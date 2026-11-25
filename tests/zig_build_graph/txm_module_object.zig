@@ -98,12 +98,9 @@ fn cModule(b: *std.Build, core: Core, source: []const u8) *std.Build.Module {
 /// The root module of a module's Zig, with `ra8_rpc_tx` and `ra8_rpc`
 /// importable.
 pub fn rootModule(b: *std.Build, core: Core, source: []const u8) *std.Build.Module {
-    const rpc = cModule(b, core, "libs/ra8_rpc/src/ra8_rpc.zig");
-    const rpc_tx = cModule(b, core, "libs/ra8_rpc_tx/src/ra8_rpc_tx.zig");
-    rpc_tx.addImport("ra8_rpc", rpc);
     const root = cModule(b, core, source);
-    root.addImport("ra8_rpc", rpc);
-    root.addImport("ra8_rpc_tx", rpc_tx);
+    root.addImport("ra8_rpc", b.dependency("ra8_rpc", .{}).module("ra8_rpc"));
+    root.addImport("ra8_rpc_tx", b.dependency("ra8_rpc_tx", .{}).module("ra8_rpc_tx"));
     return root;
 }
 

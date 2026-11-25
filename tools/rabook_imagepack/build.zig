@@ -28,161 +28,65 @@ const first_party_flags = [_][]const u8{
     "-DMINIZ_NO_STDIO",        "-DMINIZ_NO_TIME",
 };
 
-// miniz type-puns through byte buffers; disable strict aliasing to prevent
-// the corresponding miscompile without demoting unrelated diagnostics.
-const miniz_flags = [_][]const u8{
-    "-std=gnu23",           "-Wall",
-    "-Wextra",              "-Werror",
-    "-fno-strict-aliasing", "-DRA8_OFF_TARGET",
-    "-D_GNU_SOURCE",        "-DMINIZ_NO_ARCHIVE_APIS",
-    "-DMINIZ_NO_MALLOC",    "-DMINIZ_NO_STDIO",
-    "-DMINIZ_NO_TIME",
-};
-
-// The C-era jof unit tests drive miniz's own mz_compress() to build their
-// fixtures. MINIZ_NO_MALLOC leaves mz_compress() no allocator, so it exits
-// with MZ_MEM_ERROR (-4) before any test runs; these units get the same
-// flags minus the no-malloc define.
-const miniz_flags_malloc = [_][]const u8{
-    "-std=gnu23",           "-Wall",
-    "-Wextra",              "-Werror",
-    "-fno-strict-aliasing", "-DRA8_OFF_TARGET",
-    "-D_GNU_SOURCE",        "-DMINIZ_NO_ARCHIVE_APIS",
-    "-DMINIZ_NO_STDIO",     "-DMINIZ_NO_TIME",
-};
-
-// Part 3 + 4 of the webp recipe (cmake/ra8_webp_vendor.cmake): the arena
-// define is load-bearing for the zero-heap property, and the 60+ TU codec is
-// compiled quietly with strict aliasing off.
-const webp_vendor_flags = [_][]const u8{
-    "-std=gnu23",              "-w",
-    "-fno-strict-aliasing",    "-DRA8_WEBP_USE_ARENA",
-    "-DRA8_OFF_TARGET",        "-D_GNU_SOURCE",
-    "-DMINIZ_NO_ARCHIVE_APIS", "-DMINIZ_NO_MALLOC",
-    "-DMINIZ_NO_STDIO",        "-DMINIZ_NO_TIME",
-};
-
-const jof_dir = "../../apps/shared_libs/jof/src/";
-const book_dir = "../../apps/shared_libs/book/src/";
-const compress_dir = "../../apps/shared_libs/compress/src/";
-const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
-
-// The exact firmware members the tool calls: the JOF producer (with its
-// JPEG / PNG / WebP front ends) and reader, plus the compression seam they
-// sit on. Naming members rather than globbing keeps the HAL and peripheral
-// layers out of a host tool. The JPEG codec is Zig: RA8_FMT_JPEG_SRC is
-// empty in the C-era recipe and stays empty here.
-// The whole jof producer and reader are Zig (libjof.a), and the compression
-// seam is Zig too (libcompress.a, RA8FW-1155): no first-party C TU remains.
-
-// book.c is gone (RA8FW-1251): the whole book package is Zig now, and the
-// ra8_book archive (book_wire_lib) carries every book symbol, so no book C
-// closure remains in the imagepack build.
-const book_closure = [_][]const u8{};
-
-const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
-
-// The facade is the Zig webp archive now (RA8FW-1209): it is linked, not
-// compiled here. The ra8_imgdec archive still completes the closure the
-// way the C-era link did, and the vendored decoder TUs below still compile
-// with the arena define that keeps them heap-free.
-
 fn addC(b: *std.Build, mod: *std.Build.Module, root: []const u8, files: []const []const u8, flags: []const []const u8) void {
     mod.addCSourceFiles(.{ .root = b.path(root), .files = files, .flags = flags });
 }
 
-// The vendored decode-only TU set (the C-era GLOB_RECURSE over
-// apps/shared_libs/third_party/libwebp/src, written out statically so
-// the build needs no filesystem walk at configure time).
-const webp_vendor_sources = [_][]const u8{
-    "../../apps/shared_libs/third_party/libwebp/src/dec/alpha_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/buffer_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/frame_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/idec_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/io_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/quant_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/tree_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/vp8_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/vp8l_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/webp_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/cpu.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_clip_tables.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/bit_reader_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/color_cache_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/filters_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/huffman_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/palette.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/quant_levels_dec_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/random_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/rescaler_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/thread_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/utils.c",
+const Deps = struct {
+    fmt_lib: *std.Build.Step.Compile,
+    webp_lib: *std.Build.Step.Compile,
+    webp_vendor_lib: *std.Build.Step.Compile,
+    imgdec_lib: *std.Build.Step.Compile,
+    mem_lib: *std.Build.Step.Compile,
+    jpeg_lib: *std.Build.Step.Compile,
+    core_lib: *std.Build.Step.Compile,
+    jof_lib: *std.Build.Step.Compile,
+    jof_c_tests: std.Build.LazyPath,
+    compress_lib: *std.Build.Step.Compile,
+    miniz_lib: *std.Build.Step.Compile,
+    miniz_host_lib: *std.Build.Step.Compile,
+    book_lib: *std.Build.Step.Compile,
+    io_include_dir: std.Build.LazyPath,
+    reflow_include_dir: std.Build.LazyPath,
+    stb_image_lib: *std.Build.Step.Compile,
+    rabook_compile_lib: *std.Build.Step.Compile,
+    rabook_compile_fixture_lib: *std.Build.Step.Compile,
 };
 
-fn addWebp(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addCSourceFiles(.{ .root = b.path("."), .files = &webp_vendor_sources, .flags = &webp_vendor_flags });
-}
-
-fn addWebpIncludes(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/libwebp"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/webp/inc"));
-}
-
-fn addToolIncludes(b: *std.Build, mod: *std.Build.Module) void {
+fn linkEngineDeps(
+    b: *std.Build,
+    mod: *std.Build.Module,
+    deps: Deps,
+    with_webp: bool,
+    with_malloc_miniz: bool,
+    with_stb_image: bool,
+    with_rabook: bool,
+) void {
     mod.addIncludePath(b.path("inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_fmt/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/jof/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_jpeg/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_jpeg/src"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/jof/src"));
-    mod.addIncludePath(b.path("../../libs/ra8_io/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/compress/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_imgdec/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/book/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/miniz"));
+    mod.addIncludePath(deps.io_include_dir);
+    if (with_stb_image) {
+        mod.addIncludePath(deps.reflow_include_dir);
+        mod.linkLibrary(deps.stb_image_lib);
+    }
+    if (with_rabook) {
+        mod.linkLibrary(deps.rabook_compile_fixture_lib);
+        mod.linkLibrary(deps.rabook_compile_lib);
+    }
+    mod.linkLibrary(deps.fmt_lib);
+    if (with_webp) {
+        mod.linkLibrary(deps.webp_lib);
+        mod.linkLibrary(deps.webp_vendor_lib);
+    } else {
+        mod.addIncludePath(deps.webp_lib.getEmittedIncludeTree());
+    }
+    mod.linkLibrary(deps.imgdec_lib);
+    mod.linkLibrary(deps.jpeg_lib);
+    mod.linkLibrary(deps.jof_lib);
+    mod.linkLibrary(deps.compress_lib);
+    mod.linkLibrary(if (with_malloc_miniz) deps.miniz_host_lib else deps.miniz_lib);
+    mod.linkLibrary(deps.book_lib);
+    mod.linkLibrary(deps.mem_lib);
+    mod.linkLibrary(deps.core_lib);
 }
 
 pub fn build(b: *std.Build) void {
@@ -191,29 +95,31 @@ pub fn build(b: *std.Build) void {
     // like the C-era tool build did; an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    // The libraries linked as Zig static archives. Linking `fmt_lib` before
-    // `jof_lib` / `book_wire_lib` / `webp_lib` / `imgdec_lib` resolves all
-    // cross-archive engine symbols in a single pass.
-    const fmt_lib = b.dependency("ra8_fmt", .{ .target = target, .optimize = optimize }).artifact("ra8_fmt");
-    const webp_lib = b.dependency("webp", .{ .target = target, .optimize = optimize }).artifact("webp");
-    const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
-    const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
-    const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
-    const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig");
-    const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
-    const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
-
-    // The book stream TU is Zig (RA8FW-1248): the validator and its seams
-    // come from libra8_book.a. The wire TU is Zig (RA8FW-1242): the five priv_book_stream_* seams
-    // live in the ra8_book archive now, so the remaining book C closure calls
-    // them out of the archive instead of a compiled TU.
-    const book_wire_mod = b.createModule(.{
-        .root_source_file = b.path("../../apps/shared_libs/book/src/book_root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const book_wire_lib = b.addLibrary(.{ .name = "ra8_book", .linkage = .static, .root_module = book_wire_mod });
-    book_wire_lib.bundle_compiler_rt = true;
+    const webp_dep = b.dependency("webp", .{ .target = target, .optimize = optimize });
+    const jof_dep = b.dependency("jof", .{ .target = target, .optimize = optimize });
+    const compress_dep = b.dependency("compress", .{ .target = target, .optimize = optimize });
+    const reflow_dep = b.dependency("reflow", .{ .target = target, .optimize = optimize });
+    const rabook_dep = b.dependency("rabook_compile", .{ .target = target, .optimize = optimize });
+    const deps = Deps{
+        .fmt_lib = b.dependency("ra8_fmt", .{ .target = target, .optimize = optimize }).artifact("ra8_fmt"),
+        .webp_lib = webp_dep.artifact("webp"),
+        .webp_vendor_lib = webp_dep.artifact("webp_vendor"),
+        .imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec"),
+        .mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem"),
+        .jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg"),
+        .core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig"),
+        .jof_lib = jof_dep.artifact("jof"),
+        .jof_c_tests = jof_dep.namedWriteFiles("c_tests").getDirectory(),
+        .compress_lib = compress_dep.artifact("compress"),
+        .miniz_lib = compress_dep.artifact("miniz"),
+        .miniz_host_lib = compress_dep.artifact("miniz_host"),
+        .book_lib = b.dependency("book", .{ .target = target, .optimize = optimize }).artifact("ra8_book"),
+        .io_include_dir = b.dependency("ra8_io", .{ .target = target, .optimize = optimize }).artifact("ra8_io").getEmittedIncludeTree(),
+        .reflow_include_dir = reflow_dep.artifact("ra8_reflow_parse").getEmittedIncludeTree(),
+        .stb_image_lib = reflow_dep.artifact("stb_image"),
+        .rabook_compile_lib = rabook_dep.artifact("rabook_compile"),
+        .rabook_compile_fixture_lib = rabook_dep.artifact("rabook_compile_fixture"),
+    };
 
     const tool_sources = [_][]const u8{
         "src/main.c",
@@ -234,162 +140,120 @@ pub fn build(b: *std.Build) void {
         .sanitize_c = .off,
     });
     mod.link_libc = true;
-    mod.linkLibrary(fmt_lib);
-    mod.linkLibrary(webp_lib);
-    mod.linkLibrary(imgdec_lib);
-    mod.linkLibrary(mem_lib);
-    mod.linkLibrary(jpeg_lib);
-    mod.linkLibrary(core_lib);
-    mod.linkLibrary(jof_lib);
-    mod.linkLibrary(compress_lib);
-    mod.linkLibrary(book_wire_lib);
-    addToolIncludes(b, mod);
-    addWebpIncludes(b, mod);
+    linkEngineDeps(b, mod, deps, true, false, false, false);
     addC(b, mod, ".", &tool_sources, &first_party_flags);
-    mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &miniz_flags });
-    addWebp(b, mod);
     const exe = b.addExecutable(.{ .name = "rabook_imagepack", .root_module = mod });
     b.installArtifact(exe);
 
     // ---- unit targets (the C-era add_test set) ----
-    const Unit = struct { name: []const u8, files: []const []const u8, includes: []const []const u8, webp: bool, jofc: bool = false, bookc: bool = false, extra_defs: []const []const u8 = &.{}, no_malloc_miniz: bool = false, quiet_files: []const []const u8 = &.{} };
+    const Unit = struct {
+        name: []const u8,
+        files: []const []const u8 = &.{},
+        jof_c_file: ?[]const u8 = null,
+        webp: bool,
+        with_support_inc: bool = false,
+        with_jof_internal: bool = false,
+        extra_defs: []const []const u8 = &.{},
+        no_malloc_miniz: bool = false,
+        stb_image: bool = false,
+        rabook: bool = false,
+    };
 
     const support_inc = "../../tests/support/inc";
-    const miniz_inc = "../../apps/shared_libs/third_party/miniz";
     const units = [_]Unit{
         .{
             .name = "test_jof_audit_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_audit.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_audit.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
         },
         .{
             .name = "test_jof_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_edges_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_edges.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_edges.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_png_hostile_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_png_hostile.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc, "../../apps/shared_libs/jof/tests/inc" },
+            .jof_c_file = "test_jof_png_hostile.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
+            .with_jof_internal = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_probe_dims_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_probe_dims.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_probe_dims.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_produce_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_produce.c",
-            },
-            .quiet_files = &.{"../../apps/shared_libs/third_party/stb/stb_image_impl.c"},
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/reflow/inc", "../../apps/shared_libs/third_party/stb", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_produce.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
+            .stb_image = true,
         },
         .{
             .name = "test_jof_produce_guards_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_produce_guards.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_produce_guards.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
+            .with_jof_internal = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_produce_reject_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_produce_reject.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_produce_reject.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_jof_produce_webp_portable",
-            .files = &.{
-                "../../apps/shared_libs/jof/tests/src/test_jof_produce_webp.c",
-            },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .jof_c_file = "test_jof_produce_webp.c",
             .webp = true,
-            .jofc = true,
+            .with_support_inc = true,
             .no_malloc_miniz = true,
         },
         .{
             .name = "test_ra8_fmt_stream_inspect",
-            .files = &.{
-                "tests/src/test_ra8_fmt_stream_inspect.c",
-            },
-            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .files = &.{"tests/src/test_ra8_fmt_stream_inspect.c"},
             .webp = true,
-            .jofc = true,
         },
         .{
             .name = "test_ra8_fmt_host_fd",
             .files = &.{ "tests/src/test_ra8_fmt_host_fd.c", "src/ra8_fmt_host_fd.c" },
-            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc" },
             .webp = false,
         },
         .{
             .name = "test_ra8_fmt_stream_convert",
             .files = &.{ "tests/src/test_ra8_fmt_stream_convert.c", "src/ra8_fmt_host_fd.c" },
-            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../apps/shared_libs/jof/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", miniz_inc },
             .webp = true,
-            .jofc = true,
             .extra_defs = &.{"-DRA8_FMT_TEST_PNG=\"../../tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png\""},
         },
         .{
             .name = "test_ra8_fmt_stream_verify",
             .files = &.{"tests/src/test_ra8_fmt_stream_verify.c"},
-            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../apps/shared_libs/jof/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", miniz_inc },
             .webp = true,
-            .jofc = true,
             .extra_defs = &.{"-DRA8_FMT_TEST_PNG=\"../../tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png\""},
         },
         .{
             .name = "test_ra8_fmt_stream_rabook",
-            .files = &.{
-                "tests/src/test_ra8_fmt_stream_rabook.c",
-                "../../apps/shared_libs/rabook_compile/tests/src/rabook_compile_test_fixture.c",
-                rabook_compile_dir ++ "rabook_compile.c",
-                rabook_compile_dir ++ "ra8_rabook_finalize.c",
-                rabook_compile_dir ++ "ra8_rabook_container.c",
-            },
-            .includes = &.{ support_inc, "../../apps/shared_libs/rabook_compile/tests/inc", "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/book/inc", "../../apps/shared_libs/book/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../apps/shared_libs/rabook_compile/inc", miniz_inc },
+            .files = &.{"tests/src/test_ra8_fmt_stream_rabook.c"},
             .webp = true,
-            .bookc = true,
+            .with_support_inc = true,
+            .rabook = true,
         },
     };
 
@@ -411,40 +275,28 @@ pub fn build(b: *std.Build) void {
     for (units) |unit| {
         const tmod = b.createModule(.{ .target = target, .optimize = optimize });
         tmod.link_libc = true;
-        tmod.linkLibrary(fmt_lib);
-        tmod.linkLibrary(webp_lib);
-        tmod.linkLibrary(imgdec_lib);
-        tmod.linkLibrary(mem_lib);
-        tmod.linkLibrary(jpeg_lib);
-        tmod.linkLibrary(core_lib);
-        tmod.linkLibrary(jof_lib);
-        tmod.linkLibrary(compress_lib);
-        tmod.linkLibrary(book_wire_lib);
-        for (unit.includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
-        // The C-era test targets carried extra definitions per target
-        // (RA8_FMT_TEST_PNG's golden fixture path); those ride on the unit's
-        // own TUs, so their flag list is the warning bar plus the extras.
-        if (unit.extra_defs.len > 0) {
-            var unit_flags: std.ArrayList([]const u8) = .empty;
-            unit_flags.appendSlice(b.allocator, &first_party_flags) catch @panic("oom");
-            unit_flags.appendSlice(b.allocator, unit.extra_defs) catch @panic("oom");
-            addC(b, tmod, ".", unit.files, unit_flags.items);
-        } else {
-            addC(b, tmod, ".", unit.files, &first_party_flags);
-        }
-        if (unit.quiet_files.len > 0) addC(b, tmod, ".", unit.quiet_files, &.{"-w"});
-        const mz_flags: []const []const u8 = if (unit.no_malloc_miniz) &miniz_flags_malloc else &miniz_flags;
-        tmod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = mz_flags });
-        if (unit.webp) {
-            addWebpIncludes(b, tmod);
-            addWebp(b, tmod);
+        linkEngineDeps(b, tmod, deps, unit.webp, unit.no_malloc_miniz, unit.stb_image, unit.rabook);
+        if (unit.with_support_inc) tmod.addIncludePath(b.path(support_inc));
+        if (unit.with_jof_internal) tmod.addIncludePath(deps.jof_c_tests);
+
+        var unit_flags: std.ArrayList([]const u8) = .empty;
+        unit_flags.appendSlice(b.allocator, &first_party_flags) catch @panic("oom");
+        unit_flags.appendSlice(b.allocator, unit.extra_defs) catch @panic("oom");
+        if (unit.files.len > 0) addC(b, tmod, ".", unit.files, unit_flags.items);
+        if (unit.jof_c_file) |c_file| {
+            tmod.addCSourceFile(.{
+                .file = deps.jof_c_tests.path(b, c_file),
+                .flags = unit_flags.items,
+            });
         }
         const test_exe = b.addExecutable(.{ .name = unit.name, .root_module = tmod });
         if (std.mem.eql(u8, unit.name, "test_ra8_fmt_stream_rabook")) {
             rabook_fixture_exe = test_exe;
         }
         b.installArtifact(test_exe);
-        test_step.dependOn(&b.addRunArtifact(test_exe).step);
+        const run_test = b.addRunArtifact(test_exe);
+        run_test.setCwd(b.path("."));
+        test_step.dependOn(&run_test.step);
     }
 
     // ---- the four C-era integration scripts, driven against the built exes ----

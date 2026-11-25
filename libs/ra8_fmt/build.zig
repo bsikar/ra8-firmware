@@ -91,6 +91,9 @@ pub fn build(b: *std.Build) void {
     library_module.addImport("verify_plan", verify_plan_mod);
     library_module.addImport("verify", verify_mod);
 
+    const core_dep = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
+    const core_lib = core_dep.artifact("ra8_core");
+
     const library = b.addLibrary(.{
         .name = "ra8_fmt",
         .linkage = .static,
@@ -100,6 +103,7 @@ pub fn build(b: *std.Build) void {
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     // Keep the cross-target C contract header smoke compile on default_step.
@@ -108,7 +112,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     smoke_module.addIncludePath(b.path("inc"));
-    smoke_module.addIncludePath(b.path("../ra8_core/inc"));
+    smoke_module.addIncludePath(core_lib.getEmittedIncludeTree());
     smoke_module.addCSourceFile(.{
         .file = b.path("tests/ra8_fmt_smoke.c"),
         .flags = &.{"-std=c11"},

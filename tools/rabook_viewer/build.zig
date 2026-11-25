@@ -31,9 +31,6 @@ const first_party_flags = [_][]const u8{
     "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
 };
 
-// miniz and the stb image residue type-pun through byte buffers; the C-era
-// source-file properties kept exactly -Wno-unused-parameter (the two unused
-// callback parameters) plus strict aliasing off, nothing demoted.
 const third_party_flags = [_][]const u8{
     "-std=gnu23",            "-Wall",
     "-Wextra",               "-Werror",
@@ -42,183 +39,21 @@ const third_party_flags = [_][]const u8{
     "-DMINIZ_NO_STDIO",      "-DMINIZ_NO_TIME",
 };
 
-// Part 3 + 4 of the webp recipe (cmake/ra8_webp_vendor.cmake): the arena
-// define is load-bearing for the zero-heap property, and the 60+ TU codec is
-// compiled quietly with strict aliasing off.
-const webp_vendor_flags = [_][]const u8{
-    "-std=gnu23",           "-w",
-    "-fno-strict-aliasing", "-DRA8_WEBP_USE_ARENA",
-    "-DRA8_OFF_TARGET",     "-DMINIZ_NO_MALLOC",
-    "-DMINIZ_NO_STDIO",     "-DMINIZ_NO_TIME",
-};
-
-const comic_dir = "../../apps/shared_libs/comic/src/";
-const compress_dir = "../../apps/shared_libs/compress/src/";
-
-// The read-path members, derived the way the C-era recipe derived them.
-// Whole-read-path libraries are their full src/ glob (comic); partial
-// libraries name exactly the KEEP members the C-era ra8_viewer_read_path()
-// partition proved (epub, reflow, unarch, compress). longstrip (RA8FW-1156),
-// jof (RA8FW-1140..1154), and reflow's image/SVG path (ra8_reflow_parse) are
-// Zig archives now, so their read paths come out of the linked archives instead
-// of compiled C. libs/ra8_io/src holds no .c left (both block-device members
-// were the last, and they are DROP), so its read path comes out of the ra8_io
-// archive like the C-era link already did.
-const comic_closure = [_][]const u8{
-    comic_dir ++ "comic.c",
-    comic_dir ++ "comic_cbr.c",
-    comic_dir ++ "comic_cbt.c",
-    comic_dir ++ "comic_cbz.c",
-    comic_dir ++ "comic_tiles.c",
-    comic_dir ++ "comic_wrapped.c",
-    comic_dir ++ "ra8_rar.c",
-    comic_dir ++ "ra8_rar5.c",
-    comic_dir ++ "ra8_rar5_tables.c",
-};
-
-const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
-const stb_image_sources = [_][]const u8{
-    "../../apps/shared_libs/third_party/stb/stb_image_impl.c",
-};
-const stb_truetype_sources = [_][]const u8{
-    "../../apps/shared_libs/third_party/stb/stb_truetype_impl.c",
-};
-const stbtt_flags = [_][]const u8{
-    "-std=gnu23",
-    "-Wall",
-    "-Wextra",
-    "-Werror",
-    "-Wno-unused-parameter",
-    "-fno-strict-aliasing",
-    "-DRA8_OFF_TARGET",
-    "-DMINIZ_NO_MALLOC",
-    "-DMINIZ_NO_STDIO",
-    "-DMINIZ_NO_TIME",
-    "-include",
-    "../../apps/shared_libs/reflow/inc/ra8_stbtt_alloc.h",
-    "-DSTBTT_malloc(x,u)=ra8_stbtt_malloc(x)",
-    "-DSTBTT_free(x,u)=ra8_stbtt_free(x)",
-};
-
-// The facade is the Zig webp archive now (RA8FW-1209): it is linked, not
-// compiled here. The ra8_imgdec archive still completes the closure the
-// way the C-era link did, and the vendored decoder TUs below still compile
-// with the arena define that keeps them heap-free.
-
-// The vendored decode-only TU set (the C-era GLOB_RECURSE over
-// apps/shared_libs/third_party/libwebp/src, written out statically so
-// the build needs no filesystem walk at configure time).
-const webp_vendor_sources = [_][]const u8{
-    "../../apps/shared_libs/third_party/libwebp/src/dec/alpha_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/buffer_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/frame_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/idec_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/io_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/quant_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/tree_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/vp8_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/vp8l_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dec/webp_dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/cpu.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_clip_tables.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/dec_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/filters_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/rescaler_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_msa.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips32.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips_dsp_r2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_neon.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse2.c",
-    "../../apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse41.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/bit_reader_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/color_cache_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/filters_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/huffman_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/palette.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/quant_levels_dec_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/random_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/rescaler_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/thread_utils.c",
-    "../../apps/shared_libs/third_party/libwebp/src/utils/utils.c",
-};
-
 fn addC(b: *std.Build, mod: *std.Build.Module, root: []const u8, files: []const []const u8, flags: []const []const u8) void {
     mod.addCSourceFiles(.{ .root = b.path(root), .files = files, .flags = flags });
 }
 
-fn addWebp(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addCSourceFiles(.{ .root = b.path("."), .files = &webp_vendor_sources, .flags = &webp_vendor_flags });
-}
-
-fn addWebpIncludes(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/libwebp"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/webp/inc"));
-}
-
-// The ra8_reader PUBLIC include set from the C-era target, which every
-// consumer of the archive inherited.
-fn addReaderIncludes(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_fmt/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/book/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/comic/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/epub/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_gfx/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/longstrip/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/jof/inc"));
-    mod.addIncludePath(b.path("../../libs/if/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_io/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/compress/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/reflow/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_imgdec/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/unarch/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/xml/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/miniz"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/stb"));
-    mod.addIncludePath(b.path("../../libs/ra8_fonts"));
-    addWebpIncludes(b, mod);
-}
-
-// The Zig archives the C-era recipe linked instead of compiling those
-// libraries by path.
-fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
-    // reflow's image/SVG path (ra8_reflow_parse) and the webp archive come
-    // before the archives they call into (imgdec, gfx, mem, webp): the
-    // single-pass link resolves their calls against them.
+// Link all packaged Zig/C/SOUP archives and attach header-only emitted include
+// trees so consumers reach every upstream library and vendored dep cleanly.
+fn linkZigLibs(
+    b: *std.Build,
+    mod: *std.Build.Module,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    fonts_include_dir: std.Build.LazyPath,
+) void {
     const book_lib = b.dependency("book", .{ .target = target, .optimize = optimize }).artifact("ra8_book");
+    const comic_lib = b.dependency("comic", .{ .target = target, .optimize = optimize }).artifact("comic");
     const epub_dep = b.dependency("epub", .{ .target = target, .optimize = optimize });
     const epub_open_lib = epub_dep.artifact("ra8_epub_open");
     const epub_chapter_lib = epub_dep.artifact("ra8_epub_chapter");
@@ -227,18 +62,26 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     const epub_lib = epub_dep.artifact("ra8_epub");
     const epub_miniz_lib = epub_dep.artifact("ra8_epub_miniz");
     const xml_lib = b.dependency("xml", .{ .target = target, .optimize = optimize }).artifact("xml_reader");
-    const reflow_lib = b.dependency("reflow", .{ .target = target, .optimize = optimize }).artifact("ra8_reflow_parse");
-    const webp_lib = b.dependency("webp", .{ .target = target, .optimize = optimize }).artifact("webp");
+    const reflow_dep = b.dependency("reflow", .{ .target = target, .optimize = optimize });
+    const reflow_lib = reflow_dep.artifact("ra8_reflow_parse");
+    const stb_img_lib = reflow_dep.artifact("stb_image");
+    const stb_tt_arena_lib = reflow_dep.artifact("stb_truetype_arena");
+    const webp_dep = b.dependency("webp", .{ .target = target, .optimize = optimize });
+    const webp_lib = webp_dep.artifact("webp");
+    const webp_vendor_lib = webp_dep.artifact("webp_vendor");
     const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
     const gfx_lib = b.dependency("ra8_gfx", .{ .target = target, .optimize = optimize }).artifact("ra8_gfx");
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
     const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig");
+    const fmt_lib = b.dependency("ra8_fmt", .{ .target = target, .optimize = optimize }).artifact("ra8_fmt");
     const if_lib = b.dependency("ra8_if", .{ .target = target, .optimize = optimize }).artifact("if");
     // The viewer needs only the stream units: its read path drives the ra8_io
     // stream ABI, and the one KEEP/DROP member that wanted more (epub_fs.c) is
     // DROP. The narrow root is the same units=stream archive glyph_bench uses.
     const io_lib = b.dependency("ra8_io", .{ .target = target, .optimize = optimize, .units = "stream" }).artifact("ra8_io");
-    const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
+    const compress_dep = b.dependency("compress", .{ .target = target, .optimize = optimize });
+    const compress_lib = compress_dep.artifact("compress");
+    const miniz_archive_lib = compress_dep.artifact("miniz_archive");
     const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
     // jof's decode path runs the JPEG backend through the C ABI, so the
     // ra8_jpeg archive rides the link beside imgdec exactly as the C-era
@@ -250,30 +93,42 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     // RA8FW-1167 moved epub's miniz arena allocator into the ra8_epub_miniz
     // archive, so the allocator stops being a compiled C TU here and rides the
     // archive beside the miniz DEFLATE core the epub block still compiles.
-    const unarch_io_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_io");
-    const unarch_tar_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_tar");
+    const unarch_dep = b.dependency("unarch", .{ .target = target, .optimize = optimize });
+    const unarch_io_lib = unarch_dep.artifact("unarch_io");
+    const unarch_tar_lib = unarch_dep.artifact("unarch_tar");
+
+    mod.addIncludePath(fonts_include_dir);
+    mod.addIncludePath(fmt_lib.getEmittedIncludeTree());
+    mod.addIncludePath(unarch_dep.artifact("unarch_gzip").getEmittedIncludeTree());
+    mod.addIncludePath(unarch_dep.artifact("unarch_xz").getEmittedIncludeTree());
+
+    mod.linkLibrary(comic_lib);
     mod.linkLibrary(book_lib);
     mod.linkLibrary(epub_open_lib);
     mod.linkLibrary(epub_chapter_lib);
     mod.linkLibrary(epub_toc_lib);
     mod.linkLibrary(epub_xml_lib);
     mod.linkLibrary(epub_lib);
+    mod.linkLibrary(epub_miniz_lib);
     mod.linkLibrary(xml_lib);
     mod.linkLibrary(reflow_lib);
+    mod.linkLibrary(longstrip_lib);
+    mod.linkLibrary(jof_lib);
     mod.linkLibrary(webp_lib);
+    mod.linkLibrary(webp_vendor_lib);
+    mod.linkLibrary(stb_img_lib);
+    mod.linkLibrary(stb_tt_arena_lib);
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(gfx_lib);
-    mod.linkLibrary(mem_lib);
-    mod.linkLibrary(core_lib);
+    mod.linkLibrary(jpeg_lib);
+    mod.linkLibrary(compress_lib);
+    mod.linkLibrary(miniz_archive_lib);
     mod.linkLibrary(if_lib);
     mod.linkLibrary(io_lib);
-    mod.linkLibrary(compress_lib);
-    mod.linkLibrary(jof_lib);
-    mod.linkLibrary(longstrip_lib);
-    mod.linkLibrary(jpeg_lib);
-    mod.linkLibrary(epub_miniz_lib);
-    mod.linkLibrary(unarch_io_lib);
     mod.linkLibrary(unarch_tar_lib);
+    mod.linkLibrary(unarch_io_lib);
+    mod.linkLibrary(mem_lib);
+    mod.linkLibrary(core_lib);
 }
 
 pub fn build(b: *std.Build) void {
@@ -284,9 +139,11 @@ pub fn build(b: *std.Build) void {
 
     // Bake the Latin-1 Literata face via font_to_c so the reflow path renders
     // proportional serif glyphs without committing raw font hex tables.
+    const fonts_dep = b.dependency("ra8_fonts", .{ .target = target, .optimize = optimize });
+    const fonts_include_dir = fonts_dep.namedWriteFiles("include").getDirectory();
     const font_tool = b.dependency("font_to_c", .{});
     const gen_font = b.addRunArtifact(font_tool.artifact("font_to_c"));
-    gen_font.addFileArg(b.path("../../libs/ra8_fonts/literata_latin1.ttf"));
+    gen_font.addFileArg(fonts_dep.namedWriteFiles("assets").getDirectory().path(b, "literata_latin1.ttf"));
     const baked_font_c = gen_font.addOutputFileArg("ra8_font_literata_latin1.c");
     gen_font.addArg("g_ra8_font_literata_latin1");
     gen_font.addArg("literata_latin1.h");
@@ -300,14 +157,8 @@ pub fn build(b: *std.Build) void {
         .sanitize_c = .off,
     });
     reader_mod.link_libc = true;
-    linkZigLibs(b, reader_mod, target, optimize);
-    addReaderIncludes(b, reader_mod);
-    addC(b, reader_mod, ".", &comic_closure, &first_party_flags);
+    linkZigLibs(b, reader_mod, target, optimize, fonts_include_dir);
     reader_mod.addCSourceFile(.{ .file = baked_font_c, .flags = &third_party_flags });
-    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
-    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_image_sources, .flags = &third_party_flags });
-    reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_truetype_sources, .flags = &stbtt_flags });
-    addWebp(b, reader_mod);
     const reader = b.addLibrary(.{ .name = "ra8_reader", .linkage = .static, .root_module = reader_mod });
 
     // ---- rabook_viewer: C core + window backend ----
@@ -337,11 +188,10 @@ pub fn build(b: *std.Build) void {
         .sanitize_c = .off,
     });
     exe_mod.link_libc = true;
-    linkZigLibs(b, exe_mod, target, optimize);
+    linkZigLibs(b, exe_mod, target, optimize, fonts_include_dir);
     exe_mod.addIncludePath(b.path("inc"));
     exe_mod.addIncludePath(b.path("../../port/posix/inc"));
     exe_mod.addIncludePath(b.path("../../port/posix/src"));
-    addReaderIncludes(b, exe_mod);
     addC(b, exe_mod, ".", &exe_sources, &first_party_flags);
     exe_mod.linkLibrary(reader);
     const exe = b.addExecutable(.{ .name = "rabook_viewer", .root_module = exe_mod });
@@ -423,8 +273,7 @@ pub fn build(b: *std.Build) void {
             .sanitize_c = if (unit.sanitize_c) null else .off,
         });
         tmod.link_libc = true;
-        linkZigLibs(b, tmod, target, optimize);
-        addReaderIncludes(b, tmod);
+        linkZigLibs(b, tmod, target, optimize, fonts_include_dir);
         for (unit.extra_includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
         addC(b, tmod, ".", unit.files, &first_party_flags);
         tmod.linkLibrary(reader);

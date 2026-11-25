@@ -5,6 +5,11 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .compress = .{ .path = "../compress" },
+        .webp = .{ .path = "../webp" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_imgdec = .{ .path = "../../../libs/ra8_imgdec" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
         // Turns the jof C headers into the `jof_h` module jof_abi.zig re-exports.
         .translate_c = .{
             .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",

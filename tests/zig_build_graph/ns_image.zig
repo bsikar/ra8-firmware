@@ -149,10 +149,6 @@ pub const NsImage = struct {
 /// globs that directory into the four apps that name the library for their
 /// SECURE image, and a `.ns_rot_header` section in a Secure ELF is an orphan
 /// its script never places.
-pub const rot_header_source = "libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.zig";
-/// The register constants the record reads its magic from, imported as
-/// `tz_regs`: `ns/` cannot reach `../src` by relative import.
-pub const rot_header_regs = "libs/ra8_tz_secure_boot/src/internal/regs.zig";
 pub const rot_header_include_dir = "libs/ra8_tz_secure_boot/inc";
 
 /// `-fshort-enums -ffreestanding`, in the order the NS target declares them
@@ -366,17 +362,21 @@ pub const Context = struct {
 /// `ra8_ns_rot_header_object()` builds it.
 fn rotHeaderObject(b: *std.Build, ctx: Context) std.Build.LazyPath {
     const target = ctx.zig_target orelse @panic("ra8: the NS link needs the Arm Zig target");
-    const regs = b.createModule(.{
-        .root_source_file = pkg_path.lazy(b, rot_header_regs),
-        .target = target,
-        .optimize = ctx.zig_optimize,
-    });
+    const shim = b.addWriteFiles().add("ns_rot_header_shim.zig",
+        \\comptime {
+        \\    _ = @import("ns_rot_header");
+        \\}
+        \\
+    );
     const module = b.createModule(.{
-        .root_source_file = pkg_path.lazy(b, rot_header_source),
+        .root_source_file = shim,
         .target = target,
         .optimize = ctx.zig_optimize,
         .unwind_tables = .none,
-        .imports = &.{.{ .name = "tz_regs", .module = regs }},
+        .imports = &.{.{
+            .name = "ns_rot_header",
+            .module = b.dependency("ra8_tz_secure_boot", .{}).module("ns_rot_header"),
+        }},
     });
     const object = b.addObject(.{
         .name = b.fmt("{s}_rot_header", .{ctx.image.name}),

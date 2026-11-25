@@ -126,6 +126,7 @@ pub fn build(b: *std.Build) void {
         });
         freestanding_library.bundle_compiler_rt = false;
         freestanding_library.root_module.pic = true;
+        freestanding_library.installHeadersDirectory(b.path("inc"), "", .{});
         b.installArtifact(freestanding_library);
     }
 
@@ -427,6 +428,7 @@ pub fn build(b: *std.Build) void {
         });
         library.bundle_compiler_rt = false;
         library.root_module.pic = true;
+        library.installHeadersDirectory(b.path("inc"), "", .{});
         b.installArtifact(library);
     } else {
         const image_root = b.createModule(.{
@@ -461,6 +463,7 @@ pub fn build(b: *std.Build) void {
         image_library.bundle_compiler_rt = false;
         image_library.link_function_sections = true;
         image_library.link_data_sections = true;
+        image_library.installHeadersDirectory(b.path("inc"), "", .{});
         b.installArtifact(image_library);
     }
 

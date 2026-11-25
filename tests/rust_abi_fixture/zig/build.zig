@@ -10,7 +10,12 @@ const Translator = @import("translate_c").Translator;
 /// The public C23 header as a Zig module. translate-c does not know the
 /// C23 keywords static_assert and alignof, so they are spelled as the C11
 /// keywords they replaced.
-fn translateHeader(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.lang.OptimizeMode) *std.Build.Module {
+fn translateHeader(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
+) *std.Build.Module {
     const header = b.addWriteFiles().add("rust_abi_c.h", "#include <stdbool.h>\n#include \"ra8_rust_abi_fixture.h\"\n");
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
         .c_source_file = header,
@@ -21,7 +26,7 @@ fn translateHeader(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     translator.defineCMacro("static_assert", "_Static_assert");
     translator.defineCMacro("alignof", "_Alignof");
     translator.addIncludePath(b.path("../inc"));
-    translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator.mod;
 }
 
@@ -30,6 +35,10 @@ pub fn build(b: *std.Build) void {
     // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
+    const core_include_dir = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core").getEmittedIncludeTree();
     const supplied_lib_dir = b.option([]const u8, "rust-lib-dir", "Directory containing the Rust ABI archive");
     const rust_lib_dir = supplied_lib_dir orelse b.root.joinString(b.allocator, "../target/debug") catch @panic("OOM");
     const rust_archive = b.pathJoin(&.{ rust_lib_dir, "libra8_rust_abi_fixture.a" });
@@ -40,7 +49,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     test_module.link_libc = true;
-    test_module.addImport("rust_abi_h", translateHeader(b, target, optimize));
+    test_module.addImport("rust_abi_h", translateHeader(b, target, optimize, core_include_dir));
 
     const tests = b.addTest(.{ .root_module = test_module });
     tests.root_module.addObjectFile(.{ .cwd_relative = rust_archive });

@@ -16,6 +16,10 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("ra8_nsc_appimg_pubkey", .{
+        .root_source_file = b.path("src/ra8_nsc_appimg_pubkey.zig"),
+    });
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_nsc_appimg_verify.zig"),
         .target = target,
@@ -29,6 +33,7 @@ pub fn build(b: *std.Build) void {
         .root_module = library_module,
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const pubkey_module = b.createModule(.{
@@ -44,6 +49,7 @@ pub fn build(b: *std.Build) void {
         .root_module = pubkey_module,
     });
     pubkey_library.bundle_compiler_rt = pubkey_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    pubkey_library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(pubkey_library);
 
     const verify_subject = b.createModule(.{

@@ -5,6 +5,9 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .jof = .{ .path = "../jof" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
         // Turns the longstrip C header set into the `longstrip_h` module
         // longstrip_abi.zig re-exports.
         .translate_c = .{

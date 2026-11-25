@@ -17,6 +17,11 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core");
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/xml_abi.zig"),
         .target = target,
@@ -30,6 +35,7 @@ pub fn build(b: *std.Build) void {
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig xml reader tests");
@@ -44,9 +50,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     test_module.addImport("xml_abi", sut_module);
-    test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("src"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    test_module.addIncludePath(library.getEmittedIncludeTree());
+    test_module.addIncludePath(core_lib.getEmittedIncludeTree());
     test_module.link_libc = true;
     const xml_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(xml_test).step);

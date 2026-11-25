@@ -96,6 +96,7 @@ pub fn build(b: *std.Build) void {
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const pipeline_test_mod = b.createModule(.{

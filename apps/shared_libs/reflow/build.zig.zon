@@ -5,6 +5,11 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
+        .ra8_imgdec = .{ .path = "../../../libs/ra8_imgdec" },
+        .ra8_gfx = .{ .path = "../../../libs/ra8_gfx" },
+        .webp = .{ .path = "../webp" },
     },
     .paths = .{
         "build.zig",

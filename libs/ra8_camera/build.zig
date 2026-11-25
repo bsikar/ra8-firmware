@@ -64,6 +64,7 @@ pub fn build(b: *std.Build) void {
         });
         library.root_module.addObject(object);
     }
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

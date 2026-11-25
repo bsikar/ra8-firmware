@@ -20,8 +20,6 @@ const ra8_build = @import("ra8_zig_build");
 // 10) exactly as they do in the ARM and host-test builds.
 const first_party_flags = [_][]const u8{ "-std=gnu23", "-Wall", "-Wextra", "-Werror" };
 
-const fs_dir = "../../libs/ra8_fs/src/";
-
 // The tool is split across two TUs (file-size gate): the host container plus
 // entry point, and the population pass that streams and verifies each book.
 // Every ra8_fs TU is Zig (RA8FW-1138); the tool links the ra8_fs archive
@@ -43,6 +41,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
     // The libraries the C-era recipe linked as Zig archives.
+    const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core");
     const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
     const fs_lib = b.dependency("ra8_fs", .{ .target = target, .optimize = optimize }).artifact("ra8_fs");
@@ -54,12 +53,8 @@ pub fn build(b: *std.Build) void {
     // The library lock is Zig (RA8FW-724): the fat TUs below stopped defining
     // ra8_fs_set_lock / priv_lock_*, so the archive rides beside them.
     mod.linkLibrary(fs_lib);
+    mod.addIncludePath(core_lib.getEmittedIncludeTree());
     mod.addIncludePath(b.path("inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_fs/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    // ra8_imgdec.h includes "ra8_arena.h", which lives in ra8_mem.
-    mod.addIncludePath(b.path("../../libs/ra8_imgdec/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
     addC(b, mod, ".", &tool_sources, &first_party_flags);
     const exe = b.addExecutable(.{ .name = "mkbookimg", .root_module = mod });
     b.installArtifact(exe);

@@ -19,6 +19,14 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const box_lib = box_dep.artifact("ra8_box");
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core_zig");
+    const ui_lib = b.dependency("ra8_ui", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_ui");
 
     const host_module = b.createModule(.{
         .target = target,
@@ -34,9 +42,9 @@ pub fn build(b: *std.Build) void {
         .flags = &.{"-std=c23"},
     });
     host_module.addIncludePath(b.path("inc"));
-    host_module.addIncludePath(b.path("../../../libs/ra8_box/inc"));
-    host_module.addIncludePath(b.path("../../../libs/ra8_ui/inc"));
-    host_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    host_module.addIncludePath(box_lib.getEmittedIncludeTree());
+    host_module.addIncludePath(ui_lib.getEmittedIncludeTree());
+    host_module.addIncludePath(core_lib.getEmittedIncludeTree());
     host_module.linkLibrary(box_lib);
 
     const host_verify = b.addExecutable(.{
@@ -66,7 +74,7 @@ pub fn build(b: *std.Build) void {
         .files = &.{"src/host_log_stub.c"},
         .flags = &.{"-std=c23"},
     });
-    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    test_module.addIncludePath(core_lib.getEmittedIncludeTree());
     test_module.linkLibrary(box_lib);
 
     const zig_verify_tests = b.addTest(.{ .root_module = test_module });

@@ -71,6 +71,6 @@ test "a named import carries its module name and a repo-relative root" {
     };
     const import = row.zig_main_imports[0];
     try std.testing.expectEqualStrings("golden", import.name);
-    try std.testing.expect(!std.mem.startsWith(u8, import.path, row.dir));
-    try std.testing.expect(std.mem.endsWith(u8, import.path, ".zig"));
+    try std.testing.expect(!std.mem.startsWith(u8, import.path.?, row.dir));
+    try std.testing.expect(std.mem.endsWith(u8, import.path.?, ".zig"));
 }

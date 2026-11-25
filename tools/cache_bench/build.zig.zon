@@ -4,7 +4,10 @@
     .fingerprint = 0x7ed8e5ac640ef27e,
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
+        .ra8_core = .{ .path = "../../libs/ra8_core" },
         .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+        .ra8_book = .{ .path = "../../apps/shared_libs/book" },
+        .compress = .{ .path = "../../apps/shared_libs/compress" },
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
     },
     .paths = .{

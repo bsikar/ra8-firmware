@@ -9,7 +9,12 @@ const Translator = @import("translate_c").Translator;
 /// so nothing here is compiled from C: the codec arrives as the `ra8_jpeg`
 /// and `ra8_core` archives linked in build(). Only the public
 /// ra8_jpeg_sw.h is translated, for src/codec.zig.
-fn addCodec(module: *std.Build.Module, b: *std.Build) void {
+fn addCodec(
+    module: *std.Build.Module,
+    b: *std.Build,
+    jpeg_include_dir: std.Build.LazyPath,
+    core_include_dir: std.Build.LazyPath,
+) void {
     const header = b.addWriteFiles().add("ra8_jpeg_sw_c.h", "#include <stdbool.h>\n#include \"ra8_jpeg_sw.h\"\n");
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
         .c_source_file = header,
@@ -17,8 +22,8 @@ fn addCodec(module: *std.Build.Module, b: *std.Build) void {
         .optimize = module.optimize.?,
         .link_libc = true,
     });
-    translator.addIncludePath(b.path("../../../libs/ra8_jpeg/inc"));
-    translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    translator.addIncludePath(jpeg_include_dir);
+    translator.addIncludePath(core_include_dir);
     module.addImport("ra8_jpeg_sw_h", translator.mod);
     module.link_libc = true;
 }
@@ -33,13 +38,16 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    addCodec(app_module, b);
 
     const jpeg = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize });
-    app_module.linkLibrary(jpeg.artifact("ra8_jpeg"));
+    const jpeg_lib = jpeg.artifact("ra8_jpeg");
+    app_module.linkLibrary(jpeg_lib);
 
     const core = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
-    app_module.linkLibrary(core.artifact("ra8_core_zig"));
+    const core_lib = core.artifact("ra8_core_zig");
+    app_module.linkLibrary(core_lib);
+
+    addCodec(app_module, b, jpeg_lib.getEmittedIncludeTree(), core_lib.getEmittedIncludeTree());
 
     const executable = b.addExecutable(.{ .name = "image_pyramid", .root_module = app_module });
     b.installArtifact(executable);

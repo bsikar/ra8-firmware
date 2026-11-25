@@ -12,6 +12,7 @@ fn translateHeaders(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
     name: []const u8,
     includes: []const u8,
 ) *std.Build.Module {
@@ -26,7 +27,7 @@ fn translateHeaders(
     translator.defineCMacro("alignof", "_Alignof");
     translator.addIncludePath(b.path("../inc"));
     translator.addIncludePath(b.path("../src"));
-    translator.addIncludePath(b.path("../../../../libs/ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator.mod;
 }
 
@@ -35,13 +36,17 @@ pub fn build(b: *std.Build) void {
     // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
+    const core_include_dir = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core").getEmittedIncludeTree();
     const adapter = b.createModule(.{
         .root_source_file = b.path("src/adapter.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    const firmware_pipeline_h = translateHeaders(b, target, optimize, "firmware_pipeline_c.h",
+    const firmware_pipeline_h = translateHeaders(b, target, optimize, core_include_dir, "firmware_pipeline_c.h",
         \\#include "firmware_pipeline.h"
         \\#include "firmware_pipeline_rust.h"
         \\
@@ -71,7 +76,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    executable_module.addImport("firmware_pipeline_main_h", translateHeaders(b, target, optimize, "firmware_pipeline_main_c.h",
+    executable_module.addImport("firmware_pipeline_main_h", translateHeaders(b, target, optimize, core_include_dir, "firmware_pipeline_main_c.h",
         \\#include "firmware_pipeline.h"
         \\#include "firmware_pipeline_io_internal.h"
         \\
@@ -79,7 +84,7 @@ pub fn build(b: *std.Build) void {
     // The C sources compiled into the executable still need the headers.
     executable_module.addIncludePath(b.path("../inc"));
     executable_module.addIncludePath(b.path("../src"));
-    executable_module.addIncludePath(b.path("../../../../libs/ra8_core/inc"));
+    executable_module.addIncludePath(core_include_dir);
     const executable = b.addExecutable(.{
         .name = "firmware_pipeline_zig_main",
         .root_module = executable_module,

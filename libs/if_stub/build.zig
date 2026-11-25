@@ -109,15 +109,13 @@ pub fn build(b: *std.Build) void {
         proof_module.addImport("gpio_stub_abi", gpio_abi);
         proof_module.addImport("uart_stub_abi", uart_abi);
 
-        // The facade as one module: libs/if/src/facade.zig composes the four
-        // peripheral facades, so the image carries one copy of the shared
-        // core and every facade export the stub externs resolve against.
-        const fw_if = b.createModule(.{
-            .root_source_file = b.path("../if/src/facade.zig"),
+        // The facade as one module composes the peripheral facades so the image
+        // carries one copy of the shared core and every facade export resolves.
+        const if_dep_proof = b.dependency("if", .{
             .target = target,
             .optimize = optimize,
         });
-        proof_module.addImport("fw_if", fw_if);
+        proof_module.addImport("fw_if", if_dep_proof.module("fw_if"));
 
         const proof = b.addExecutable(.{
             .name = "if_stub_proof",
@@ -186,68 +184,41 @@ pub fn build(b: *std.Build) void {
     uart_test.addImport("uart_stub", uart_stub);
     uart_test.addImport("uart_stub_abi", uart_abi);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = uart_test })).step);
-    const smoke = b.addObject(.{
-        .name = "if_stub_clock_smoke",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
+    const if_dep = b.dependency("if", .{
+        .target = target,
+        .optimize = optimize,
     });
-    smoke.root_module.addCSourceFile(.{
-        .file = b.path("tests/clock_stub_smoke.c"),
-        .flags = &.{"-std=c11"},
-    });
-    smoke.root_module.addIncludePath(b.path("inc"));
-    smoke.root_module.addIncludePath(b.path("../if/inc"));
-    smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
-    const rng_smoke = b.addObject(.{
-        .name = "if_stub_rng_smoke",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    rng_smoke.root_module.addCSourceFile(.{
-        .file = b.path("tests/rng_stub_smoke.c"),
-        .flags = &.{"-std=c11"},
-    });
-    rng_smoke.root_module.addIncludePath(b.path("inc"));
-    rng_smoke.root_module.addIncludePath(b.path("../if/inc"));
-    rng_smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
-    b.default_step.dependOn(&rng_smoke.step);
+    const if_lib = if_dep.artifact("if");
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core");
+    const if_include_dir = if_lib.getEmittedIncludeTree();
+    const core_include_dir = core_lib.getEmittedIncludeTree();
 
-    const gpio_smoke = b.addObject(.{
-        .name = "if_stub_gpio_smoke",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    gpio_smoke.root_module.addCSourceFile(.{
-        .file = b.path("tests/gpio_stub_smoke.c"),
-        .flags = &.{"-std=c11"},
-    });
-    gpio_smoke.root_module.addIncludePath(b.path("inc"));
-    gpio_smoke.root_module.addIncludePath(b.path("../if/inc"));
-    gpio_smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
-    b.default_step.dependOn(&gpio_smoke.step);
-
-    const uart_smoke = b.addObject(.{
-        .name = "if_stub_uart_smoke",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    uart_smoke.root_module.addCSourceFile(.{
-        .file = b.path("tests/uart_stub_smoke.c"),
-        .flags = &.{"-std=c11"},
-    });
-    uart_smoke.root_module.addIncludePath(b.path("inc"));
-    uart_smoke.root_module.addIncludePath(b.path("../if/inc"));
-    uart_smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
-    b.default_step.dependOn(&uart_smoke.step);
-    b.default_step.dependOn(&smoke.step);
+    const smoke_specs = [_]struct { name: []const u8, file: []const u8 }{
+        .{ .name = "if_stub_clock_smoke", .file = "tests/clock_stub_smoke.c" },
+        .{ .name = "if_stub_rng_smoke", .file = "tests/rng_stub_smoke.c" },
+        .{ .name = "if_stub_gpio_smoke", .file = "tests/gpio_stub_smoke.c" },
+        .{ .name = "if_stub_uart_smoke", .file = "tests/uart_stub_smoke.c" },
+    };
+    for (smoke_specs) |spec| {
+        const obj = b.addObject(.{
+            .name = spec.name,
+            .root_module = b.createModule(.{
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        obj.root_module.addCSourceFile(.{
+            .file = b.path(spec.file),
+            .flags = &.{"-std=c11"},
+        });
+        obj.root_module.addIncludePath(b.path("inc"));
+        obj.root_module.addIncludePath(if_include_dir);
+        obj.root_module.addIncludePath(core_include_dir);
+        b.default_step.dependOn(&obj.step);
+    }
 
     const library = b.addLibrary(.{
         .name = "if_stub",
@@ -260,5 +231,6 @@ pub fn build(b: *std.Build) void {
     // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 }

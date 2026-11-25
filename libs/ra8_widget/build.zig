@@ -25,6 +25,40 @@ pub fn build(b: *std.Build) void {
     const debug_build_options = b.addOptions();
     debug_build_options.addOption(usize, "widget_debug_record_cap", debug_record_cap);
 
+    const exported_debug = b.addModule("debug", .{
+        .root_source_file = b.path("src/widget_debug_abi.zig"),
+    });
+    exported_debug.addOptions("build_options", debug_build_options);
+
+    const gfx_dep = b.dependency("ra8_gfx", .{ .target = target, .optimize = optimize });
+    const box_dep = b.dependency("ra8_box", .{ .target = target, .optimize = optimize });
+    const ui_dep = b.dependency("ra8_ui", .{ .target = target, .optimize = optimize });
+    const gfx_module = gfx_dep.module("ra8_gfx");
+    const box_module = box_dep.module("ra8_box");
+    const ui_module = ui_dep.module("ra8_ui");
+
+    const exported_widget = b.addModule("ra8_widget", .{
+        .root_source_file = b.path("src/ra8_widget_abi.zig"),
+        .imports = &.{.{ .name = "debug", .module = exported_debug }},
+    });
+    const exported_panel_paint = b.addModule("panel_paint", .{
+        .root_source_file = b.path("src/panel_paint.zig"),
+        .imports = &.{.{ .name = "ra8_gfx", .module = gfx_module }},
+    });
+    _ = b.addModule("widget_paint_abi", .{
+        .root_source_file = b.path("src/widget_paint_abi.zig"),
+    });
+    _ = b.addModule("ra8_widget_host", .{
+        .root_source_file = b.path("src/host_package.zig"),
+        .imports = &.{
+            .{ .name = "ra8_gfx", .module = gfx_module },
+            .{ .name = "panel_paint", .module = exported_panel_paint },
+            .{ .name = "box", .module = box_module },
+            .{ .name = "ui", .module = ui_module },
+            .{ .name = "ra8_widget", .module = exported_widget },
+        },
+    });
+
     const debug_module = b.createModule(.{
         .root_source_file = b.path("src/widget_debug_abi.zig"),
         .target = target,
@@ -48,6 +82,7 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     if (optimize == .debug) library.root_module.addImport("debug", debug_module);
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -108,17 +143,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const host_font_module = b.createModule(.{
-        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
     const host_render_test_module = b.createModule(.{
         .root_source_file = b.path("tests/host_render_test.zig"),
         .target = target,
         .optimize = optimize,
     });
-    host_paint_module.addImport("ra8_gfx", host_font_module);
+    host_paint_module.addImport("ra8_gfx", gfx_module);
     host_render_test_module.addImport("host", host_paint_module);
     const host_render_abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_widget_abi.zig"),
@@ -159,20 +189,20 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    panel_paint_module.addImport("ra8_gfx", host_font_module);
+    panel_paint_module.addImport("ra8_gfx", gfx_module);
     const surface_paint_module = b.createModule(.{
         .root_source_file = b.path("src/host_surface_paint.zig"),
         .target = target,
         .optimize = optimize,
     });
-    surface_paint_module.addImport("ra8_gfx", host_font_module);
+    surface_paint_module.addImport("ra8_gfx", gfx_module);
     surface_paint_module.addImport("panel_paint", panel_paint_module);
     const eink_paint_module = b.createModule(.{
         .root_source_file = b.path("src/eink_panel_paint.zig"),
         .target = target,
         .optimize = optimize,
     });
-    eink_paint_module.addImport("ra8_gfx", host_font_module);
+    eink_paint_module.addImport("ra8_gfx", gfx_module);
     eink_paint_module.addImport("panel_paint", panel_paint_module);
     const surface_render_test_module = b.createModule(.{
         .root_source_file = b.path("tests/surface_render_test.zig"),
@@ -180,7 +210,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     surface_render_test_module.addImport("surface_paint", surface_paint_module);
-    surface_render_test_module.addImport("ra8_gfx", host_font_module);
+    surface_render_test_module.addImport("ra8_gfx", gfx_module);
     surface_render_test_module.addImport("abi", host_render_abi_module);
     const surface_render_tests = b.addTest(.{ .root_module = surface_render_test_module });
     const eink_render_test_module = b.createModule(.{
@@ -190,7 +220,7 @@ pub fn build(b: *std.Build) void {
     });
     eink_render_test_module.addImport("eink_paint", eink_paint_module);
     eink_render_test_module.addImport("surface_paint", surface_paint_module);
-    eink_render_test_module.addImport("ra8_gfx", host_font_module);
+    eink_render_test_module.addImport("ra8_gfx", gfx_module);
     eink_render_test_module.addImport("abi", host_render_abi_module);
     const eink_render_tests = b.addTest(.{ .root_module = eink_render_test_module });
 
@@ -199,18 +229,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    host_pkg_module.addImport("ra8_gfx", host_font_module);
+    host_pkg_module.addImport("ra8_gfx", gfx_module);
     host_pkg_module.addImport("panel_paint", panel_paint_module);
-    host_pkg_module.addImport("box", b.createModule(.{
-        .root_source_file = b.path("../ra8_box/src/ra8_box_abi.zig"),
-        .target = target,
-        .optimize = optimize,
-    }));
-    host_pkg_module.addImport("ui", b.createModule(.{
-        .root_source_file = b.path("../ra8_ui/src/ra8_ui_abi.zig"),
-        .target = target,
-        .optimize = optimize,
-    }));
+    host_pkg_module.addImport("box", box_module);
+    host_pkg_module.addImport("ui", ui_module);
     host_pkg_module.addImport("ra8_widget", host_render_abi_module);
     const host_pkg_test_module = b.createModule(.{
         .root_source_file = b.path("tests/host_package_test.zig"),
@@ -224,7 +246,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    gfx_module_test_module.addImport("ra8_gfx", host_font_module);
+    gfx_module_test_module.addImport("ra8_gfx", gfx_module);
     const gfx_module_tests = b.addTest(.{ .root_module = gfx_module_test_module });
     const toggle_module = b.createModule(.{
         .root_source_file = b.path("src/widget_toggle_abi.zig"),
@@ -491,14 +513,14 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_list_tests.step);
     test_step.dependOn(&run_core_tests.step);
     test_step.dependOn(&run_pager_tests.step);
-    addArmLayoutCheck(b, test_step);
+    addArmLayoutCheck(b, test_step, gfx_module);
 }
 
 /// Compile the library for the cortex_m85 image target as part of `test`.
 /// Host tests only build for 64-bit, so a C-layout assert that holds there
 /// but not at 32 bits (RA8FW-913) would otherwise pass the gate and break
 /// every ARM image that links ra8_widget.
-fn addArmLayoutCheck(b: *std.Build, test_step: *std.Build.Step) void {
+fn addArmLayoutCheck(b: *std.Build, test_step: *std.Build.Step, arm_gfx_mod: *std.Build.Module) void {
     const arm = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .os_tag = .freestanding,
@@ -516,11 +538,6 @@ fn addArmLayoutCheck(b: *std.Build, test_step: *std.Build.Step) void {
     });
     test_step.dependOn(&arm_library.step);
 
-    const arm_gfx_mod = b.createModule(.{
-        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
-        .target = arm,
-        .optimize = .small,
-    });
     const arm_panel_paint_mod = b.createModule(.{
         .root_source_file = b.path("src/panel_paint.zig"),
         .target = arm,

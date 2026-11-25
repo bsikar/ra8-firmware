@@ -22,6 +22,14 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    const regs_module = b.addModule("tz_regs", .{
+        .root_source_file = b.path("src/internal/regs.zig"),
+    });
+    _ = b.addModule("ns_rot_header", .{
+        .root_source_file = b.path("ns/ra8_ns_rot_header.zig"),
+        .imports = &.{.{ .name = "tz_regs", .module = regs_module }},
+    });
+
     const root_of_trust = b.option(
         bool,
         "enable-root-of-trust",
@@ -61,6 +69,7 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
