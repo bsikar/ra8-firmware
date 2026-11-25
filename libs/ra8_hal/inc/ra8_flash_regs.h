@@ -79,7 +79,7 @@ typedef enum : uintptr_t {
    * general-purpose write may target. The rest (FSBL, code certificate, PBPS,
    * POFSPS, REVOKE, HUK-zeroize, anti-rollback) is security-critical and needs
    * a deliberate, separately-named call (see ra8_flash_config_set_write).
-   * HUM Ch 7.2.25 "GPOTPn : General Purpose OTP (n = 0 to 23)" p 299 (24 words
+   * HUM Ch 7.2.25 "GPOTPn : General Purpose OTP (n = 0 to 23)" p 297 (24 words
    * at 0x02E0_76A0 + 0x4 x n). */
   k_ra8_flash_gpotp_start = 0x02E076A0UL, /**< GPOTP0.                     */
   k_ra8_flash_gpotp_size  = 0x00000060UL, /**< 24 words (GPOTP0..GPOTP23). */
@@ -154,7 +154,7 @@ typedef enum : uint16_t {
   k_ra8_mram_off_mrcrtea = 0x001CU, /**< RA8 MRAM off mrcrtea. */
   /* HUM Ch 59.5.8 "MRCRDEA : Code MRAM DEC Error Address Register" p 3556 */
   k_ra8_mram_off_mrcrdea = 0x0020U, /**< RA8 MRAM off mrcrdea. */
-  /* HUM Ch 59.5.9 "MRERAINT : Extra MRAM Read Access Error Interrupt Enable" p 3557 */
+  /* HUM Ch 59.5.9 "MRERAEINT : Extra MRAM Read Access Error Interrupt Enable" p 3556 */
   k_ra8_mram_off_mreraint = 0x0034U, /**< RA8 MRAM off mreraint. */
   /* HUM Ch 59.5.10 "MRERAES : Extra MRAM Read Access Error Status Register" p 3557 */
   k_ra8_mram_off_mreraes = 0x0038U, /**< RA8 MRAM off mreraes. */
@@ -178,47 +178,47 @@ typedef enum : uint16_t {
   k_ra8_mram_off_msaddr = 0x2030U, /**< RA8 MRAM off msaddr. */
   /* HUM Ch 59.5.20 "MCNTSELR : MRAM Counter Select Register" p 3565 */
   k_ra8_mram_off_mcntselr = 0x2048U, /**< RA8 MRAM off mcntselr. */
-  /* HUM Ch 59.5.21 "MCNTDTR0 : MRAM Counter Data Register 0" p 3576 */
+  /* HUM Ch 59.5.21 "MCNTDTRn : MRAM Counter Data Register (n = 0, 1)" p 3566 */
   k_ra8_mram_off_mcntdtr0 = 0x204CU, /**< RA8 MRAM off mcntdtr0. */
-  /* HUM Ch 59.5.22 "MCNTDTR1 : MRAM Counter Data Register 1" p 3577 */
+  /* HUM Ch 59.5.21 "MCNTDTRn : MRAM Counter Data Register (n = 0, 1)" p 3566 */
   k_ra8_mram_off_mcntdtr1 = 0x2050U, /**< RA8 MRAM off mcntdtr1. */
-  /* HUM Ch 59.5.23 "MCTRCNTR : MRAM Configuration Update Transfer Control" p 3566 */
+  /* HUM Ch 59.5.22 "MCTRCNTR : MRAM Configuration Update Transfer Control" p 3566 */
   k_ra8_mram_off_mctrcntr = 0x2060U, /**< RA8 MRAM off mctrcntr. */
-  /* HUM Ch 59.5.24 "MCTRLSR : MRAM Configuration Update Transfer List Select" p 3567 */
+  /* HUM Ch 59.5.23 "MCTRLSR : MRAM Configuration Update Transfer List Select" p 3567 */
   k_ra8_mram_off_mctrlsr = 0x2064U, /**< RA8 MRAM off mctrlsr. */
-  /* HUM Ch 59.5.25 "MCTRSTATR : MRAM Configuration Update Transfer Status" p 3568 */
+  /* HUM Ch 59.5.24 "MCTRSTATR : MRAM Configuration Update Transfer Status" p 3568 */
   k_ra8_mram_off_mctrstatr = 0x206CU, /**< RA8 MRAM off mctrstatr. */
-  /* HUM Ch 59.5.26 "MSTATR : Extra MRAM Status Register" p 3568 */
+  /* HUM Ch 59.5.25 "MSTATR : Extra MRAM Status Register" p 3568 */
   k_ra8_mram_off_mstatr = 0x2080U, /**< RA8 MRAM off mstatr. */
-  /* HUM Ch 59.5.27 "MENTRYR : Extra MRAM Program Mode Entry Register" p 3571 */
+  /* HUM Ch 59.5.26 "MENTRYR : Extra MRAM Program Mode Entry Register" p 3571 */
   k_ra8_mram_off_mentryr = 0x2084U, /**< RA8 MRAM off mentryr. */
-  /* HUM Ch 59.5.28 "MSUINITR : Extra MRAM Sequencer Set-Up Initialization" p 3572 */
+  /* HUM Ch 59.5.27 "MSUINITR : Extra MRAM Sequencer Set-Up Initialization" p 3572 */
   k_ra8_mram_off_msuinitr = 0x208CU, /**< RA8 MRAM off msuinitr. */
-  /* HUM Ch 59.5.29 "MCMDR : MACI Command Register" p 3572 */
+  /* HUM Ch 59.5.28 "MCMDR : MACI Command Register" p 3572 */
   k_ra8_mram_off_mcmdr = 0x20A0U, /**< RA8 MRAM off mcmdr. */
-  /* HUM Ch 59.5.30 "MSUASMON : MRAM Start-Up Area Select Monitor Register" p 3573 */
+  /* HUM Ch 59.5.29 "MSUASMON : MRAM Start-Up Area Select Monitor Register" p 3573 */
   k_ra8_mram_off_msuasmon = 0x20DCU, /**< RA8 MRAM off msuasmon. */
-  /* HUM Ch 59.5.31 "MSUACR : MRAM Start-Up Area Control Register" p 3574 */
+  /* HUM Ch 59.5.30 "MSUACR : MRAM Start-Up Area Control Register" p 3574 */
   k_ra8_mram_off_msuacr = 0x20E8U, /**< RA8 MRAM off msuacr. */
-  /* HUM Ch 59.5.32 "MRPSC : MRAM Program Speed Control Register" p 3575 */
+  /* HUM Ch 59.5.31 "MRPSC : MRAM Program Speed Control Register" p 3575 */
   k_ra8_mram_off_mrpsc = 0x2800U, /**< RA8 MRAM off mrpsc. */
-  /* HUM Ch 59.5.33 "MRCPC0 : Code MRAM Program Control Register" p 3575 */
+  /* HUM Ch 59.5.32 "MRCPC0 : Code MRAM Program Control Register" p 3575 */
   k_ra8_mram_off_mrcpc0 = 0x3000U, /**< RA8 MRAM off mrcpc0. */
-  /* HUM Ch 59.5.34 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3576 */
+  /* HUM Ch 59.5.33 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3576 */
   k_ra8_mram_off_mrcpc1 = 0x3004U, /**< RA8 MRAM off mrcpc1. */
-  /* HUM Ch 59.5.35 "MRCBPROT0 : Code MRAM Block Protection Register" p 3576 */
+  /* HUM Ch 59.5.34 "MRCBPROT0 : Code MRAM Block Protection Register" p 3576 */
   k_ra8_mram_off_mrcbprot0 = 0x3008U, /**< RA8 MRAM off mrcbprot0. */
-  /* HUM Ch 59.5.36 "MRCBPROT1 : Code MRAM Block Protection for Secure Register" p 3577 */
+  /* HUM Ch 59.5.35 "MRCBPROT1 : Code MRAM Block Protection for Secure Register" p 3577 */
   k_ra8_mram_off_mrcbprot1 = 0x300CU, /**< RA8 MRAM off mrcbprot1. */
-  /* HUM Ch 59.5.37 "MRCPS : Code MRAM Program Status Register" p 3577 */
+  /* HUM Ch 59.5.36 "MRCPS : Code MRAM Program Status Register" p 3577 */
   k_ra8_mram_off_mrcps = 0x3010U, /**< RA8 MRAM off mrcps. */
-  /* HUM Ch 59.5.38 "MRCPAEINT : Code MRAM Program Access Error Interrupt Enable" p 3579 */
+  /* HUM Ch 59.5.37 "MRCPAEINT : Code MRAM Program Access Error Interrupt Enable" p 3579 */
   k_ra8_mram_off_mrcpaeint = 0x3014U, /**< RA8 MRAM off mrcpaeint. */
-  /* HUM Ch 59.5.39 "MRCPEA : Code MRAM Program Error Address Register" p 3579 */
+  /* HUM Ch 59.5.38 "MRCPEA : Code MRAM Program Error Address Register" p 3579 */
   k_ra8_mram_off_mrcpea = 0x3018U, /**< RA8 MRAM off mrcpea. */
-  /* HUM Ch 59.5.40 "MRCFLR : Code MRAM Flush Register" p 3580 */
+  /* HUM Ch 59.5.39 "MRCFLR : Code MRAM Flush Register" p 3580 */
   k_ra8_mram_off_mrcflr = 0x3030U, /**< RA8 MRAM off mrcflr. */
-  /* HUM Ch 59.5.41 "MRCEECC : Code MRAM ECC Encoder Control Register" p 3580 */
+  /* HUM Ch 59.5.40 "MRCEECC : Code MRAM ECC Encoder Control Register" p 3580 */
   k_ra8_mram_off_mrceecc = 0x3804U, /**< RA8 MRAM off mrceecc. */
 } ra8_mram_off_t;
 
@@ -459,7 +459,7 @@ typedef enum : uint32_t {
   k_ra8_mstatr_mask_secerr    = 0x00200000UL, /**< Security error.          */
   k_ra8_mstatr_mask_ilgcomerr = 0x00800000UL, /**< Illegal command error.   */
   /* Aggregate of all error bits used by the driver to gate command success.
-   * HUM Ch 59.5.26 "MSTATR" p 3578 lists CFGSETERR(5)=0x20, PRGERR(12)=0x1000,
+   * HUM Ch 59.5.25 "MSTATR" p 3568 lists CFGSETERR(5)=0x20, PRGERR(12)=0x1000,
    * ILGLERR(14)=0x4000, TZFERR(19)=0x80000, OTERR(20)=0x100000,
    * SECERR(21)=0x200000, ILGCOMERR(23)=0x800000. OR of all seven = 0x00B85020.
    * The previous 0x009850A0 dropped SECERR and added a stray bit 7. */

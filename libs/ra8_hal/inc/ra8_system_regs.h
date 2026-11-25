@@ -35,8 +35,8 @@
  * when done. The upper byte `0xA5` is the password; the low bit is the
  * protection-enable for that group.
  *
- * See the Hardware User's Manual section 12 ("Register Write
- * Protection") for the full table.
+ * See the Hardware User's Manual chapter 13 ("Register Write
+ * Protection Function", p 520-523) for the full table.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

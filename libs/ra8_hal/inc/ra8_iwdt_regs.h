@@ -88,7 +88,7 @@ typedef enum : uint8_t {
  * @brief Bit-field layout of the IWDTCR (control) register.
  *
  * @details
- * HUM Ch 28.2.3 "IWDTCR : IWDT Control Register" p 1276 + FSP
+ * HUM Ch 28.2.2 "IWDTCR : IWDT Control Register" p 1273 + FSP
  * ``r_iwdt.c`` ``IWDT_PRV_IWDTCR_*_BIT/MASK`` macros:
  *  - ``TOPS[1:0]``   bits  1:0  -- timeout period select
  *  - ``CKS[3:0]``    bits  7:4  -- clock divider select
@@ -116,7 +116,7 @@ typedef enum : uint16_t {
  * @brief Bit definitions of the IWDTSR (status) register.
  *
  * @details
- * HUM Ch 28.2.2 "IWDTSR : IWDT Status Register" p 1274 + FSP
+ * HUM Ch 28.2.3 "IWDTSR : IWDT Status Register" p 1275 + FSP
  * ``IWDT_PRV_IWDTSR_COUNTER_MASK`` / ``IWDT_PRV_STATUS_START_BIT``:
  *  - ``CNTVAL[13:0]`` bits 13:0  -- live down-counter value (RO)
  *  - ``UNDFF``        bit  14    -- underflow flag (W0C)

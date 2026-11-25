@@ -123,7 +123,7 @@ typedef enum : uint32_t {
  * @note Single-threaded init context; not safe to call from IRQ.
  * @since 0.1.0
  */
-/* HUM Ch 11.2.1 "PRCR : Protect Register" p 440 -- PRC0 (bit 0)
+/* HUM Ch 13.2.1 "PRCR_S : Protect Register for Secure" p 521 -- PRC0 (bit 0)
  * unlocks CGC; PRC1 (bit 1) unlocks LPM. Key = 0xA5xx. */
 enum : uintptr_t {
   k_addr_prcr       = 0x4001E3FAUL, /**< Address prcr.       */
