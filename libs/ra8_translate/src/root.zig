@@ -8,4 +8,5 @@ comptime {
     _ = @import("ctc_decode_abi");
     _ = @import("detector_post_abi");
     _ = @import("chapter_job_abi");
+    _ = @import("marian_abi");
 }

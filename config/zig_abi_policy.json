@@ -384,6 +384,16 @@
       ]
     },
     {
+      "path": "libs/ra8_translate/src/marian_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_translate_marian_open",
+        "ra8_translate_marian_work_bytes",
+        "ra8_translate_marian_step_logits",
+        "ra8_translate_marian_greedy_decode"
+      ]
+    },
+    {
       "path": "libs/ra8_ui/src/ra8_ui_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -3830,7 +3840,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "946e7d5385aea18be36ad8c07e2bab4d457dcf419f409e43ab3c80a4c9d4fbde",
+      "compatibility_sha256": "613401e1aeee3d2d772792f249378252a4dc44c828a7cf1adaf4bceeca0b5e00",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3912,6 +3922,17 @@
             "@alignOf(JobStatus) == 4",
             "@sizeOf(JobHooks) == ptr_bytes * 8"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/inc/ra8_translate_marian.h",
+          "compatibility_sha256": "6cd91ed55ef21d3d489b13a6e5ebc9412a0cc715c197b95cef82cc0a5a3ff82b",
+          "symbol_prefix": "ra8_translate_marian_",
+          "layout_assertions": [
+            "@sizeOf(MarianHeader) == 64",
+            "@alignOf(MarianHeader) == 4",
+            "@sizeOf(MarianStats) == 16",
+            "@alignOf(MarianStats) == 8"
+          ]
         }
       ],
       "adapters": [
@@ -3932,6 +3953,12 @@
           "symbol_prefixes": [
             "ra8_translate_job_"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/src/marian_abi.zig",
+          "symbol_prefixes": [
+            "ra8_translate_marian_"
+          ]
         }
       ],
       "layout_sources": [
@@ -3942,7 +3969,8 @@
         "libs/ra8_translate/src/internal/ctc_decode.zig",
         "libs/ra8_translate/src/internal/detector_post.zig",
         "libs/ra8_translate/src/internal/chapter_checkpoint.zig",
-        "libs/ra8_translate/src/internal/chapter_job.zig"
+        "libs/ra8_translate/src/internal/chapter_job.zig",
+        "libs/ra8_translate/src/internal/marian_container.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3982,6 +4010,12 @@
           "registration": "build.zig"
         },
         {
+          "language": "c",
+          "path": "tests/support/c/test_ra8_translate_marian.c",
+          "symbol_evidence": "libs/ra8_translate/src/marian_abi.zig",
+          "registration": "build.zig"
+        },
+        {
           "language": "zig",
           "path": "libs/ra8_translate/tests/abi_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/ra8_translate_abi.zig",
@@ -4003,6 +4037,12 @@
           "language": "zig",
           "path": "libs/ra8_translate/tests/chapter_job_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/chapter_job_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/marian_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/marian_abi.zig",
           "registration": "libs/ra8_translate/.zig-test-contract.json"
         }
       ],
@@ -4232,6 +4272,26 @@
           "name": "ra8_translate_job_query_chapter",
           "calling_context": "task-safe-reentrant",
           "ownership": "reads immutable caller workspace and writes chapter queued/translating/paused state to caller out-pointer"
+        },
+        {
+          "name": "ra8_translate_marian_open",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable TMNT container bytes for CRC-32 and tensor validation and writes header on success"
+        },
+        {
+          "name": "ra8_translate_marian_work_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows validated TMNT bytes and writes required aligned scratch byte size into caller out-pointer"
+        },
+        {
+          "name": "ra8_translate_marian_step_logits",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TMNT weights, source/prefix IDs, and caller work buffer to write step vocabulary logits transactionally"
+        },
+        {
+          "name": "ra8_translate_marian_greedy_decode",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TMNT weights, source IDs, and caller work buffer to emit greedy target IDs and execution stats transactionally"
         }
       ],
       "data_exports": [],

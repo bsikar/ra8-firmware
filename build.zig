@@ -20,6 +20,7 @@
 //!   ra8_translate      tests/support/c/test_ra8_translate.c
 //!   ra8_translate      tests/support/c/test_ra8_translate_ctc.c
 //!   ra8_translate      tests/support/c/test_ra8_translate_detector.c
+//!   ra8_translate      tests/support/c/test_ra8_translate_marian.c
 //!   ra8_update         libs/ra8_update/tests/src/test_update_abi.c
 //!
 //! Under CMake the same archives are produced by tests/cmake/zig_library.cmake
@@ -183,6 +184,13 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_translate",
         .include_path = "libs/ra8_translate/inc",
         .c_suite_path = "tests/support/c/test_ra8_translate_detector.c",
+        .extra_include_paths = &.{ "libs/ra8_widget/inc", "libs/ra8_box/inc" },
+    },
+    .{
+        .dependency_name = "ra8_translate",
+        .artifact_name = "ra8_translate",
+        .include_path = "libs/ra8_translate/inc",
+        .c_suite_path = "tests/support/c/test_ra8_translate_marian.c",
         .extra_include_paths = &.{ "libs/ra8_widget/inc", "libs/ra8_box/inc" },
     },
 };
