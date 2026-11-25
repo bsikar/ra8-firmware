@@ -20,6 +20,9 @@ const verify = @import("verify.zig");
 const module = @import("module.zig");
 
 pub const panic = std.debug.no_panic;
+/// Single-image M85 PoC links the backend directly; two-image Non-Secure
+/// TrustZone builds set this true so verify routes via the SG NSC veneer.
+pub const trustzone_nsc_active: bool = false;
 
 pub const baud: u32 = 115_200;
 pub const pass_line = "txm_sd_hello_m85: signed module loaded, ran, exited PASS\r\n";

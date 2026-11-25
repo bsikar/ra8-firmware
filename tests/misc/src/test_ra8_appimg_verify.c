@@ -36,7 +36,7 @@ typedef enum : uint32_t {
   k_verify_test_data  = 128U,  /**< Data-area length of the fixture.        */
   k_verify_test_stack = 2048U, /**< Stack the fixture asks for.             */
   k_verify_test_file  = (uint32_t)sizeof(ra8_appimg_header_t) + 256U + 128U,
-                               /**< Exact file length the fixture implies. */
+  /**< Exact file length the fixture implies. */
 } verify_test_size_t;
 
 /**
@@ -44,12 +44,12 @@ typedef enum : uint32_t {
  * @brief What the stand-in backend saw, and what it should answer.
  */
 typedef struct {
-  uint32_t  calls;       /**< How many times the backend was consulted.  */
-  uint32_t  head_len;    /**< `head_len` of the last message seen.       */
-  uint32_t  tail_len;    /**< `tail_len` of the last message seen.       */
-  uint8_t   first_byte;  /**< First byte of the last `head` run seen.    */
-  uint8_t   key_byte;    /**< First byte of the pinned key it was given. */
-  ra8_err_t answer;      /**< Verdict the stand-in returns.              */
+  uint32_t  calls;      /**< How many times the backend was consulted.  */
+  uint32_t  head_len;   /**< `head_len` of the last message seen.       */
+  uint32_t  tail_len;   /**< `tail_len` of the last message seen.       */
+  uint8_t   first_byte; /**< First byte of the last `head` run seen.    */
+  uint8_t   key_byte;   /**< First byte of the pinned key it was given. */
+  ra8_err_t answer;     /**< Verdict the stand-in returns.              */
 } verify_spy_t;
 
 /**
@@ -60,11 +60,10 @@ typedef struct {
  * @param[in] public_key Pinned key the gate was configured with.
  * @return The verdict recorded in the spy.
  */
-static ra8_err_t
-internal_spy_verify(void*                   ctx,
-                    const ra8_appimg_msg_t* msg,
-                    const uint8_t*          signature,
-                    const uint8_t*          public_key)
+static ra8_err_t internal_spy_verify(void*                   ctx,
+                                     const ra8_appimg_msg_t* msg,
+                                     const uint8_t*          signature,
+                                     const uint8_t*          public_key)
 {
   verify_spy_t* spy = (verify_spy_t*)ctx;
   spy->calls += 1U;
@@ -80,8 +79,7 @@ internal_spy_verify(void*                   ctx,
  * @brief Build a header that parses and carries a non-zero signature.
  * @return A well-formed, "signed" fixture header.
  */
-static ra8_appimg_header_t
-internal_good_header(void)
+static ra8_appimg_header_t internal_good_header(void)
 {
   ra8_appimg_header_t hdr = {};
   hdr.magic               = (uint32_t)k_ra8_appimg_magic;
@@ -105,8 +103,7 @@ internal_good_header(void)
  * @param[in]  hdr   Header to place at offset zero.
  * @param[out] image Buffer of at least ::k_verify_test_file bytes.
  */
-static void
-internal_build_image(const ra8_appimg_header_t* hdr, uint8_t* image)
+static void internal_build_image(const ra8_appimg_header_t* hdr, uint8_t* image)
 {
   (void)memcpy(image, hdr, sizeof(*hdr));
   for (size_t i = sizeof(*hdr); i < (size_t)k_verify_test_file; ++i) {
@@ -115,8 +112,7 @@ internal_build_image(const ra8_appimg_header_t* hdr, uint8_t* image)
 }
 
 /** @brief A validly signed image is admitted and the header is published. */
-static void
-internal_test_valid_image_admitted(void)
+static void internal_test_valid_image_admitted(void)
 {
   TEST_BEGIN("valid image admitted");
 
@@ -124,12 +120,12 @@ internal_test_valid_image_admitted(void)
   const ra8_appimg_header_t hdr                       = internal_good_header();
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0xA5U};
-  verify_spy_t spy                            = {.answer = k_ra8_ok};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0xA5U};
+  verify_spy_t                spy                            = {.answer = k_ra8_ok};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_appimg_verify(&gate, image, sizeof(image), &out));
@@ -142,8 +138,7 @@ internal_test_valid_image_admitted(void)
 }
 
 /** @brief The backend sees exactly the two signed runs, signature excised. */
-static void
-internal_test_message_is_two_runs(void)
+static void internal_test_message_is_two_runs(void)
 {
   TEST_BEGIN("message is two runs");
 
@@ -151,12 +146,12 @@ internal_test_message_is_two_runs(void)
   const ra8_appimg_header_t hdr                       = internal_good_header();
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x11U};
-  verify_spy_t spy                            = {.answer = k_ra8_ok};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x11U};
+  verify_spy_t                spy                            = {.answer = k_ra8_ok};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_appimg_verify(&gate, image, sizeof(image), &out));
@@ -169,8 +164,7 @@ internal_test_message_is_two_runs(void)
 }
 
 /** @brief An all-zero signature is refused without consulting the backend. */
-static void
-internal_test_unsigned_refused(void)
+static void internal_test_unsigned_refused(void)
 {
   TEST_BEGIN("unsigned image refused");
 
@@ -179,16 +173,15 @@ internal_test_unsigned_refused(void)
   (void)memset(hdr.signature, 0, sizeof(hdr.signature));
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x22U};
-  verify_spy_t spy                            = {.answer = k_ra8_ok};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x22U};
+  verify_spy_t                spy                            = {.answer = k_ra8_ok};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_appimg_verify(&gate, image, sizeof(image), &out));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_appimg_verify(&gate, image, sizeof(image), &out));
   TEST_ASSERT_EQ(0U, spy.calls);
   TEST_ASSERT_EQ(0U, out.magic);
 
@@ -196,8 +189,7 @@ internal_test_unsigned_refused(void)
 }
 
 /** @brief A backend rejection becomes a tamper verdict, header withheld. */
-static void
-internal_test_tampered_refused(void)
+static void internal_test_tampered_refused(void)
 {
   TEST_BEGIN("tampered image refused");
 
@@ -206,12 +198,12 @@ internal_test_tampered_refused(void)
   internal_build_image(&hdr, image);
   image[sizeof(ra8_appimg_header_t) + 4U] ^= 0xFFU;
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x33U};
-  verify_spy_t spy                            = {.answer = k_ra8_err_validation_failed};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x33U};
+  verify_spy_t                spy  = {.answer = k_ra8_err_validation_failed};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_appimg_verify(&gate, image, sizeof(image), &out));
@@ -222,8 +214,7 @@ internal_test_tampered_refused(void)
 }
 
 /** @brief A withheld capability refuses before the signature is spent. */
-static void
-internal_test_grant_refused_before_backend(void)
+static void internal_test_grant_refused_before_backend(void)
 {
   TEST_BEGIN("withheld capability refused first");
 
@@ -232,12 +223,12 @@ internal_test_grant_refused_before_backend(void)
   hdr.capabilities = (uint32_t)k_ra8_appimg_cap_display | (uint32_t)k_ra8_appimg_cap_network;
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x44U};
-  verify_spy_t spy                            = {.answer = k_ra8_ok};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x44U};
+  verify_spy_t                spy                            = {.answer = k_ra8_ok};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
   TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_appimg_verify(&gate, image, sizeof(image), &out));
@@ -247,8 +238,7 @@ internal_test_grant_refused_before_backend(void)
 }
 
 /** @brief A malformed container refuses before the backend is consulted. */
-static void
-internal_test_malformed_refused_before_backend(void)
+static void internal_test_malformed_refused_before_backend(void)
 {
   TEST_BEGIN("malformed container refused first");
 
@@ -257,24 +247,22 @@ internal_test_malformed_refused_before_backend(void)
   hdr.magic                                     = 0xDEADBEEFU;
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x55U};
-  verify_spy_t spy                            = {.answer = k_ra8_ok};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x55U};
+  verify_spy_t                spy                            = {.answer = k_ra8_ok};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_appimg_verify(&gate, image, sizeof(image), &out));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_appimg_verify(&gate, image, sizeof(image), &out));
   TEST_ASSERT_EQ(0U, spy.calls);
 
   TEST_END("malformed container refused first");
 }
 
 /** @brief A backend without Ed25519 reports that, not a tamper verdict. */
-static void
-internal_test_backend_absent_reported(void)
+static void internal_test_backend_absent_reported(void)
 {
   TEST_BEGIN("absent backend reported");
 
@@ -282,12 +270,12 @@ internal_test_backend_absent_reported(void)
   const ra8_appimg_header_t hdr                       = internal_good_header();
   internal_build_image(&hdr, image);
 
-  uint8_t      key[k_ra8_appimg_pubkey_bytes] = {0x66U};
-  verify_spy_t spy                            = {.answer = k_ra8_err_not_supported};
-  const ra8_appimg_verifier_t gate            = {.verify     = internal_spy_verify,
-                                                 .verify_ctx = &spy,
-                                                 .public_key = key,
-                                                 .granted = (uint32_t)k_ra8_appimg_cap_display};
+  uint8_t                     key[k_ra8_appimg_pubkey_bytes] = {0x66U};
+  verify_spy_t                spy                            = {.answer = k_ra8_err_not_supported};
+  const ra8_appimg_verifier_t gate = {.verify     = internal_spy_verify,
+                                      .verify_ctx = &spy,
+                                      .public_key = key,
+                                      .granted    = (uint32_t)k_ra8_appimg_cap_display};
 
   ra8_appimg_header_t out = {};
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_appimg_verify(&gate, image, sizeof(image), &out));
@@ -297,8 +285,7 @@ internal_test_backend_absent_reported(void)
 }
 
 /** @brief A verifier missing its backend or its pinned key is refused. */
-static void
-internal_test_verifier_incomplete(void)
+static void internal_test_verifier_incomplete(void)
 {
   TEST_BEGIN("incomplete verifier refused");
 
@@ -310,12 +297,16 @@ internal_test_verifier_incomplete(void)
   verify_spy_t        spy                            = {.answer = k_ra8_ok};
   ra8_appimg_header_t out                            = {};
 
-  const ra8_appimg_verifier_t no_backend = {
-    .verify = nullptr, .verify_ctx = &spy, .public_key = key, .granted = 0U};
+  const ra8_appimg_verifier_t no_backend = {.verify     = nullptr,
+                                            .verify_ctx = &spy,
+                                            .public_key = key,
+                                            .granted    = 0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_appimg_verify(&no_backend, image, sizeof(image), &out));
 
-  const ra8_appimg_verifier_t no_key = {
-    .verify = internal_spy_verify, .verify_ctx = &spy, .public_key = nullptr, .granted = 0U};
+  const ra8_appimg_verifier_t no_key = {.verify     = internal_spy_verify,
+                                        .verify_ctx = &spy,
+                                        .public_key = nullptr,
+                                        .granted    = 0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_appimg_verify(&no_key, image, sizeof(image), &out));
   TEST_ASSERT_EQ(0U, spy.calls);
 
@@ -323,8 +314,7 @@ internal_test_verifier_incomplete(void)
 }
 
 /** @brief The signed-message view refuses a truncated file and zeroes out. */
-static void
-internal_test_signed_message_truncated(void)
+static void internal_test_signed_message_truncated(void)
 {
   TEST_BEGIN("signed message truncated");
 
@@ -338,8 +328,7 @@ internal_test_signed_message_truncated(void)
   TEST_ASSERT_NULL(msg.head);
   TEST_ASSERT_EQ(0U, msg.tail_len);
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_appimg_signed_message(&hdr, nullptr, sizeof(image), &msg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_appimg_signed_message(&hdr, nullptr, sizeof(image), &msg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_appimg_signed_message(&hdr, image, sizeof(image), &msg));
   TEST_ASSERT_NOT_NULL(msg.head);
@@ -348,12 +337,74 @@ internal_test_signed_message_truncated(void)
   TEST_END("signed message truncated");
 }
 
+/** @brief Production Ed25519 backend exported by Zig `ed25519_backend.zig`. */
+extern ra8_err_t ra8_appimg_ed25519_verify(void*                   ctx,
+                                           const ra8_appimg_msg_t* msg,
+                                           const uint8_t*          signature,
+                                           const uint8_t*          public_key);
+
+/** @brief Pinned public key matching `libs/ra8_app/tools/test_key.zig` (seed 0x24 * 32). */
+static const uint8_t k_prod_test_pubkey[k_ra8_appimg_pubkey_bytes] = {
+  0x58U, 0x93U, 0x66U, 0x04U, 0xABU, 0xDAU, 0x11U, 0x2BU, 0xC9U, 0x49U, 0x33U,
+  0x56U, 0x9CU, 0x82U, 0xF8U, 0xD0U, 0xCCU, 0x0DU, 0xDFU, 0x92U, 0xA3U, 0xF8U,
+  0x32U, 0x9FU, 0x2FU, 0x44U, 0x8FU, 0x7FU, 0x48U, 0x4AU, 0x59U, 0x4CU,
+};
+
+/** @brief Ed25519 signature over `internal_good_header()` + `internal_build_image()`. */
+static const uint8_t k_prod_valid_sig[k_ra8_appimg_sig_bytes] = {
+  0x89U, 0x2CU, 0xCFU, 0x62U, 0x5FU, 0x10U, 0xACU, 0x5AU, 0x28U, 0xF7U, 0xDEU, 0xCBU, 0xC7U,
+  0x9FU, 0xF7U, 0xA8U, 0x96U, 0x3CU, 0xFAU, 0x49U, 0xDCU, 0x7CU, 0x03U, 0x5EU, 0x6EU, 0x80U,
+  0x15U, 0x95U, 0xE1U, 0x1DU, 0x80U, 0x29U, 0x0FU, 0x57U, 0x79U, 0xB9U, 0x60U, 0x09U, 0xB7U,
+  0x9FU, 0x62U, 0x86U, 0x53U, 0x3FU, 0x85U, 0xE8U, 0x88U, 0x4EU, 0xF3U, 0xF6U, 0xEDU, 0xBFU,
+  0xBEU, 0x20U, 0x85U, 0x00U, 0x22U, 0x5DU, 0x30U, 0x71U, 0x9BU, 0x6BU, 0xC9U, 0x08U,
+};
+
+/** @brief End-to-end C->Zig Ed25519 admission: valid, unsigned, tampered, wrong key. */
+static void internal_test_production_ed25519_admission(void)
+{
+  TEST_BEGIN("production Ed25519 backend admits valid and refuses tampered/unsigned/wrong key");
+  uint8_t             image[k_verify_test_file] = {};
+  ra8_appimg_header_t hdr                       = internal_good_header();
+  (void)memcpy(hdr.signature, k_prod_valid_sig, sizeof(k_prod_valid_sig));
+  internal_build_image(&hdr, image);
+
+  const ra8_appimg_verifier_t gate = {
+    .verify     = ra8_appimg_ed25519_verify,
+    .verify_ctx = nullptr,
+    .public_key = k_prod_test_pubkey,
+    .granted    = (uint32_t)k_ra8_appimg_cap_display,
+  };
+  ra8_appimg_header_t out = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_appimg_verify(&gate, image, sizeof(image), &out));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_appimg_magic, out.magic);
+
+  image[sizeof(image) - 1U] ^= 0x01U;
+  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_appimg_verify(&gate, image, sizeof(image), &out));
+  TEST_ASSERT_EQ(0U, out.magic);
+  image[sizeof(image) - 1U] ^= 0x01U;
+
+  uint8_t wrong_key[k_ra8_appimg_pubkey_bytes] = {};
+  (void)memcpy(wrong_key, k_prod_test_pubkey, sizeof(wrong_key));
+  wrong_key[0] ^= 0x01U;
+  const ra8_appimg_verifier_t wrong_gate = {
+    .verify     = ra8_appimg_ed25519_verify,
+    .verify_ctx = nullptr,
+    .public_key = wrong_key,
+    .granted    = (uint32_t)k_ra8_appimg_cap_display,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
+                 ra8_appimg_verify(&wrong_gate, image, sizeof(image), &out));
+
+  (void)memset(image + offsetof(ra8_appimg_header_t, signature), 0, (size_t)k_ra8_appimg_sig_bytes);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_appimg_verify(&gate, image, sizeof(image), &out));
+  TEST_END("production Ed25519 backend admits valid and refuses tampered/unsigned/wrong key");
+}
+
 /**
  * @brief Run every case in order.
  * @return 0 always; a failed assertion aborts before the return.
  */
-int
-main(void)
+int main(void)
 {
   internal_test_valid_image_admitted();
   internal_test_message_is_two_runs();
@@ -364,5 +415,6 @@ main(void)
   internal_test_backend_absent_reported();
   internal_test_verifier_incomplete();
   internal_test_signed_message_truncated();
+  internal_test_production_ed25519_admission();
   return 0;
 }
