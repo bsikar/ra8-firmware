@@ -11,6 +11,7 @@
 //! libs/ra8_app/tools/test_key.zig's seed, so only images
 //! `zig build txm-hello-m33` signs pass.
 
+const root = @import("root");
 const appimg_verify = @import("appimg_verify");
 const production = @import("ed25519_backend");
 
@@ -25,28 +26,67 @@ pub const granted: u32 = 0;
 /// sizeof(appimg.Header): the module payload starts here.
 pub const header_bytes = 160;
 
-/// Admission runs the production backend: the WireMsg mirror of
-/// ra8_appimg_msg_t carries the signed run to `ra8_appimg_ed25519_verify`,
-/// and only its `ok` admits. `not_supported` passes through as the one
-/// refusal the gate reports verbatim; every other code is a failed verify.
-fn ed25519(
+/// True when the root module targets a TrustZone Non-Secure image linking
+/// the Secure Gateway import veneer (`ra8_nsc_appimg_ed25519_verify`).
+pub const trustzone_nsc_active: bool =
+    @hasDecl(root, "trustzone_nsc_active") and root.trustzone_nsc_active;
+
+/// C ABI entry signature shared by `ra8_appimg_ed25519_verify` (single-image)
+/// and `ra8_nsc_appimg_ed25519_verify` (Non-Secure Callable SG veneer).
+pub const VerifyEntry = *const fn (
+    ?*anyopaque,
+    ?*const production.WireMsg,
+    ?[*]const u8,
+    ?[*]const u8,
+) callconv(.c) u16;
+
+extern fn ra8_nsc_appimg_ed25519_verify(
     ctx: ?*anyopaque,
+    msg: ?*const production.WireMsg,
+    signature: ?[*]const u8,
+    key: ?[*]const u8,
+) callconv(.c) u16;
+
+/// Selected verification gateway: crosses the Secure Gateway NSC veneer when
+/// `trustzone_nsc_active` is enabled, or calls `ra8_appimg_ed25519_verify`
+/// directly in single-image builds.
+pub const active_entry: VerifyEntry = if (trustzone_nsc_active)
+    &ra8_nsc_appimg_ed25519_verify
+else
+    &production.ra8_appimg_ed25519_verify;
+
+/// Invoke `entry` with the WireMsg mirror of `ra8_appimg_msg_t` and translate
+/// its `ra8_err_t` return code to an admission gate verdict.
+pub fn callEntry(
+    entry: VerifyEntry,
     msg: appimg_verify.Message,
     signature: *const [64]u8, // Ed25519 raw R||S, appimg.Width.signature
     key: *const [appimg_verify.pubkey_bytes]u8,
 ) appimg_verify.Verdict {
-    _ = ctx;
     const wire = production.WireMsg{
         .head = msg.head.ptr,
         .tail = msg.tail.ptr,
         .head_len = @intCast(msg.head.len),
         .tail_len = @intCast(msg.tail.len),
     };
-    return switch (production.ra8_appimg_ed25519_verify(null, &wire, signature, key)) {
+    return switch (entry(null, &wire, signature, key)) {
         @backingInt(production.Code.ok) => .good,
         @backingInt(production.Code.not_supported) => .unsupported,
         else => .bad,
     };
+}
+
+/// Admission runs the active backend (`ra8_nsc_appimg_ed25519_verify` when
+/// TrustZone NSC is active, else `ra8_appimg_ed25519_verify`), and only `ok`
+/// admits. `not_supported` passes through verbatim; every other code is `.bad`.
+fn ed25519(
+    ctx: ?*anyopaque,
+    msg: appimg_verify.Message,
+    signature: *const [64]u8,
+    key: *const [appimg_verify.pubkey_bytes]u8,
+) appimg_verify.Verdict {
+    _ = ctx;
+    return callEntry(active_entry, msg, signature, key);
 }
 
 const backend = appimg_verify.Backend{ .verify = &ed25519, .public_key = public_key, .granted = granted };
