@@ -74,8 +74,8 @@ typedef enum : uintptr_t {
   k_ra8_board_sram_base    = 0x22000000UL, /**< On-chip SRAM, less NOINIT.   */
   k_ra8_board_noinit_base  = 0x220FFF00UL, /**< Warm-reset crash-log record. */
   k_ra8_board_sdram_base   = 0x68000000UL, /**< External SDRAM.              */
-  k_ra8_board_ns_mram_base = 0x12080000UL, /**< NS MRAM, bit-28 alias.      */
-  k_ra8_board_ns_sram_base = 0x32100000UL, /**< NS SRAM, bit-28 alias.      */
+  k_ra8_board_ns_mram_base = 0x12080000UL, /**< NS MRAM, bit-28 alias.       */
+  k_ra8_board_ns_sram_base = 0x32100000UL, /**< NS SRAM, bit-28 alias.       */
 } ra8_board_memmap_base_t;
 
 /**
@@ -92,16 +92,16 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_board_mram_size    = 0x00100000UL, /**< 1 MiB.                       */
-  k_ra8_board_ofs_cfg_size = 0x00000800UL, /**< 2 KiB.                       */
-  k_ra8_board_ofs_otp_size = 0x00011000UL, /**< 68 KiB.                      */
-  k_ra8_board_itcm_size    = 0x00010000UL, /**< 64 KiB.                      */
-  k_ra8_board_dtcm_size    = 0x00010000UL, /**< 64 KiB.                      */
-  k_ra8_board_sram_size    = 0x000FFF00UL, /**< 1 MiB less the 256 B NOINIT. */
-  k_ra8_board_noinit_size  = 0x00000100UL, /**< 256 B.                       */
-  k_ra8_board_sdram_size   = 0x04000000UL, /**< 64 MiB.                      */
-  k_ra8_board_ns_mram_size = 0x00080000UL, /**< 512 KiB.                     */
-  k_ra8_board_ns_sram_size = 0x000A0000UL, /**< 640 KiB.                     */
+  k_ra8_board_mram_size    = 0x00100000UL, /**< 1 MiB code MRAM.                           */
+  k_ra8_board_ofs_cfg_size = 0x00000800UL, /**< 2 KiB option-setting cfg.                  */
+  k_ra8_board_ofs_otp_size = 0x00011000UL, /**< 68 KiB OTP/anti-rollback.                  */
+  k_ra8_board_itcm_size    = 0x00010000UL, /**< 64 KiB floor (128 KiB ECC cap, HUM 2.1.1). */
+  k_ra8_board_dtcm_size    = 0x00010000UL, /**< 64 KiB floor (128 KiB ECC cap, HUM 2.1.1). */
+  k_ra8_board_sram_size    = 0x000FFF00UL, /**< SRAM0 1 MiB less the 256 B NOINIT.         */
+  k_ra8_board_noinit_size  = 0x00000100UL, /**< 256 B crash-log record.                    */
+  k_ra8_board_sdram_size   = 0x04000000UL, /**< 64 MiB external SDRAM.                     */
+  k_ra8_board_ns_mram_size = 0x00080000UL, /**< 512 KiB NS MRAM placeholder.               */
+  k_ra8_board_ns_sram_size = 0x000A0000UL, /**< 640 KiB SRAM1 / shared non-cacheable bank. */
 } ra8_board_memmap_size_t;
 
 #ifdef __cplusplus

@@ -43,6 +43,7 @@
 
 #include "ra8_board_ra8p1.h"
 #include "ra8_cgc.h"
+#include "ra8_device.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -587,6 +588,51 @@ RA8_INTERNAL static void internal_test_uart_read(void)
   TEST_END("RA8P1 console read drains available bytes up to capacity");
 }
 
+/** @brief Pin RA8P1 board memmap constants and limits to Core capacities (RA8FW-336). */
+RA8_INTERNAL static void internal_test_board_geometry_and_limits(void)
+{
+  TEST_BEGIN("RA8P1 board limits match RA8 device geometry");
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_mram_bytes, (uint32_t)k_ra8p1_board_cap_mram_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_user_sram_bytes, (uint32_t)k_ra8p1_board_cap_user_sram_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_sram_island_bytes,
+                 (uint32_t)k_ra8p1_board_cap_sram_island_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m85_itcm_bytes, (uint32_t)k_ra8p1_board_cap_m85_itcm_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m85_dtcm_bytes, (uint32_t)k_ra8p1_board_cap_m85_dtcm_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m85_icache_bytes,
+                 (uint32_t)k_ra8p1_board_cap_m85_icache_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m85_dcache_bytes,
+                 (uint32_t)k_ra8p1_board_cap_m85_dcache_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m33_ctcm_bytes, (uint32_t)k_ra8p1_board_cap_m33_ctcm_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m33_stcm_bytes, (uint32_t)k_ra8p1_board_cap_m33_stcm_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m33_ccache_bytes,
+                 (uint32_t)k_ra8p1_board_cap_m33_ccache_bytes);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_cap_m33_scache_bytes,
+                 (uint32_t)k_ra8p1_board_cap_m33_scache_bytes);
+
+  TEST_ASSERT_EQ((uint32_t)k_ra8_mem_itcm_size, (uint32_t)k_ra8p1_board_limit_m85_tcm_floor);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_mem_dtcm_size, (uint32_t)k_ra8p1_board_limit_m85_tcm_floor);
+  TEST_ASSERT((uint32_t)k_ra8p1_board_limit_m85_tcm_floor <=
+              (uint32_t)k_ra8p1_board_cap_m85_itcm_bytes);
+  TEST_ASSERT((uint32_t)k_ra8p1_board_limit_m85_tcm_floor <=
+              (uint32_t)k_ra8p1_board_cap_m85_dtcm_bytes);
+
+  const uint32_t user_sram = (uint32_t)k_ra8p1_board_limit_sram0_bytes +
+                             (uint32_t)k_ra8p1_board_limit_noinit_bytes +
+                             (uint32_t)k_ra8p1_board_limit_ns_sram_bytes;
+  TEST_ASSERT_EQ((uint32_t)k_ra8p1_board_cap_user_sram_bytes, user_sram);
+  TEST_ASSERT_EQ((uint32_t)k_ra8p1_board_cap_sram_island_bytes,
+                 user_sram + (uint32_t)k_ra8p1_board_cap_m85_itcm_bytes +
+                   (uint32_t)k_ra8p1_board_cap_m85_dtcm_bytes +
+                   (uint32_t)k_ra8p1_board_cap_m33_ctcm_bytes +
+                   (uint32_t)k_ra8p1_board_cap_m33_stcm_bytes);
+  TEST_ASSERT((uint32_t)k_ra8p1_board_limit_cpu1_mram_bytes <=
+              (uint32_t)k_ra8p1_board_cap_mram_bytes);
+  TEST_ASSERT((uint32_t)k_ra8p1_board_limit_cpu1_sram_bytes <=
+              (uint32_t)k_ra8p1_board_limit_ns_sram_bytes);
+  TEST_ASSERT((uint32_t)k_ra8p1_board_limit_sdram_bytes > 0U);
+  TEST_END("RA8P1 board limits match RA8 device geometry");
+}
+
 int main(void)
 {
   internal_test_preinit_guards();
@@ -599,5 +645,6 @@ int main(void)
   internal_test_uart_init_success();
   internal_test_uart_write_and_flush();
   internal_test_uart_read();
+  internal_test_board_geometry_and_limits();
   return 0;
 }

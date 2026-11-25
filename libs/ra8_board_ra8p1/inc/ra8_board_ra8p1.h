@@ -574,6 +574,38 @@ typedef enum : uint16_t {
  */
 [[nodiscard]] ra8_err_t ra8_board_uart_console_flush(void);
 
+/**
+ * @enum ra8_board_ra8p1_limit_t
+ * @brief Hardware capacities and board-supported limits for RA8P1 (RA8FW-336).
+ *
+ * @details
+ * Mirrors the R7KA8P1KFLCAC silicon capacities and board-level dual-core/TCM
+ * floors from `ra8_device.h` and `ld/linker_script{,_cpu1}.ld`. Sources:
+ * RA8P1 HUM R01UH1064EJ0130 Sec 2.1.1 (pp 111-112) and Sec 2.16.1.1
+ * Table 2.34 (p 160).
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8p1_board_cap_mram_bytes        = 0x00100000UL, /**< 1024 KiB Code MRAM silicon cap.        */
+  k_ra8p1_board_cap_user_sram_bytes   = 0x001A0000UL, /**< 1664 KiB user SRAM silicon cap.        */
+  k_ra8p1_board_cap_sram_island_bytes = 0x00200000UL, /**< 2048 KiB SRAM island incl all TCM.     */
+  k_ra8p1_board_cap_m85_itcm_bytes    = 0x00020000UL, /**< 128 KiB M85 ITCM capacity (16x8 KiB).  */
+  k_ra8p1_board_cap_m85_dtcm_bytes    = 0x00020000UL, /**< 128 KiB M85 DTCM capacity (16x8 KiB).  */
+  k_ra8p1_board_cap_m85_icache_bytes  = 0x00004000UL, /**< 16 KiB M85 L1 I-cache capacity.        */
+  k_ra8p1_board_cap_m85_dcache_bytes  = 0x00004000UL, /**< 16 KiB M85 L1 D-cache capacity.        */
+  k_ra8p1_board_cap_m33_ctcm_bytes    = 0x00010000UL, /**< 64 KiB M33 CTCM capacity.              */
+  k_ra8p1_board_cap_m33_stcm_bytes    = 0x00010000UL, /**< 64 KiB M33 STCM capacity.              */
+  k_ra8p1_board_cap_m33_ccache_bytes  = 0x00004000UL, /**< 16 KiB M33 C-Cache (bus cache).        */
+  k_ra8p1_board_cap_m33_scache_bytes  = 0x00004000UL, /**< 16 KiB M33 S-Cache (bus cache).        */
+  k_ra8p1_board_limit_m85_tcm_floor   = 0x00010000UL, /**< 64 KiB per-bank M85 TCM linker floor.  */
+  k_ra8p1_board_limit_sram0_bytes     = 0x000FFF00UL, /**< SRAM0 1 MiB less 256 B NOINIT.         */
+  k_ra8p1_board_limit_noinit_bytes    = 0x00000100UL, /**< 256 B crash-log NOINIT carve-out.      */
+  k_ra8p1_board_limit_ns_sram_bytes   = 0x000A0000UL, /**< 640 KiB SRAM1 / shared non-cacheable.  */
+  k_ra8p1_board_limit_cpu1_mram_bytes = 0x00040000UL, /**< 256 KiB CPU1 code MRAM partition.      */
+  k_ra8p1_board_limit_cpu1_sram_bytes = 0x00010000UL, /**< 64 KiB CPU1 SRAM inside shared region. */
+  k_ra8p1_board_limit_sdram_bytes     = 0x04000000UL, /**< 64 MiB external SDRAM board limit.     */
+} ra8_board_ra8p1_limit_t;
+
 #ifdef __cplusplus
 }
 #endif
