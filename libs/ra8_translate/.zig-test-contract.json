@@ -8,11 +8,14 @@
     "tests/tokenizer_test.zig",
     "tests/overlay_test.zig",
     "tests/ctc_decode_test.zig",
+    "tests/detector_post_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/crc32.zig",
     "src/internal/ctc_decode.zig",
+    "src/internal/detector_group.zig",
+    "src/internal/detector_post.zig",
     "src/internal/err.zig",
     "src/internal/glossary.zig",
     "src/internal/lang.zig",
@@ -23,11 +26,13 @@
     "src/internal/tokenizer.zig",
     "src/internal/vocab.zig",
     "src/ctc_decode_abi.zig",
+    "src/detector_post_abi.zig",
     "src/ra8_translate_abi.zig",
     "src/root.zig",
     "tests/abi_test.zig",
     "tests/crc32_test.zig",
     "tests/ctc_decode_test.zig",
+    "tests/detector_post_test.zig",
     "tests/glossary_test.zig",
     "tests/lang_test.zig",
     "tests/ocr_preprocess_test.zig",
@@ -339,11 +344,39 @@
       "err",
       "-Msidecar=src/internal/sidecar.zig"
     ],
+    "src/internal/detector_group.zig": [
+      "-Mroot=src/internal/detector_group.zig"
+    ],
+    "src/internal/detector_post.zig": [
+      "--dep",
+      "detector_group",
+      "--dep",
+      "err",
+      "-Mroot=src/internal/detector_post.zig",
+      "-Mdetector_group=src/internal/detector_group.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "src/detector_post_abi.zig": [
+      "--dep",
+      "detector_post",
+      "--dep",
+      "err",
+      "-Mroot=src/detector_post_abi.zig",
+      "--dep",
+      "detector_group",
+      "--dep",
+      "err",
+      "-Mdetector_post=src/internal/detector_post.zig",
+      "-Mdetector_group=src/internal/detector_group.zig",
+      "-Merr=src/internal/err.zig"
+    ],
     "src/root.zig": [
       "--dep",
       "ra8_translate_abi",
       "--dep",
       "ctc_decode_abi",
+      "--dep",
+      "detector_post_abi",
       "-Mroot=src/root.zig",
       "--dep",
       "err",
@@ -415,7 +448,39 @@
       "err",
       "--dep",
       "lang",
-      "-Mctc_decode=src/internal/ctc_decode.zig"
+      "-Mctc_decode=src/internal/ctc_decode.zig",
+      "--dep",
+      "detector_post",
+      "--dep",
+      "err",
+      "-Mdetector_post_abi=src/detector_post_abi.zig",
+      "--dep",
+      "detector_group",
+      "--dep",
+      "err",
+      "-Mdetector_post=src/internal/detector_post.zig",
+      "-Mdetector_group=src/internal/detector_group.zig"
+    ],
+    "tests/detector_post_test.zig": [
+      "--dep",
+      "detector_post_abi",
+      "--dep",
+      "detector_post",
+      "--dep",
+      "err",
+      "-Mroot=tests/detector_post_test.zig",
+      "--dep",
+      "detector_post",
+      "--dep",
+      "err",
+      "-Mdetector_post_abi=src/detector_post_abi.zig",
+      "--dep",
+      "detector_group",
+      "--dep",
+      "err",
+      "-Mdetector_post=src/internal/detector_post.zig",
+      "-Mdetector_group=src/internal/detector_group.zig",
+      "-Merr=src/internal/err.zig"
     ],
     "tests/overlay_test.zig": [
       "--dep",
@@ -554,5 +619,5 @@
       "-Moverlay_mask=src/internal/overlay_mask.zig"
     ]
   },
-  "minimum_tests": 44
+  "minimum_tests": 48
 }

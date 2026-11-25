@@ -361,6 +361,15 @@
       ]
     },
     {
+      "path": "libs/ra8_translate/src/detector_post_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_translate_det_work_bytes",
+        "ra8_translate_det_post_i8",
+        "ra8_translate_det_post_f32"
+      ]
+    },
+    {
       "path": "libs/ra8_ui/src/ra8_ui_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -3807,7 +3816,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "923ea6258fe6801044cdd1252483e6d4b569d8d3176e8a3c8c0d71986e6c44ba",
+      "compatibility_sha256": "17c058a318218b5874658e82529ea4dc79702149750dd1143f674ab770fa0479",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3854,6 +3863,21 @@
             "@sizeOf(DecodeResult) == 24",
             "@alignOf(DecodeResult) == 4"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/inc/ra8_translate_detector.h",
+          "compatibility_sha256": "09de79f90913a447fc566dbcab32378a98bfad15e90dfb1d532655e32eb80c99",
+          "symbol_prefix": "ra8_translate_det_",
+          "layout_assertions": [
+            "@sizeOf(DetLine) == 16",
+            "@alignOf(DetLine) == 2",
+            "@sizeOf(DetBubble) == 20",
+            "@alignOf(DetBubble) == 2",
+            "@sizeOf(DetCfg) == 32",
+            "@alignOf(DetCfg) == 2",
+            "@sizeOf(DetSummary) == 16",
+            "@alignOf(DetSummary) == 4"
+          ]
         }
       ],
       "adapters": [
@@ -3862,6 +3886,12 @@
           "symbol_prefixes": [
             "ra8_translate_ctc_"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/src/detector_post_abi.zig",
+          "symbol_prefixes": [
+            "ra8_translate_det_"
+          ]
         }
       ],
       "layout_sources": [
@@ -3869,7 +3899,8 @@
         "libs/ra8_translate/src/internal/lang.zig",
         "libs/ra8_translate/src/internal/ocr_preprocess.zig",
         "libs/ra8_translate/src/internal/overlay.zig",
-        "libs/ra8_translate/src/internal/ctc_decode.zig"
+        "libs/ra8_translate/src/internal/ctc_decode.zig",
+        "libs/ra8_translate/src/internal/detector_post.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3903,6 +3934,12 @@
           "registration": "build.zig"
         },
         {
+          "language": "c",
+          "path": "tests/support/c/test_ra8_translate_detector.c",
+          "symbol_evidence": "libs/ra8_translate/src/detector_post_abi.zig",
+          "registration": "build.zig"
+        },
+        {
           "language": "zig",
           "path": "libs/ra8_translate/tests/abi_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/ra8_translate_abi.zig",
@@ -3912,6 +3949,12 @@
           "language": "zig",
           "path": "libs/ra8_translate/tests/ctc_decode_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/ctc_decode_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/detector_post_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/detector_post_abi.zig",
           "registration": "libs/ra8_translate/.zig-test-contract.json"
         }
       ],
@@ -4086,6 +4129,21 @@
           "name": "ra8_translate_ctc_decode_f32",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows TCHR table and float logits or probabilities and transactionally writes decoded UTF-8 and confidence metrics"
+        },
+        {
+          "name": "ra8_translate_det_work_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "computes aligned scratch workspace byte requirement for detector post-processing without retaining pointers"
+        },
+        {
+          "name": "ra8_translate_det_post_i8",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows int8 activation maps and cfg, uses caller scratch buffer, and transactionally emits ordered lines and bubbles"
+        },
+        {
+          "name": "ra8_translate_det_post_f32",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows float activation maps and cfg, uses caller scratch buffer, and transactionally emits ordered lines and bubbles"
         }
       ],
       "data_exports": [],
