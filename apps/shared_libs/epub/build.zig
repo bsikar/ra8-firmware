@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = library_module,
     });
-    installStaticLib(b, library);
+    installStaticLib(b, library, &.{"epub.h"});
 
     // The ra8_fs bridge ships as its own archive so a core-only consumer
     // (no ra8_fs linked) never pulls the bridge's ra8_fs externs: archive
@@ -53,7 +53,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = fs_module,
     });
-    installStaticLib(b, fs_library);
+    installStaticLib(b, fs_library, &.{"epub_fs.h"});
 
     // The epub open/close core ships as its own archive for the same pull
     // granularity as the fs bridge: its externs (miniz, the miniz arena, the
@@ -70,7 +70,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = open_module,
     });
-    installStaticLib(b, open_library);
+    installStaticLib(b, open_library, &.{});
 
     const test_step = b.step("test", "Run Zig epub guard, fs-bridge and open tests");
     const test_module_sut = b.createModule(.{
@@ -132,7 +132,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = chapter_module,
     });
-    installStaticLib(b, chapter_library);
+    installStaticLib(b, chapter_library, &.{});
 
     const chapter_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_chapter_abi.zig"),
@@ -164,7 +164,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = entry_module,
     });
-    installStaticLib(b, entry_library);
+    installStaticLib(b, entry_library, &.{"epub_entry.h"});
 
     const entry_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_entry_abi.zig"),
@@ -197,7 +197,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = xml_shim_module,
     });
-    installStaticLib(b, xml_shim_library);
+    installStaticLib(b, xml_shim_library, &.{});
 
     // The shim test links the real ra8_xml reader and decoder, so the tests
     // replay true XML documents end to end rather than standing in for the
@@ -213,20 +213,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     xml_shim_test_module.addImport("epub_xml_shim_abi", xml_shim_test_module_sut);
-    const xml_module = b.createModule(.{
-        .root_source_file = b.path("../xml/src/xml_abi.zig"),
+    const xml_library = b.dependency("xml", .{
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
-    });
-    const xml_library = b.addLibrary(.{
-        .name = "ra8_xml_shim_test",
-        .linkage = .static,
-        .root_module = xml_module,
-    });
-    xml_module.addIncludePath(b.path("../xml/inc"));
-    xml_module.addIncludePath(b.path("../xml/src"));
-    xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    }).artifact("xml_reader");
     xml_shim_test_module.link_libc = true;
     const xml_shim_test = b.addTest(.{ .root_module = xml_shim_test_module });
     xml_shim_test_module.linkLibrary(xml_library);
@@ -246,7 +236,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = toc_module,
     });
-    installStaticLib(b, toc_library);
+    installStaticLib(b, toc_library, &.{});
 
     // The TOC test links the real ra8_xml reader and the real shim helpers,
     // so the tests replay true NCX and nav documents end to end.
@@ -261,20 +251,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     toc_test_module.addImport("epub_xml_toc_abi", toc_test_module_sut);
-    const toc_xml_module = b.createModule(.{
-        .root_source_file = b.path("../xml/src/xml_abi.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const toc_xml_library = b.addLibrary(.{
-        .name = "ra8_xml_toc_test",
-        .linkage = .static,
-        .root_module = toc_xml_module,
-    });
-    toc_xml_module.addIncludePath(b.path("../xml/inc"));
-    toc_xml_module.addIncludePath(b.path("../xml/src"));
-    toc_xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
     const toc_shim_module = b.createModule(.{
         .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
         .target = target,
@@ -287,7 +263,7 @@ pub fn build(b: *std.Build) void {
     });
     toc_test_module.link_libc = true;
     toc_test_module.linkLibrary(toc_shim_library);
-    toc_test_module.linkLibrary(toc_xml_library);
+    toc_test_module.linkLibrary(xml_library);
     const toc_test = b.addTest(.{ .root_module = toc_test_module });
     test_step.dependOn(&b.addRunArtifact(toc_test).step);
 
@@ -305,7 +281,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = miniz_module,
     });
-    installStaticLib(b, miniz_library);
+    installStaticLib(b, miniz_library, &.{"epub_miniz_alloc.h"});
 
     // The allocator test needs no stand-ins: the TU has no externs, so the
     // tests drive a real workspace end to end.
@@ -340,7 +316,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = img_import_module,
     });
-    installStaticLib(b, img_import_library);
+    installStaticLib(b, img_import_library, &.{});
 
     const img_import_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_img_import_abi.zig"),
@@ -375,7 +351,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = img_tiles_module,
     });
-    installStaticLib(b, img_tiles_library);
+    installStaticLib(b, img_tiles_library, &.{"epub_img_tiles.h"});
 
     const img_tiles_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_img_tiles_abi.zig"),
@@ -393,11 +369,14 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(img_tiles_test).step);
 }
 
-fn installStaticLib(b: *std.Build, lib: *std.Build.Step.Compile) void {
+fn installStaticLib(b: *std.Build, lib: *std.Build.Step.Compile, headers: []const []const u8) void {
     lib.bundle_compiler_rt = lib.root_module.resolved_target.?.result.os.tag != .freestanding;
     // Split functions and data so --gc-sections discards unused EPUB entry points on ARM.
     lib.link_function_sections = true;
     lib.link_data_sections = true;
     lib.root_module.pic = true;
+    for (headers) |hdr| {
+        lib.installHeader(b.path(b.fmt("inc/{s}", .{hdr})), hdr);
+    }
     b.installArtifact(lib);
 }

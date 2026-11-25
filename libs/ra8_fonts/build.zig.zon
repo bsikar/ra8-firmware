@@ -1,0 +1,23 @@
+.{
+    .name = .ra8_fonts,
+    .version = "0.1.0",
+    .fingerprint = 0xf7681129d1739efb,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        ".zig-test-contract.json",
+        "DejaVu-LICENSE.txt",
+        "Literata-OFL.txt",
+        "Literata-Regular.ttf",
+        "RA8UISans",
+        "README.md",
+        "literata_latin1.h",
+        "literata_latin1.ttf",
+        "src",
+        "tests",
+    },
+}

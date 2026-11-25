@@ -22,6 +22,9 @@ fn translateHeaders(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
+    jof_include_dir: std.Build.LazyPath,
+    core_include_dir: std.Build.LazyPath,
+    mem_include_dir: std.Build.LazyPath,
 ) *std.Build.Module {
     const header = b.addWriteFiles().add("longstrip_c.h", longstrip_header);
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
@@ -38,9 +41,9 @@ fn translateHeaders(
     // path.
     translator.addIncludePath(b.path("seam_shim"));
     translator.addIncludePath(b.path("inc"));
-    translator.addIncludePath(b.path("../jof/inc"));
-    translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
-    translator.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
+    translator.addIncludePath(jof_include_dir);
+    translator.addIncludePath(core_include_dir);
+    translator.addIncludePath(mem_include_dir);
     return translator.mod;
 }
 
@@ -50,13 +53,33 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    const jof_lib = b.dependency("jof", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("jof");
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core");
+    const mem_lib = b.dependency("ra8_mem", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_mem");
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/longstrip_abi.zig"),
         .target = target,
         .optimize = optimize,
         .pic = true,
     });
-    const ls_h_mod = translateHeaders(b, target, optimize);
+    const ls_h_mod = translateHeaders(
+        b,
+        target,
+        optimize,
+        jof_lib.getEmittedIncludeTree(),
+        core_lib.getEmittedIncludeTree(),
+        mem_lib.getEmittedIncludeTree(),
+    );
     library_module.addImport("longstrip_h", ls_h_mod);
     const library = b.addLibrary(.{
         .name = "longstrip",
@@ -65,6 +88,7 @@ pub fn build(b: *std.Build) void {
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig longstrip tests");

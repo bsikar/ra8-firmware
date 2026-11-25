@@ -26,6 +26,7 @@ fn translateOs(
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
     queue: bool,
+    core_include_dir: std.Build.LazyPath,
 ) *std.Build.Module {
     const header = b.addWriteFiles().add("fw_os_c.h", "#include \"fw_os.h\"\n");
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
@@ -38,7 +39,7 @@ fn translateOs(
     translator.defineCMacro("static_assert", "_Static_assert");
     if (queue) translator.defineCMacro("FW_OS_HAS_QUEUE", "1");
     translator.addIncludePath(b.path("inc"));
-    translator.addIncludePath(b.path("../ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator.mod;
 }
 
@@ -47,6 +48,16 @@ pub fn build(b: *std.Build) void {
         .default_target = ra8_build.hostDefaultTargetQuery(b),
     });
     const optimize = b.standardOptimizeOption(.{});
+
+    _ = b.addModule("fw_if", .{
+        .root_source_file = b.path("src/facade.zig"),
+    });
+
+    const core_dep = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const core_lib = core_dep.artifact("ra8_core");
 
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/fw_if_fs_abi.zig"),
@@ -72,6 +83,7 @@ pub fn build(b: *std.Build) void {
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -254,8 +266,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    os_contract_test_module.addImport("fw_os_h", translateOs(b, target, optimize, false));
-    os_contract_test_module.addImport("fw_os_queue_h", translateOs(b, target, optimize, true));
+    os_contract_test_module.addImport("fw_os_h", translateOs(b, target, optimize, false, core_lib.getEmittedIncludeTree()));
+    os_contract_test_module.addImport("fw_os_queue_h", translateOs(b, target, optimize, true, core_lib.getEmittedIncludeTree()));
     const os_contract_tests = b.addTest(.{ .root_module = os_contract_test_module });
 
     const run_path_tests = b.addRunArtifact(path_tests);

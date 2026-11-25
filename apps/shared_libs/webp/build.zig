@@ -84,6 +84,20 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    const imgdec_lib = b.dependency("ra8_imgdec", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_imgdec");
+    const core_artifact = if (target.result.os.tag == .freestanding) "ra8_core" else "ra8_core_zig";
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact(core_artifact);
+    const mem_lib = b.dependency("ra8_mem", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_mem");
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_webp_abi.zig"),
         .target = target,
@@ -97,7 +111,40 @@ pub fn build(b: *std.Build) void {
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
+
+    // Owned vendored libwebp decoder with arena allocation enabled so consumers
+    // link `webp_vendor` instead of enumerating SOUP C files directly.
+    const vendor_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+        .sanitize_c = .off,
+    });
+    if (target.result.os.tag != .freestanding) vendor_module.link_libc = true;
+    vendor_module.addIncludePath(b.path("../third_party/libwebp"));
+    vendor_module.addIncludePath(library.getEmittedIncludeTree());
+    vendor_module.addIncludePath(imgdec_lib.getEmittedIncludeTree());
+    vendor_module.addIncludePath(mem_lib.getEmittedIncludeTree());
+    vendor_module.addIncludePath(core_lib.getEmittedIncludeTree());
+    vendor_module.addCSourceFiles(.{
+        .root = b.path("../third_party/libwebp/src"),
+        .files = &vendor_sources,
+        .flags = &.{ "-std=gnu23", "-w", "-fno-strict-aliasing", "-DRA8_WEBP_USE_ARENA" },
+    });
+    vendor_module.addCSourceFiles(.{
+        .root = b.path("../third_party/libwebp/src"),
+        .files = &.{"utils/utils.c"},
+        .flags = &.{ "-std=gnu23", "-w", "-fno-strict-aliasing", "-DRA8_WEBP_USE_ARENA" },
+    });
+    const webp_vendor = b.addLibrary(.{
+        .name = "webp_vendor",
+        .linkage = .static,
+        .root_module = vendor_module,
+    });
+    webp_vendor.installHeadersDirectory(b.path("../third_party/libwebp"), "", .{});
+    if (target.result.os.tag != .freestanding) b.installArtifact(webp_vendor);
 
     const test_step = b.step("test", "Run Zig WebP facade tests");
     const sut_module = b.createModule(.{
@@ -112,48 +159,14 @@ pub fn build(b: *std.Build) void {
     });
     test_module.addImport("ra8_webp_abi", sut_module);
     test_module.link_libc = true;
-    test_module.addIncludePath(b.path("inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_imgdec/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
-    test_module.addIncludePath(b.path("../third_party/libwebp"));
+    test_module.addIncludePath(library.getEmittedIncludeTree());
+    test_module.linkLibrary(webp_vendor);
 
     const webp_test = b.addTest(.{ .root_module = test_module });
 
-    // The vendored libwebp decoder (SOUP): the archive the facade's externs
-    // resolve against. utils.c compiles with the arena patch flag so libwebp's
-    // WebPSafeMalloc/Calloc/Free route through the Zig hooks above, which is
-    // what makes the package test a zero-heap proof rather than a decode smoke.
-    test_module.addCSourceFiles(.{
-        .root = b.path("../third_party/libwebp/src"),
-        .files = &vendor_sources,
-    });
-    test_module.addCSourceFiles(.{
-        .root = b.path("../third_party/libwebp/src"),
-        .files = &.{"utils/utils.c"},
-        .flags = &.{"-DRA8_WEBP_USE_ARENA"},
-    });
-
-    // The scratch policy the arena hooks forward to (RA8FW-308) and the log
-    // backend the facade's error lines go through, both Zig archives.
-    test_module.linkLibrary(b.dependency("ra8_imgdec", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("ra8_imgdec"));
-    // ra8_core publishes the split host archive (ra8_core_zig) and the single
-    // composed image archive on freestanding targets, so the artifact name
-    // follows the target the way ra8_core's own build does.
-    const core_artifact = if (target.result.os.tag == .freestanding) "ra8_core" else "ra8_core_zig";
-    test_module.linkLibrary(b.dependency("ra8_core", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact(core_artifact));
-    // And the bump arena the scratch carves from: ra8_mem_abi.zig's exports
-    // (ra8_arena_carve / ra8_arena_remaining) resolve here.
-    test_module.linkLibrary(b.dependency("ra8_mem", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("ra8_mem"));
+    test_module.linkLibrary(imgdec_lib);
+    test_module.linkLibrary(core_lib);
+    test_module.linkLibrary(mem_lib);
 
     test_step.dependOn(&b.addRunArtifact(webp_test).step);
 }

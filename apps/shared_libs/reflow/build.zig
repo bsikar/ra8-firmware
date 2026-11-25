@@ -38,6 +38,111 @@ pub fn build(b: *std.Build) void {
     const build_options = b.addOptions();
     build_options.addOption(bool, "reflow_v2_engine", reflow_v2_engine);
     library_module.addOptions("reflow_build_options", build_options);
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core");
+    const mem_lib = b.dependency("ra8_mem", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_mem");
+    const imgdec_dep = b.dependency("ra8_imgdec", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const imgdec_lib = imgdec_dep.artifact("ra8_imgdec");
+    const gfx_lib = b.dependency("ra8_gfx", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_gfx");
+    const webp_lib = b.dependency("webp", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("webp");
+
+    // Owned vendored stb implementations (`stb_truetype` for host/libc tests,
+    // `stb_truetype_arena` with `ra8_stbtt_malloc` hooks, and `stb_image` over
+    // `ra8_imgdec`'s arena hooks).
+    const stb_tt_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+        .sanitize_c = .off,
+    });
+    if (target.result.os.tag != .freestanding) stb_tt_mod.link_libc = true;
+    stb_tt_mod.addIncludePath(b.path("../third_party/stb"));
+    stb_tt_mod.addCSourceFile(.{
+        .file = b.path("../third_party/stb/stb_truetype_impl.c"),
+        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter", "-fno-strict-aliasing" },
+    });
+    const stb_tt_lib = b.addLibrary(.{
+        .name = "stb_truetype",
+        .linkage = .static,
+        .root_module = stb_tt_mod,
+    });
+    stb_tt_lib.installHeader(b.path("../third_party/stb/stb_truetype.h"), "stb_truetype.h");
+
+    const stb_tt_arena_src = b.addWriteFiles().add("stb_truetype_arena.c",
+        \\#include "ra8_stbtt_alloc.h"
+        \\#define STBTT_malloc(x, u) ra8_stbtt_malloc(x)
+        \\#define STBTT_free(x, u) ra8_stbtt_free(x)
+        \\#include "stb_truetype_impl.c"
+        \\
+    );
+    const stb_tt_arena_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+        .sanitize_c = .off,
+    });
+    if (target.result.os.tag != .freestanding) stb_tt_arena_mod.link_libc = true;
+    stb_tt_arena_mod.addIncludePath(b.path("../third_party/stb"));
+    stb_tt_arena_mod.addIncludePath(b.path("inc"));
+    stb_tt_arena_mod.addIncludePath(core_lib.getEmittedIncludeTree());
+    stb_tt_arena_mod.addIncludePath(mem_lib.getEmittedIncludeTree());
+    stb_tt_arena_mod.addIncludePath(imgdec_lib.getEmittedIncludeTree());
+    stb_tt_arena_mod.addCSourceFile(.{
+        .file = stb_tt_arena_src,
+        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter", "-fno-strict-aliasing" },
+    });
+    const stb_tt_arena_lib = b.addLibrary(.{
+        .name = "stb_truetype_arena",
+        .linkage = .static,
+        .root_module = stb_tt_arena_mod,
+    });
+    stb_tt_arena_lib.installHeader(b.path("../third_party/stb/stb_truetype.h"), "stb_truetype.h");
+
+    const stb_img_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+        .sanitize_c = .off,
+    });
+    if (target.result.os.tag != .freestanding) stb_img_mod.link_libc = true;
+    stb_img_mod.addIncludePath(b.path("../third_party/stb"));
+    stb_img_mod.addIncludePath(b.path("inc"));
+    stb_img_mod.addIncludePath(core_lib.getEmittedIncludeTree());
+    stb_img_mod.addIncludePath(mem_lib.getEmittedIncludeTree());
+    stb_img_mod.addIncludePath(imgdec_lib.getEmittedIncludeTree());
+    stb_img_mod.addCSourceFile(.{
+        .file = b.path("../third_party/stb/stb_image_impl.c"),
+        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter", "-fno-strict-aliasing" },
+    });
+    const stb_img_lib = b.addLibrary(.{
+        .name = "stb_image",
+        .linkage = .static,
+        .root_module = stb_img_mod,
+    });
+    stb_img_lib.installHeader(b.path("../third_party/stb/stb_image.h"), "stb_image.h");
+    const stb_include = b.addNamedWriteFiles("stb_include");
+    _ = stb_include.addCopyFile(b.path("../third_party/stb/stb_image.h"), "stb_image.h");
+    _ = stb_include.addCopyFile(b.path("../third_party/stb/stb_truetype.h"), "stb_truetype.h");
+    if (target.result.os.tag != .freestanding) {
+        b.installArtifact(stb_tt_lib);
+        b.installArtifact(stb_tt_arena_lib);
+        b.installArtifact(stb_img_lib);
+    }
+
     const library = b.addLibrary(.{
         .name = "ra8_reflow_parse",
         .linkage = .static,
@@ -47,6 +152,7 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     library.link_function_sections = true;
     library.link_data_sections = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig reflow parse entry tests");
@@ -56,32 +162,17 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    // The real walk (RA8FW-1213) runs all-Zig since the CSS library port
-    // (RA8FW-1217/1218/1219). RA8FW-1220: the layout core is Zig too, and
-    // its extern seam (the four stbtt_* entry points) is linked into the
-    // host test so the exported layout symbols resolve. RA8FW-1226: the
-    // image layout TU is Zig as well.
     test_module.addImport("reflow", library_module);
-    test_module.addIncludePath(b.path("inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_imgdec/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_gfx/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_log/inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_webp/inc"));
-    test_module.addIncludePath(b.path("../third_party/stb"));
-    test_module.addCSourceFile(.{ .file = b.path("../third_party/stb/stb_truetype_impl.c"), .flags = &.{"-std=gnu2x"} });
-    // RA8FW-1227: the driver port validates font blobs through the guard
-    // (ra8_stbtt_sfnt_dir_in_bounds). RA8FW-1240: the guard is a Zig archive
-    // member of ra8_imgdec now (libs/ra8_imgdec/src/ra8_stbtt_guard.zig), so
-    // it compiles into this test directly and the driver's extern seam
-    // resolves against it.
-    const stbtt_guard_unit = b.createModule(.{
-        .root_source_file = b.path("../../../libs/ra8_imgdec/src/ra8_stbtt_guard.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    test_module.addImport("ra8_stbtt_guard", stbtt_guard_unit);
+    test_module.addIncludePath(library.getEmittedIncludeTree());
+    test_module.addIncludePath(core_lib.getEmittedIncludeTree());
+    test_module.addIncludePath(mem_lib.getEmittedIncludeTree());
+    test_module.addIncludePath(imgdec_lib.getEmittedIncludeTree());
+    test_module.addIncludePath(gfx_lib.getEmittedIncludeTree());
+    test_module.addIncludePath(webp_lib.getEmittedIncludeTree());
+    test_module.linkLibrary(stb_tt_lib);
+    test_module.addImport("ra8_stbtt_guard", imgdec_dep.module("stbtt_guard"));
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
+    test_step.dependOn(&stb_tt_arena_lib.step);
+    test_step.dependOn(&stb_img_lib.step);
 }

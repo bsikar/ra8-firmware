@@ -62,6 +62,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
     library.root_module.addObject(reset_hook_object);
+    const core_dep = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -125,9 +130,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
         });
-        c_mod.addIncludePath(b.path("inc"));
-        c_mod.addIncludePath(b.path("../ra8_core/inc"));
-        c_mod.addIncludePath(b.path("../ra8_update/inc"));
+        c_mod.addIncludePath(library.getEmittedIncludeTree());
+        c_mod.addIncludePath(core_dep.artifact("ra8_core").getEmittedIncludeTree());
+        c_mod.addIncludePath(update_dep.artifact("ra8_update").getEmittedIncludeTree());
         c_mod.addCSourceFile(.{
             .file = b.path("tests/src/test_ota_bundle_abi.c"),
             .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },

@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+.{
+    .name = .comic,
+    .version = "0.1.0",
+    .fingerprint = 0x5b7ea5aaaf47b1c9,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
+        .ra8_imgdec = .{ .path = "../../../libs/ra8_imgdec" },
+        .unarch = .{ .path = "../unarch" },
+        .epub = .{ .path = "../epub" },
+        .jof = .{ .path = "../jof" },
+        .compress = .{ .path = "../compress" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

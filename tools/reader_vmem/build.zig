@@ -37,10 +37,18 @@ fn addSharedSources(b: *std.Build, mod: *std.Build.Module, files: []const []cons
     });
 }
 
-fn addSharedIncludes(b: *std.Build, mod: *std.Build.Module) void {
+fn configureTargetModule(
+    b: *std.Build,
+    mod: *std.Build.Module,
+    core_include_dir: std.Build.LazyPath,
+    mem_lib: *std.Build.Step.Compile,
+    files: []const []const u8,
+) void {
+    mod.link_libc = true;
+    mod.linkLibrary(mem_lib);
     mod.addIncludePath(b.path("inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
+    mod.addIncludePath(core_include_dir);
+    addSharedSources(b, mod, files);
 }
 
 pub fn build(b: *std.Build) void {
@@ -49,28 +57,18 @@ pub fn build(b: *std.Build) void {
     // C-era tool build did (-O2); an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    // ra8_vsource is Zig now, so the reader links the ra8_mem archive instead
-    // of compiling that file by path. The archive brings along every extern in
-    // it (ra8_vmem_get/ra8_vmem_put from the ported stream adapter, the four
-    // ra8_keycache_* from the glyph atlas); both C halves are already in these
-    // targets, so they resolve; the workspace test links the same archive.
+    const core_include_dir = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core").getEmittedIncludeTree();
     const mem_dep = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize });
     const mem_lib = mem_dep.artifact("ra8_mem");
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
-    mod.link_libc = true;
-    mod.linkLibrary(mem_lib);
-    addSharedIncludes(b, mod);
-    addSharedSources(b, mod, &reader_sources);
+    configureTargetModule(b, mod, core_include_dir, mem_lib, &reader_sources);
     const exe = b.addExecutable(.{ .name = "reader_vmem", .root_module = mod });
 
     b.installArtifact(exe);
 
     const tmod = b.createModule(.{ .target = target, .optimize = optimize });
-    tmod.link_libc = true;
-    tmod.linkLibrary(mem_lib);
-    addSharedIncludes(b, tmod);
-    addSharedSources(b, tmod, &test_sources);
+    configureTargetModule(b, tmod, core_include_dir, mem_lib, &test_sources);
     tmod.addCSourceFiles(.{
         .root = b.path("tests/src"),
         .files = &.{"reader_vmem_workspace_test.c"},

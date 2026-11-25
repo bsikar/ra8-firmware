@@ -18,11 +18,9 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
-    const rpc = b.dependency("ra8_rpc", .{ .target = target, .optimize = optimize });
+    const rpc = b.dependency("ra8_rpc", .{});
     const module = b.addModule("ra8_rpc_tx", .{
         .root_source_file = b.path("src/ra8_rpc_tx.zig"),
-        .target = target,
-        .optimize = optimize,
     });
     module.addImport("ra8_rpc", rpc.module("ra8_rpc"));
 

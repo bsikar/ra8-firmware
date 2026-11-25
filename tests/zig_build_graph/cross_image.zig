@@ -813,14 +813,19 @@ fn zigMain(
         .optimize = optimize,
         .unwind_tables = .none,
     });
-    // Generated Zig sits outside the app's src/, so it comes in by name.
+    // Generated Zig and library package modules sit outside the app's src/,
+    // so they arrive by name.
     for (app.zig_main_imports) |import| {
-        module.addImport(import.name, b.createModule(.{
-            .root_source_file = b.path(import.path),
-            .target = target,
-            .optimize = optimize,
-            .unwind_tables = .none,
-        }));
+        const imp_mod = if (import.dep) |dep_name|
+            b.dependency(dep_name, .{}).module(import.module.?)
+        else
+            b.createModule(.{
+                .root_source_file = b.path(import.path.?),
+                .target = target,
+                .optimize = optimize,
+                .unwind_tables = .none,
+            });
+        module.addImport(import.name, imp_mod);
     }
     const object = b.addObject(.{
         .name = b.fmt("{s}_main", .{app.name}),

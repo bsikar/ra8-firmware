@@ -351,7 +351,9 @@ test "pure-Zig dual-core CPU1 image imports ra8_rpc without TXM C-ABI flags" {
         try std.testing.expect(!image.rpc);
         try std.testing.expectEqual(@as(usize, 1), image.zig_imports.len);
         try std.testing.expectEqualStrings("ra8_rpc", image.zig_imports[0].name);
-        try std.testing.expectEqualStrings("libs/ra8_rpc/src/ra8_rpc.zig", image.zig_imports[0].path);
+        try std.testing.expect(image.zig_imports[0].path == null);
+        try std.testing.expectEqualStrings("ra8_rpc", image.zig_imports[0].dep.?);
+        try std.testing.expectEqualStrings("ra8_rpc", image.zig_imports[0].module.?);
     }
     try std.testing.expect(found);
 }

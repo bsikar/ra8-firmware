@@ -159,6 +159,9 @@ pub fn build(b: *std.Build) void {
     root_module.addImport("program_abi", program_abi_module);
     root_module.addImport("boot_state_abi", boot_state_abi_module);
 
+    const core_dep = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
+    const hal_dep = b.dependency("ra8_hal", .{ .target = target, .optimize = optimize });
+
     const library = b.addLibrary(.{
         .name = "ra8_dfu",
         .linkage = .static,
@@ -170,6 +173,7 @@ pub fn build(b: *std.Build) void {
     // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     // The boot logic on its own, for links that cannot resolve the host
@@ -189,6 +193,7 @@ pub fn build(b: *std.Build) void {
         .root_module = boot_root_module,
     });
     boot_library.bundle_compiler_rt = boot_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    boot_library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(boot_library);
 
     const test_module = b.createModule(.{
@@ -261,9 +266,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
         });
-        c_host_module.addIncludePath(b.path("inc"));
-        c_host_module.addIncludePath(b.path("../ra8_core/inc"));
-        c_host_module.addIncludePath(b.path("../ra8_hal/inc"));
+        c_host_module.addIncludePath(library.getEmittedIncludeTree());
+        c_host_module.addIncludePath(core_dep.artifact("ra8_core").getEmittedIncludeTree());
+        c_host_module.addIncludePath(hal_dep.artifact("ra8_hal").getEmittedIncludeTree());
         c_host_module.addCSourceFile(.{
             .file = b.path("tests/src/test_dfu_host.c"),
             .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },

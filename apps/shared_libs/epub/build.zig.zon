@@ -5,6 +5,7 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .xml = .{ .path = "../xml" },
     },
     .paths = .{
         "build.zig",

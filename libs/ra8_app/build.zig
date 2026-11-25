@@ -20,6 +20,13 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("module_pack", .{ .root_source_file = b.path("src/internal/module_pack.zig") });
+    _ = b.addModule("test_key", .{ .root_source_file = b.path("tools/test_key.zig") });
+    _ = b.addModule("appimg_verify", .{ .root_source_file = b.path("src/internal/appimg_verify.zig") });
+    _ = b.addModule("ed25519_backend", .{ .root_source_file = b.path("src/internal/ed25519_backend.zig") });
+    _ = b.addModule("app_resident", .{ .root_source_file = b.path("src/internal/app_resident.zig") });
+    _ = b.addModule("app_api", .{ .root_source_file = b.path("src/internal/api/module.zig") });
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_app_abi.zig"),
         .target = target,
@@ -35,6 +42,7 @@ pub fn build(b: *std.Build) void {
     // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

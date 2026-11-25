@@ -73,14 +73,14 @@ pub const apps = [_]CrossApp{
         .threadx_heap = "SDRAM",
         .zig_main = "src/main.zig",
         .zig_main_imports = &.{
-            .{ .name = "appimg_verify", .path = "libs/ra8_app/src/internal/appimg_verify.zig" },
+            .{ .name = "appimg_verify", .dep = "ra8_app", .module = "appimg_verify" },
             // The production Ed25519 backend (RA8FW-291): admission runs the
             // same export silicon will, so the example carries no crypto of
             // its own.
-            .{ .name = "ed25519_backend", .path = "libs/ra8_app/src/internal/ed25519_backend.zig" },
+            .{ .name = "ed25519_backend", .dep = "ra8_app", .module = "ed25519_backend" },
             // The pinned key lives in its own Secure-flash section
             // (RA8FW-291): admission reads it secure-side.
-            .{ .name = "ra8_nsc_appimg_pubkey", .path = "libs/ra8_nsc/src/ra8_nsc_appimg_pubkey.zig" },
+            .{ .name = "ra8_nsc_appimg_pubkey", .dep = "ra8_nsc", .module = "ra8_nsc_appimg_pubkey" },
         },
         .txm_manager = true,
         .stack_bytes = 8192,
@@ -98,7 +98,7 @@ pub const apps = [_]CrossApp{
         .zig_main_imports = &.{
             // Both the gate and the API: one root, so appimg.zig stays in
             // a single module graph.
-            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+            .{ .name = "app_resident", .dep = "ra8_app", .module = "app_resident" },
         },
         .txm_manager = true,
         .stack_bytes = 8192,
@@ -151,7 +151,7 @@ pub const apps = [_]CrossApp{
         .zig_main_imports = &.{
             // Both the gate and the API: one root, so appimg.zig stays in
             // a single module graph.
-            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+            .{ .name = "app_resident", .dep = "ra8_app", .module = "app_resident" },
         },
         .ra8app_module = "txm_translate_m33",
         .stack_bytes = 8192,
@@ -170,7 +170,7 @@ pub const apps = [_]CrossApp{
         .threadx_heap = "SDRAM",
         .zig_main = "src/main.zig",
         .zig_main_imports = &.{
-            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+            .{ .name = "app_resident", .dep = "ra8_app", .module = "app_resident" },
         },
         .ra8app_module = "txm_touch_led_m33",
         .stack_bytes = 8192,

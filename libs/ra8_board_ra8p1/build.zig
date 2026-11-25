@@ -51,6 +51,7 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_board_ra8p1 tests");

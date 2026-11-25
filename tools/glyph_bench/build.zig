@@ -39,10 +39,6 @@ pub fn build(b: *std.Build) void {
     mod.linkLibrary(io_dep.artifact("ra8_io"));
     mod.linkLibrary(mem_dep.artifact("ra8_mem"));
     mod.linkLibrary(core_dep.artifact("ra8_core_zig"));
-    mod.addIncludePath(b.path("../../libs/if/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_io/inc"));
     mod.addIncludePath(b.path("../../port/posix/inc"));
     mod.addIncludePath(b.path("../../port/posix/src"));
     mod.addCSourceFiles(.{

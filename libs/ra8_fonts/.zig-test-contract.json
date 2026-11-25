@@ -1,0 +1,18 @@
+{
+  "test_roots": [
+    "tests/fonts_test.zig"
+  ],
+  "covered_sources": [
+    "src/fonts.zig",
+    "tests/fonts_test.zig"
+  ],
+  "standalone_source_args": {
+    "tests/fonts_test.zig": [
+      "--dep",
+      "ra8_fonts",
+      "-Mroot=tests/fonts_test.zig",
+      "-Mra8_fonts=src/fonts.zig"
+    ]
+  },
+  "minimum_tests": 4
+}

@@ -108,22 +108,19 @@ pub fn addSuite(
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
 ) void {
+    const unarch_dep = b.dependency("unarch", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    for (include_paths) |include_path| {
-        module.addIncludePath(b.path(include_path));
-    }
-    module.addCSourceFiles(.{
-        .files = &c_sources,
-        .flags = &soup_flags,
-    });
-    module.addCSourceFiles(.{
-        .files = &first_party_sources,
-        .flags = &first_party_flags,
-    });
+    module.addIncludePath(b.path("apps/shared_libs/unarch/tests/inc"));
+    module.addIncludePath(b.path("tests/support/inc"));
+    module.addIncludePath(b.path("tests/fixtures/inc"));
+    module.addIncludePath(b.path("tests/mocks/inc"));
     module.addCSourceFile(.{
         .file = b.path(slice.c_suite_path),
         .flags = &host_flags.c_flags,
@@ -135,23 +132,12 @@ pub fn addSuite(
     });
     // The bounded XZ wrapper itself is the unarch_xz archive now (RA8FW-1205:
     // unarch_xz.c is deleted and the wrapper port lives in unarch_xz_abi.zig).
-    // It calls unarch_xz_pool_install/reset (RA8FW-1204: the pool is the Zig
-    // archive) and drives the vendored decoder through the ra8_imgdec scratch,
-    // which is Zig too, so it goes before both.
-    suite.root_module.linkLibrary(b.dependency("unarch", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("unarch_xz"));
-    suite.root_module.linkLibrary(b.dependency("unarch", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("unarch_xz_pool"));
-    // unarch_io is the read seam archive (unarch_io_abi.zig): the suite's
-    // mem-edge probes call unarch_mem_read/write through it.
-    suite.root_module.linkLibrary(b.dependency("unarch", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("unarch_io"));
+    // It drives the owned vendored xz_embedded decoder archive and calls
+    // unarch_xz_pool_install/reset (RA8FW-1204) and unarch_io (unarch_io_abi.zig).
+    suite.root_module.linkLibrary(unarch_dep.artifact("unarch_xz"));
+    suite.root_module.linkLibrary(unarch_dep.artifact("xz_embedded"));
+    suite.root_module.linkLibrary(unarch_dep.artifact("unarch_xz_pool"));
+    suite.root_module.linkLibrary(unarch_dep.artifact("unarch_io"));
     suite.root_module.linkLibrary(b.dependency("ra8_imgdec", .{
         .target = target,
         .optimize = optimize,

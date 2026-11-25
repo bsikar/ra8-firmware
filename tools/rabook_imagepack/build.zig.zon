@@ -10,9 +10,13 @@
         .ra8_imgdec = .{ .path = "../../libs/ra8_imgdec" },
         .ra8_mem = .{ .path = "../../libs/ra8_mem" },
         .ra8_jpeg = .{ .path = "../../libs/ra8_jpeg" },
+        .ra8_io = .{ .path = "../../libs/ra8_io" },
         .ra8_core = .{ .path = "../../libs/ra8_core" },
         .jof = .{ .path = "../../apps/shared_libs/jof" },
+        .book = .{ .path = "../../apps/shared_libs/book" },
         .compress = .{ .path = "../../apps/shared_libs/compress" },
+        .reflow = .{ .path = "../../apps/shared_libs/reflow" },
+        .rabook_compile = .{ .path = "../../apps/shared_libs/rabook_compile" },
     },
     .paths = .{
         "build.zig",

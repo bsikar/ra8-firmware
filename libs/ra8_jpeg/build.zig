@@ -78,6 +78,7 @@ pub fn build(b: *std.Build) void {
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.link_function_sections = true;
     library.link_data_sections = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_jpeg tests");

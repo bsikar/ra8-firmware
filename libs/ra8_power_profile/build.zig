@@ -31,6 +31,7 @@ pub fn build(b: *std.Build) void {
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     // Rust ABI consumers use PIE executables through the system linker.
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

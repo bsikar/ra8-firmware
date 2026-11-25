@@ -113,7 +113,7 @@ pub const apps = [_]CrossApp{
         .cache_mpu = true,
         .zig_main = "src/main.zig",
         .zig_main_imports = &.{
-            .{ .name = "ra8_rpc", .path = "libs/ra8_rpc/src/ra8_rpc.zig" },
+            .{ .name = "ra8_rpc", .dep = "ra8_rpc", .module = "ra8_rpc" },
         },
         .cpu1 = .{
             .entry_source = "src/cpu1_main.zig",
@@ -121,7 +121,7 @@ pub const apps = [_]CrossApp{
             .linker_script = "linker_script_cpu1.ld",
             .entry_language = .zig,
             .zig_imports = &.{
-                .{ .name = "ra8_rpc", .path = "libs/ra8_rpc/src/ra8_rpc.zig" },
+                .{ .name = "ra8_rpc", .dep = "ra8_rpc", .module = "ra8_rpc" },
             },
         },
     },

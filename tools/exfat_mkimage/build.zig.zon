@@ -4,6 +4,7 @@
     .fingerprint = 0x12aeb9bded416a9d,
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
+        .ra8_core = .{ .path = "../../libs/ra8_core" },
         .ra8_fs = .{ .path = "../../libs/ra8_fs" },
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
     },

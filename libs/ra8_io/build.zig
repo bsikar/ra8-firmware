@@ -45,6 +45,7 @@ pub fn build(b: *std.Build) void {
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.bundle_compiler_rt = false;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_io tests");

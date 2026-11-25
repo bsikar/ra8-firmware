@@ -35,10 +35,6 @@ const bench_sources = [_][]const u8{
     "trace.c",
 };
 
-// book.c is gone (RA8FW-1251): the whole book package is Zig now, and the
-// ra8_book archive carries every book symbol, so no book C TU remains here.
-const book_tus = [_][]const u8{};
-
 // The contract test drives the replay engine through inc/cache_bench.h:
 // same first-party set as the tool minus the command-line front end
 // (cache_bench_report.c defines main).
@@ -55,35 +51,41 @@ const test_sources = [_][]const u8{
     "trace.c",
 };
 
+const c_flags = [_][]const u8{
+    "-std=gnu23",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-DMINIZ_NO_ARCHIVE_APIS",
+    "-DMINIZ_NO_MALLOC",
+    "-DMINIZ_NO_STDIO",
+    "-DMINIZ_NO_TIME",
+};
+
 fn addSharedSources(b: *std.Build, mod: *std.Build.Module, files: []const []const u8) void {
     mod.addCSourceFiles(.{
         .root = b.path("src"),
         .files = files,
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-DMINIZ_NO_MALLOC", "-DMINIZ_NO_STDIO" },
-    });
-    mod.addCSourceFiles(.{
-        .root = b.path("../../apps/shared_libs/book/src"),
-        .files = &book_tus,
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-DMINIZ_NO_MALLOC", "-DMINIZ_NO_STDIO" },
-    });
-    // book_chunked.c is Zig now (RA8FW-1244): the demand-paged chunk reader
-    // lives in the ra8_book archive behind the unchanged book_chunked_* C ABI;
-    // build() links that archive next to ra8_mem.
-    // miniz is SOUP and type-puns through byte buffers; keep the optimizer
-    // contract that prevents strict-aliasing miscompilation.
-    mod.addCSourceFiles(.{
-        .root = b.path("../../apps/shared_libs/third_party/miniz"),
-        .files = &.{"miniz.c"},
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-fno-strict-aliasing", "-DMINIZ_NO_MALLOC", "-DMINIZ_NO_STDIO" },
+        .flags = &c_flags,
     });
 }
 
-fn addSharedIncludes(b: *std.Build, mod: *std.Build.Module) void {
+fn configureTargetModule(
+    b: *std.Build,
+    mod: *std.Build.Module,
+    core_include_dir: std.Build.LazyPath,
+    mem_lib: *std.Build.Step.Compile,
+    book_lib: *std.Build.Step.Compile,
+    miniz_lib: *std.Build.Step.Compile,
+    files: []const []const u8,
+) void {
+    mod.link_libc = true;
+    mod.linkLibrary(mem_lib);
+    mod.linkLibrary(book_lib);
+    mod.linkLibrary(miniz_lib);
     mod.addIncludePath(b.path("inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/book/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/third_party/miniz"));
+    mod.addIncludePath(core_include_dir);
+    addSharedSources(b, mod, files);
 }
 
 pub fn build(b: *std.Build) void {
@@ -92,45 +94,24 @@ pub fn build(b: *std.Build) void {
     // tool build did (-O2); an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    // ra8_vsource is Zig now, so the bench links the ra8_mem archive instead
-    // of compiling that file by path. The archive is a single object, so it
-    // brings along every extern in it (ra8_vmem_get/ra8_vmem_put from the
-    // ported stream adapter, the four ra8_keycache_* from the glyph atlas);
-    // both C halves are already in these targets, so they resolve; the contract test links the same archive.
+    const core_include_dir = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core").getEmittedIncludeTree();
     const mem_dep = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize });
     const mem_lib = mem_dep.artifact("ra8_mem");
-
-    // The book chunk reader (RA8FW-1244) is Zig now: the ra8_book archive
-    // provides book_chunked_open/book_chunked_read for the bench's sweep
-    // backends; book.c, still C here, supplies the shared header parser.
-    const book_wire_mod = b.createModule(.{
-        .root_source_file = b.path("../../apps/shared_libs/book/src/book_root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const book_wire_lib = b.addLibrary(.{ .name = "ra8_book", .linkage = .static, .root_module = book_wire_mod });
-    book_wire_lib.bundle_compiler_rt = true;
+    const book_lib = b.dependency("ra8_book", .{ .target = target, .optimize = optimize }).artifact("ra8_book");
+    const miniz_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("miniz");
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
-    mod.link_libc = true;
-    mod.linkLibrary(mem_lib);
-    mod.linkLibrary(book_wire_lib);
-    addSharedIncludes(b, mod);
-    addSharedSources(b, mod, &bench_sources);
+    configureTargetModule(b, mod, core_include_dir, mem_lib, book_lib, miniz_lib, &bench_sources);
     const exe = b.addExecutable(.{ .name = "cache_bench", .root_module = mod });
 
     b.installArtifact(exe);
 
     const tmod = b.createModule(.{ .target = target, .optimize = optimize });
-    tmod.link_libc = true;
-    tmod.linkLibrary(mem_lib);
-    tmod.linkLibrary(book_wire_lib);
-    addSharedIncludes(b, tmod);
-    addSharedSources(b, tmod, &test_sources);
+    configureTargetModule(b, tmod, core_include_dir, mem_lib, book_lib, miniz_lib, &test_sources);
     tmod.addCSourceFiles(.{
         .root = b.path("tests/src"),
         .files = &.{"test_cache_bench.c"},
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-DMINIZ_NO_MALLOC", "-DMINIZ_NO_STDIO" },
+        .flags = &c_flags,
     });
     const test_exe = b.addExecutable(.{ .name = "test_cache_bench", .root_module = tmod });
     const run_test = b.addRunArtifact(test_exe);

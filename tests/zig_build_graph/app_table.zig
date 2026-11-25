@@ -23,11 +23,13 @@ const ns_image_mod = @import("ns_image.zig");
 const m85_txm = @import("app_table_m85_txm.zig");
 const tail = @import("app_table_tail.zig");
 
-/// One named module a Zig main imports: `@import(name)` resolves to `path`,
-/// a root source file spelled relative to the repo root.
+/// One named module a Zig main imports: `@import(name)` resolves either to a
+/// dependency module (`dep` + `module`) or to a generated repo-relative `path`.
 pub const ZigImport = struct {
     name: []const u8,
-    path: []const u8,
+    path: ?[]const u8 = null,
+    dep: ?[]const u8 = null,
+    module: ?[]const u8 = null,
 };
 
 pub const CrossApp = struct {

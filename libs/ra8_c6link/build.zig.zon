@@ -5,6 +5,7 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+        .ra8_core = .{ .path = "../ra8_core" },
         // Translates the public, capture and private headers into the
         // c6link_h, c6link_capture_h and c6link_rpc_h modules.
         .translate_c = .{

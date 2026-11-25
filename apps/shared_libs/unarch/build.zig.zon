@@ -5,6 +5,10 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        .compress = .{ .path = "../compress" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_imgdec = .{ .path = "../../../libs/ra8_imgdec" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
     },
     .paths = .{
         "build.zig",

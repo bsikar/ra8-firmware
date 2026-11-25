@@ -14,6 +14,10 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("ra8_box", .{
+        .root_source_file = b.path("src/ra8_box_abi.zig"),
+    });
+
     const library = b.addLibrary(.{
         .name = "ra8_box",
         .linkage = .static,
@@ -30,6 +34,7 @@ pub fn build(b: *std.Build) void {
     // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

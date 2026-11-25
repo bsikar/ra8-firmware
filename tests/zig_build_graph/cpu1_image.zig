@@ -98,7 +98,9 @@ pub const Cpu1Image = struct {
 
 pub const ZigImport = struct {
     name: []const u8,
-    path: []const u8,
+    path: ?[]const u8 = null,
+    dep: ?[]const u8 = null,
+    module: ?[]const u8 = null,
 };
 
 pub const EntryLanguage = enum { c, zig };
@@ -392,14 +394,15 @@ fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPat
         root.addImport(cpu1_threadx.zig_glue_import, glue);
     }
     if (options.image.rpc) {
-        const rpc = zigModule(b, options, "libs/ra8_rpc/src/ra8_rpc.zig");
-        const rpc_tx = zigModule(b, options, "libs/ra8_rpc_tx/src/ra8_rpc_tx.zig");
-        rpc_tx.addImport("ra8_rpc", rpc);
-        root.addImport("ra8_rpc", rpc);
-        root.addImport("ra8_rpc_tx", rpc_tx);
+        root.addImport("ra8_rpc", b.dependency("ra8_rpc", .{}).module("ra8_rpc"));
+        root.addImport("ra8_rpc_tx", b.dependency("ra8_rpc_tx", .{}).module("ra8_rpc_tx"));
     }
     for (options.image.zig_imports) |import| {
-        root.addImport(import.name, zigModule(b, options, import.path));
+        const imp_mod = if (import.dep) |dep_name|
+            b.dependency(dep_name, .{}).module(import.module.?)
+        else
+            zigModule(b, options, import.path.?);
+        root.addImport(import.name, imp_mod);
     }
     // The RPC stack's message copies lower to `__aeabi_memcpy` and
     // `__aeabi_memclr`. ra8_core's archive, which this link always carries,

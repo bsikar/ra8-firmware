@@ -29,14 +29,14 @@ pub fn build(b: *std.Build) void {
     // The UTF codec and the library lock are Zig now (RA8FW-747, RA8FW-724);
     // they come from the ra8_fs archive, which is all the tool links now that every
     // driver TU is Zig (RA8FW-1138).
+    const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core");
     const fs_dep = b.dependency("ra8_fs", .{ .target = target, .optimize = optimize });
     const fs_lib = fs_dep.artifact("ra8_fs");
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
     mod.link_libc = true;
     mod.linkLibrary(fs_lib);
-    mod.addIncludePath(b.path("../../libs/ra8_fs/inc"));
-    mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
+    mod.addIncludePath(core_lib.getEmittedIncludeTree());
     mod.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{"exfat_mkimage.c"},

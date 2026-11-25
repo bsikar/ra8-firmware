@@ -48,6 +48,7 @@ fn translate(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
     name: []const u8,
     source: []const u8,
 ) Translator {
@@ -62,24 +63,34 @@ fn translate(
     });
     translator.defineCMacro("static_assert", "_Static_assert");
     translator.addIncludePath(b.path("inc"));
-    translator.addIncludePath(b.path("../ra8_core/inc"));
+    translator.addIncludePath(core_include_dir);
     return translator;
 }
 
-fn translateHeaders(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.lang.OptimizeMode) Headers {
-    const public = translate(b, target, optimize, "c6link_c.h", public_header);
+fn translateHeaders(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
+) Headers {
+    const public = translate(b, target, optimize, core_include_dir, "c6link_c.h", public_header);
     public.defineCMacro("alignas", "_Alignas");
-    const capture = translate(b, target, optimize, "c6link_capture_c.h", capture_header);
-    return .{ .public = public.mod, .capture = capture.mod, .rpc = translateRpc(b, target, optimize) };
+    const capture = translate(b, target, optimize, core_include_dir, "c6link_capture_c.h", capture_header);
+    return .{ .public = public.mod, .capture = capture.mod, .rpc = translateRpc(b, target, optimize, core_include_dir) };
 }
 
 /// The private header and the vendored esp-hosted and protobuf-c headers it
 /// pulls in. `RA8_FREESTANDING` routes the protobuf-c fork's `assert` through
 /// `ra8_check.h`, so this translates without libc on host and on Arm alike.
-fn translateRpc(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.lang.OptimizeMode) ?*std.Build.Module {
+fn translateRpc(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    core_include_dir: std.Build.LazyPath,
+) ?*std.Build.Module {
     const esp = b.lazyDependency("esp_hosted", .{}) orelse return null;
     const protobuf = b.lazyDependency("protobuf_c", .{}) orelse return null;
-    const rpc = translate(b, target, optimize, "c6link_rpc_c.h", rpc_header);
+    const rpc = translate(b, target, optimize, core_include_dir, "c6link_rpc_c.h", rpc_header);
     rpc.defineCMacro("RA8_FREESTANDING", "1");
     rpc.defineCMacro("alignas", "_Alignas");
     rpc.addIncludePath(b.path("src"));
@@ -95,7 +106,9 @@ pub fn build(b: *std.Build) void {
         .default_target = ra8_build.hostDefaultTargetQuery(b),
     });
     const optimize = b.standardOptimizeOption(.{});
-    const headers = translateHeaders(b, target, optimize);
+    const core_dep = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
+    const core_lib = core_dep.artifact("ra8_core");
+    const headers = translateHeaders(b, target, optimize, core_lib.getEmittedIncludeTree());
 
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_c6link_lib.zig"),
@@ -114,6 +127,7 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
