@@ -102,21 +102,6 @@ typedef enum : uint8_t {
 } dtc_demo_swevt_t;
 
 /**
- * @brief DTC Transfer-Information mode-bit field values.
- *
- * @details
- * HUM Ch 18.2.2 "MRA" (p 786) and 18.2.3 "MRB" (p 787): a block-mode,
- * 32-bit-word, increment-both copy. ``2`` selects "increment" for
- * SM/DM, "32-bit word" for SZ, and "block transfer" for MD.
- */
-}
-dtc_mr_field_t;
-}
-dtc_mr_pos_t;
-}
-dtc_count_t;
-
-/**
  * @brief DTC vector-table geometry.
  *
  * @details
@@ -177,9 +162,9 @@ static const ra8_dtc_xfer_cfg_t k_dtc_demo_xfer = {
 /**
  * @var s_dtc_ti
  * @brief The 16-byte Transfer Information block the DTC reads each pass.
- * @warning 16-byte-aligned (HUM Ch 18.3.1 p 796).
+ * @details ``ra8_dtc_ti_t`` carries the 16-byte alignment (HUM Ch 18.3.1 p 796).
  */
-[[gnu::aligned(k_dtc_ti_align)]] static r_dtc_xfer_info_t s_dtc_ti;
+static ra8_dtc_ti_t s_dtc_ti;
 
 /** @brief IELSR slot allocated for the DTC activation = DTC vector number. */
 static uint16_t s_dtc_slot;
@@ -374,7 +359,7 @@ static void dtc_demo_bringup_or_halt(void)
   /* DTCVBR + slot*4 holds the 16-byte-aligned TI start address; bit0 is
    * the privilege attribution (0 = privileged). HUM Ch 18.3.1 p 796 +
    * Figure 18.3 p 798. SRAM vector-table write (not MMIO). */
-  s_dtc_vt[s_dtc_slot] = (uint32_t)(uintptr_t)&s_dtc_ti;
+  s_dtc_vt[s_dtc_slot] = (uint32_t)(uintptr_t)&s_dtc_ti.ti;
   if (ra8_dtc_enable() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
