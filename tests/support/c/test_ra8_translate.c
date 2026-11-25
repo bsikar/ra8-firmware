@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "ra8_translate.h"
+#include "test_ra8_translate_job.h"
 #include "unity_minimal.h"
 
 static ra8_translate_sidecar_key_t make_key(ra8_translate_lang_t lang)
@@ -911,6 +912,25 @@ static void test_overlay_fit_render_and_damage(void)
   TEST_ASSERT_EQ(k_ovl_art_bg, cv.pixels[(size_t)k_ovl_b1_y * k_ovl_page_w + k_ovl_b1_x]);
 }
 
+static void test_chapter_job_pipeline_and_reset(void)
+{
+  size_t need = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_job_work_bytes(&need));
+  TEST_ASSERT(need <= k_cjob_work_cap);
+  test_ovl_canvas_t        cv    = {};
+  const ra8_widget_paint_t paint = {
+    .user            = &cv,
+    .fill_rect       = ovl_fill_rect,
+    .draw_text       = ovl_draw_text,
+    .text_size       = ovl_text_size,
+    .draw_text_style = ovl_draw_text_style,
+    .text_size_style = ovl_text_size_style,
+  };
+  cjob_mock_ctx_t gctx = {};
+  cjob_run_golden(need, &paint, k_ovl_white, &gctx);
+  cjob_run_reset_resume(need, &paint, k_ovl_white, &gctx);
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -940,5 +960,9 @@ int main(void)
   TEST_BEGIN("test_overlay_fit_render_and_damage");
   test_overlay_fit_render_and_damage();
   TEST_END("test_overlay_fit_render_and_damage");
+
+  TEST_BEGIN("test_chapter_job_pipeline_and_reset");
+  test_chapter_job_pipeline_and_reset();
+  TEST_END("test_chapter_job_pipeline_and_reset");
   return 0;
 }

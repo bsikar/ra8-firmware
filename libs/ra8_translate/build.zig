@@ -113,6 +113,39 @@ pub fn build(b: *std.Build) void {
     det_mod.addImport("detector_group", det_grp_mod);
     det_mod.addImport("err", err_mod);
 
+    const ckpt_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/chapter_checkpoint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ckpt_mod.addImport("crc32", crc32_mod);
+    ckpt_mod.addImport("err", err_mod);
+    ckpt_mod.addImport("glossary", glossary_mod);
+    ckpt_mod.addImport("sidecar", sidecar_mod);
+
+    const job_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/chapter_job.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    job_mod.addImport("chapter_checkpoint", ckpt_mod);
+    job_mod.addImport("err", err_mod);
+    job_mod.addImport("glossary", glossary_mod);
+    job_mod.addImport("lang", lang_mod);
+    job_mod.addImport("overlay", overlay_mod);
+    job_mod.addImport("sidecar", sidecar_mod);
+
+    const job_abi_mod = b.createModule(.{
+        .root_source_file = b.path("src/chapter_job_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    job_abi_mod.addImport("err", err_mod);
+    job_abi_mod.addImport("chapter_job", job_mod);
+    job_abi_mod.addImport("sidecar", sidecar_mod);
+    job_abi_mod.addImport("overlay", overlay_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -154,6 +187,7 @@ pub fn build(b: *std.Build) void {
     root_mod.addImport("ra8_translate_abi", abi_mod);
     root_mod.addImport("ctc_decode_abi", ctc_abi_mod);
     root_mod.addImport("detector_post_abi", det_abi_mod);
+    root_mod.addImport("chapter_job_abi", job_abi_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -330,4 +364,23 @@ pub fn build(b: *std.Build) void {
     const run_det = b.addRunArtifact(det_tests);
     ra8_build.configureHostTestRun(b, test_step, det_tests, run_det);
     test_step.dependOn(&run_det.step);
+
+    const job_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/chapter_job_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    job_tmod.addImport("err", err_mod);
+    job_tmod.addImport("chapter_checkpoint", ckpt_mod);
+    job_tmod.addImport("chapter_job", job_mod);
+    job_tmod.addImport("chapter_job_abi", job_abi_mod);
+    job_tmod.addImport("sidecar", sidecar_mod);
+    job_tmod.addImport("glossary", glossary_mod);
+    job_tmod.addImport("overlay", overlay_mod);
+    job_tmod.addImport("ra8_gfx", gfx_mod);
+    job_tmod.addImport("panel_paint", panel_paint_mod);
+    const job_tests = b.addTest(.{ .root_module = job_tmod });
+    const run_job = b.addRunArtifact(job_tests);
+    ra8_build.configureHostTestRun(b, test_step, job_tests, run_job);
+    test_step.dependOn(&run_job.step);
 }

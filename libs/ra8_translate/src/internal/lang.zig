@@ -89,9 +89,8 @@ pub fn countScripts(sample_utf8: []const u8) Error!ScriptCounts {
     return counts;
 }
 
-/// Select the source language and OCR/NMT pipeline profile from a hint and UTF-8 OCR sample.
-pub fn selectLanguage(hint: Language, sample_utf8: []const u8) Error!Selection {
-    const counts = try countScripts(sample_utf8);
+/// Select the source language and OCR/NMT pipeline profile from pre-aggregated script counts.
+pub fn selectFromCounts(hint: Language, counts: ScriptCounts) Selection {
     const chosen = decideLanguage(hint, counts);
     const ocr = ocrModelFor(chosen.lang);
     const nmt = nmtModelFor(chosen.lang);
@@ -104,6 +103,12 @@ pub fn selectLanguage(hint: Language, sample_utf8: []const u8) Error!Selection {
         .reserved = .{ 0, 0, 0, 0 },
         .counts = counts,
     };
+}
+
+/// Select the source language and OCR/NMT pipeline profile from a hint and UTF-8 OCR sample.
+pub fn selectLanguage(hint: Language, sample_utf8: []const u8) Error!Selection {
+    const counts = try countScripts(sample_utf8);
+    return selectFromCounts(hint, counts);
 }
 
 /// Convenience wrapper parsing an MDL metadata hint string and selecting models.

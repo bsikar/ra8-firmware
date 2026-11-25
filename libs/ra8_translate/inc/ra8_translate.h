@@ -846,3 +846,5 @@ ra8_err_t ra8_translate_tok_decode(const uint8_t*  tvoc_buf,
 #ifdef __cplusplus
 }
 #endif
+
+#include "ra8_translate_job.h"

@@ -370,6 +370,20 @@
       ]
     },
     {
+      "path": "libs/ra8_translate/src/chapter_job_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_translate_job_work_bytes",
+        "ra8_translate_job_init",
+        "ra8_translate_job_enqueue",
+        "ra8_translate_job_cancel",
+        "ra8_translate_job_restore_checkpoint",
+        "ra8_translate_job_step",
+        "ra8_translate_job_status",
+        "ra8_translate_job_query_chapter"
+      ]
+    },
+    {
       "path": "libs/ra8_ui/src/ra8_ui_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -3816,7 +3830,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "17c058a318218b5874658e82529ea4dc79702149750dd1143f674ab770fa0479",
+      "compatibility_sha256": "946e7d5385aea18be36ad8c07e2bab4d457dcf419f409e43ab3c80a4c9d4fbde",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3878,6 +3892,26 @@
             "@sizeOf(DetSummary) == 16",
             "@alignOf(DetSummary) == 4"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/inc/ra8_translate_job.h",
+          "compatibility_sha256": "c4945c1a0a1cf19c3883161eac772090fe6788ec0f7adbe1684ee6727342d911",
+          "symbol_prefix": "ra8_translate_job_",
+          "layout_assertions": [
+            "@sizeOf(JobChapter) == 68",
+            "@alignOf(JobChapter) == 4",
+            "@sizeOf(JobPolicy) == 32",
+            "@alignOf(JobPolicy) == 4",
+            "@sizeOf(JobEnv) == 4",
+            "@alignOf(JobEnv) == 1",
+            "@sizeOf(JobOcrBubble) == 24",
+            "@alignOf(JobOcrBubble) == 4",
+            "@sizeOf(JobSpan) == 8",
+            "@alignOf(JobSpan) == 4",
+            "@sizeOf(JobStatus) == 32",
+            "@alignOf(JobStatus) == 4",
+            "@sizeOf(JobHooks) == ptr_bytes * 8"
+          ]
         }
       ],
       "adapters": [
@@ -3892,6 +3926,12 @@
           "symbol_prefixes": [
             "ra8_translate_det_"
           ]
+        },
+        {
+          "path": "libs/ra8_translate/src/chapter_job_abi.zig",
+          "symbol_prefixes": [
+            "ra8_translate_job_"
+          ]
         }
       ],
       "layout_sources": [
@@ -3900,7 +3940,9 @@
         "libs/ra8_translate/src/internal/ocr_preprocess.zig",
         "libs/ra8_translate/src/internal/overlay.zig",
         "libs/ra8_translate/src/internal/ctc_decode.zig",
-        "libs/ra8_translate/src/internal/detector_post.zig"
+        "libs/ra8_translate/src/internal/detector_post.zig",
+        "libs/ra8_translate/src/internal/chapter_checkpoint.zig",
+        "libs/ra8_translate/src/internal/chapter_job.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3955,6 +3997,12 @@
           "language": "zig",
           "path": "libs/ra8_translate/tests/detector_post_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/detector_post_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/chapter_job_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/chapter_job_abi.zig",
           "registration": "libs/ra8_translate/.zig-test-contract.json"
         }
       ],
@@ -4144,6 +4192,46 @@
           "name": "ra8_translate_det_post_f32",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows float activation maps and cfg, uses caller scratch buffer, and transactionally emits ordered lines and bubbles"
+        },
+        {
+          "name": "ra8_translate_job_work_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "writes required workspace byte capacity including alignment margin to caller out-pointer without retaining pointers"
+        },
+        {
+          "name": "ra8_translate_job_init",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows scheduling policy and initializes caller-owned workspace buffer cleanly with zero heap allocation"
+        },
+        {
+          "name": "ra8_translate_job_enqueue",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows chapter descriptor and queues or coalesces unread-first entry inside caller workspace"
+        },
+        {
+          "name": "ra8_translate_job_cancel",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "removes matching queued or active chapter from caller workspace and invokes optional checkpoint clear hook"
+        },
+        {
+          "name": "ra8_translate_job_restore_checkpoint",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows immutable TRJC bytes, validates CRC-32 and invariants, and restores active chapter in caller workspace"
+        },
+        {
+          "name": "ra8_translate_job_step",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows env snapshot and hook callbacks, advances at most one scheduling or per-page pipeline step, and writes caller status"
+        },
+        {
+          "name": "ra8_translate_job_status",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads immutable caller workspace and copies scheduler progress snapshot into caller status struct"
+        },
+        {
+          "name": "ra8_translate_job_query_chapter",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads immutable caller workspace and writes chapter queued/translating/paused state to caller out-pointer"
         }
       ],
       "data_exports": [],
