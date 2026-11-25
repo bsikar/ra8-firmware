@@ -390,7 +390,9 @@
         "ra8_translate_marian_open",
         "ra8_translate_marian_work_bytes",
         "ra8_translate_marian_step_logits",
-        "ra8_translate_marian_greedy_decode"
+        "ra8_translate_marian_greedy_decode",
+        "ra8_translate_marian_batch_work_bytes",
+        "ra8_translate_marian_batch_decode"
       ]
     },
     {
@@ -3925,13 +3927,19 @@
         },
         {
           "path": "libs/ra8_translate/inc/ra8_translate_marian.h",
-          "compatibility_sha256": "6cd91ed55ef21d3d489b13a6e5ebc9412a0cc715c197b95cef82cc0a5a3ff82b",
+          "compatibility_sha256": "b4e6079e191ff02d75959b2486b43c9ffc7729b3d5f7785568d2a33802727314",
           "symbol_prefix": "ra8_translate_marian_",
           "layout_assertions": [
             "@sizeOf(MarianHeader) == 64",
             "@alignOf(MarianHeader) == 4",
             "@sizeOf(MarianStats) == 16",
-            "@alignOf(MarianStats) == 8"
+            "@alignOf(MarianStats) == 8",
+            "@sizeOf(MarianBatchCfg) == 12",
+            "@alignOf(MarianBatchCfg) == 2",
+            "@sizeOf(MarianBatchJob) == 24",
+            "@alignOf(MarianBatchJob) == 4",
+            "@sizeOf(MarianBatchStats) == 24",
+            "@alignOf(MarianBatchStats) == 8"
           ]
         }
       ],
@@ -3970,7 +3978,8 @@
         "libs/ra8_translate/src/internal/detector_post.zig",
         "libs/ra8_translate/src/internal/chapter_checkpoint.zig",
         "libs/ra8_translate/src/internal/chapter_job.zig",
-        "libs/ra8_translate/src/internal/marian_container.zig"
+        "libs/ra8_translate/src/internal/marian_container.zig",
+        "libs/ra8_translate/src/internal/marian_batch_plan.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -4042,6 +4051,12 @@
         {
           "language": "zig",
           "path": "libs/ra8_translate/tests/marian_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/marian_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/marian_batch_test.zig",
           "symbol_evidence": "libs/ra8_translate/src/marian_abi.zig",
           "registration": "libs/ra8_translate/.zig-test-contract.json"
         }
@@ -4292,6 +4307,16 @@
           "name": "ra8_translate_marian_greedy_decode",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows TMNT weights, source IDs, and caller work buffer to emit greedy target IDs and execution stats transactionally"
+        },
+        {
+          "name": "ra8_translate_marian_batch_work_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows validated TMNT bytes and batch config to write required aligned scratch bytes into caller out-pointer"
+        },
+        {
+          "name": "ra8_translate_marian_batch_decode",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TMNT weights, source pool, and queue descriptors to run shared-weight batched decode and write targets and step byte counts transactionally"
         }
       ],
       "data_exports": [],

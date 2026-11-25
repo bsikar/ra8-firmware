@@ -28,6 +28,9 @@ static_assert(sizeof(ra8_translate_job_status_t) == 32U, "smoke job status size"
 static_assert(sizeof(ra8_translate_job_hooks_t) == sizeof(void*) * 8U, "smoke job hooks size");
 static_assert(sizeof(ra8_translate_marian_header_t) == 64U, "smoke marian hdr size");
 static_assert(sizeof(ra8_translate_marian_stats_t) == 16U, "smoke marian stats size");
+static_assert(sizeof(ra8_translate_marian_batch_cfg_t) == 12U, "smoke batch cfg size");
+static_assert(sizeof(ra8_translate_marian_batch_job_t) == 24U, "smoke batch job size");
+static_assert(sizeof(ra8_translate_marian_batch_stats_t) == 24U, "smoke batch stats size");
 
 int ra8_translate_header_contract_smoke(const ra8_translate_sidecar_header_t* hdr)
 {

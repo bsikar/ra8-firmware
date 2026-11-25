@@ -120,6 +120,51 @@ pub fn matVecI8(
     }
 }
 
+/// Batched quantized linear projection reading weights and optional bias ONCE for
+/// `batch_count` activation vectors `[batch_count * cols] -> [batch_count * rows]`.
+pub fn matVecI8Batch(
+    x_batch: []const f32,
+    batch_count: usize,
+    w_i8: []const i8,
+    rows: usize,
+    cols: usize,
+    w_scale: f32,
+    w_zp: i8,
+    bias_opt: ?[]const f32,
+    scratch_q_batch: []i8,
+    scratch_scales: []f32,
+    scratch_zp_corrs: []i32,
+    out_batch: []f32,
+    bytes_read: *u64,
+) void {
+    var b: usize = 0;
+    while (b < batch_count) : (b += 1) {
+        const q_info = quantizeActSym(
+            x_batch[b * cols .. (b + 1) * cols],
+            scratch_q_batch[b * cols .. (b + 1) * cols],
+        );
+        scratch_scales[b] = q_info.scale * w_scale;
+        scratch_zp_corrs[b] = @as(i32, w_zp) *% q_info.sum_q;
+    }
+
+    var r: usize = 0;
+    while (r < rows) : (r += 1) {
+        const row_w = w_i8[r * cols .. (r + 1) * cols];
+        const b_val: f32 = if (bias_opt) |bias| bias[r] else 0.0;
+        b = 0;
+        while (b < batch_count) : (b += 1) {
+            const dot = dotI8(scratch_q_batch[b * cols .. (b + 1) * cols], row_w);
+            const corr_i32 = dot -% scratch_zp_corrs[b];
+            out_batch[b * rows + r] = b_val + scratch_scales[b] * @as(f32, @floatFromInt(corr_i32));
+        }
+    }
+
+    bytes_read.* += @as(u64, rows) * @as(u64, cols);
+    if (bias_opt != null) {
+        bytes_read.* += @as(u64, rows) * @sizeOf(f32);
+    }
+}
+
 /// Same projection on an explicitly selected subset of output row IDs (`shortlist` support).
 pub fn matVecI8Indexed(
     x_f32: []const f32,
@@ -292,6 +337,31 @@ pub fn sinF32(x_in: f32) f32 {
 /// Pure IEEE-754 `cos(x)` with quadrant reduction and Taylor polynomial (zero `libm`).
 pub fn cosF32(x_in: f32) f32 {
     return trigReduceAndEval(x_in, true);
+}
+
+/// Pure IEEE-754 `ln(x)` for `x > 0.0` avoiding external `libm` calls.
+pub fn lnF32(x: f32) f32 {
+    if (x <= 0.0) return -88.0;
+    var val: f32 = x;
+    var exp: i32 = 0;
+    var bits: u32 = @bitCast(val);
+    if (((bits >> 23) & 0xFF) == 0) {
+        val *= 8388608.0;
+        exp -= 23;
+        bits = @bitCast(val);
+    }
+    const raw_exp: i32 = @intCast((bits >> 23) & 0xFF);
+    exp += raw_exp - 127;
+    var m: f64 = @floatCast(@as(f32, @bitCast((bits & 0x007F_FFFF) | 0x3F80_0000)));
+    if (m > 1.4142135623730951) {
+        m *= 0.5;
+        exp += 1;
+    }
+    const u: f64 = (m - 1.0) / (m + 1.0);
+    const u_sq: f64 = u * u;
+    const poly: f64 = 1.0 + u_sq * (1.0 / 3.0 + u_sq * (1.0 / 5.0 + u_sq * (1.0 / 7.0 + u_sq * (1.0 / 9.0))));
+    const ln_m: f64 = 2.0 * u * poly;
+    return @floatCast(@as(f64, @floatFromInt(exp)) * 0.6931471805599453 + ln_m);
 }
 
 fn trigReduceAndEval(x_in: f32, is_cos: bool) f32 {
