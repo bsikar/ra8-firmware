@@ -53,6 +53,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path(b.fmt("src/internal/{s}.zig", .{entry.name})),
             .target = target,
             .optimize = optimize,
+            .pic = true,
         });
         for (entry.deps) |dep| module.addImport(dep, built.get(dep).?);
         built.put(entry.name, module) catch @panic("OOM");
@@ -62,6 +63,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .pic = true,
     });
     for (internal_modules) |entry| root_module.addImport(entry.name, built.get(entry.name).?);
 
