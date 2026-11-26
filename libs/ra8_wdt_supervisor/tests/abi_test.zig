@@ -438,3 +438,8 @@ test "a disarmed seam leaves every RTOS path succeeding" {
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_checkin(handle));
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_start());
 }
+
+test "mutexWaitOptionForThread uses NO_WAIT pre-scheduler and WAIT_FOREVER inside a thread" {
+    try std.testing.expectEqual(@as(c_ulong, 0), abi.mutexWaitOptionForThread(false));
+    try std.testing.expectEqual(@as(c_ulong, 0xFFFFFFFF), abi.mutexWaitOptionForThread(true));
+}
