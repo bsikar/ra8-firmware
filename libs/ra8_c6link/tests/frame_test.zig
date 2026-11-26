@@ -201,3 +201,91 @@ test "sealPkt writes hci_pkt_type into header octet 11 under checksum" {
     tx[Hdr.pkt_type] ^= 0x02;
     try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&tx));
 }
+
+/// Build an `ESP_PRIV_EVENT_INIT` frame whose checksum was computed with
+/// `if_num = 0` before stamping a non-zero `if_num` into the first octet.
+fn buildIfNumDefectInit(if_type: u8, if_num: u8, payload: []const u8) [Frame.bytes]u8 {
+    var tx = buffer();
+    @memcpy(tx[Frame.header_bytes..][0..payload.len], payload);
+    _ = frame.seal(&tx, if_type, 0, @intCast(payload.len));
+    tx[Hdr.iface] = (if_type & Hdr.nibble) | ((if_num & Hdr.nibble) << frame.PrivInit.ifnum_shift);
+    return tx;
+}
+
+test "bootup ESP_PRIV_IF INIT event with if_num=0 checksum classifies as priv_init" {
+    // Representative ESP32-C6 bootup TLVs: chip_id=0x0D (3B), cap=0x60 (3B), fw_version=2.12.11 (6B) => 12 TLV bytes.
+    const init_payload = [_]u8{
+        frame.PrivInit.event, 12,
+        0x12,                 1,
+        0x0D,                 0x11,
+        1,                    0x60,
+        0x17,                 4,
+        11,                   12,
+        2,                    0,
+    };
+    for (1..16) |if_num| {
+        const tx = buildIfNumDefectInit(frame.Iface.priv, @intCast(if_num), &init_payload);
+        const before = tx;
+        const got = frame.classify(&tx);
+        try testing.expectEqualSlices(u8, &before, &tx);
+        try testing.expectEqual(Frame.header_bytes, got.priv_init.offset);
+        try testing.expectEqual(@as(u16, init_payload.len), got.priv_init.len);
+        try testing.expectEqual(frame.Iface.priv, got.priv_init.if_type);
+        try testing.expectEqual(@as(u8, @intCast(if_num)), got.priv_init.if_num);
+    }
+
+    // Wrap-around near 0xFFFF in checksum arithmetic still matches `if_num = 0`.
+    var wrap_payload: [2 + 258]u8 = undefined;
+    wrap_payload[0] = frame.PrivInit.event;
+    wrap_payload[1] = 255;
+    wrap_payload[2] = 0x11;
+    wrap_payload[3] = 253;
+    @memset(wrap_payload[4..257], 0xFE);
+    @memset(wrap_payload[257..], 0x00);
+    const wrap_tx = buildIfNumDefectInit(frame.Iface.priv, 0x0F, &wrap_payload);
+    try testing.expectEqual(@as(u8, 0x0F), frame.classify(&wrap_tx).priv_init.if_num);
+
+    // An empty INIT TLV list (`[0x22, 0x00]`) is still valid and accepted.
+    const empty_init = [_]u8{ frame.PrivInit.event, 0 };
+    const empty_tx = buildIfNumDefectInit(frame.Iface.priv, 1, &empty_init);
+    try testing.expectEqual(@as(u16, 2), frame.classify(&empty_tx).priv_init.len);
+}
+
+test "if_num=0 checksum tolerance rejects every non-INIT and corrupted case" {
+    const valid_init = [_]u8{ frame.PrivInit.event, 3, 0x12, 1, 0x0D };
+
+    // 1. Non-privileged interface (`ESP_SERIAL_IF`) must be rejected.
+    const serial_tx = buildIfNumDefectInit(3, 1, &valid_init);
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&serial_tx));
+
+    // 2. `if_num == 0` with wrong checksum must be rejected.
+    var zero_num = buffer();
+    @memcpy(zero_num[Frame.header_bytes..][0..valid_init.len], &valid_init);
+    try testing.expect(frame.seal(&zero_num, frame.Iface.priv, 0, valid_init.len));
+    zero_num[Hdr.checksum] +%= 1;
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&zero_num));
+
+    // 3. Payload shorter than two-byte event header must be rejected.
+    const short_tx = buildIfNumDefectInit(frame.Iface.priv, 1, &[_]u8{frame.PrivInit.event});
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&short_tx));
+
+    // 4. Wrong event opcode (`!= ESP_PRIV_EVENT_INIT`) must be rejected.
+    const bad_op = [_]u8{ frame.PrivInit.event + 1, 3, 0x12, 1, 0x0D };
+    const bad_op_tx = buildIfNumDefectInit(frame.Iface.priv, 1, &bad_op);
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&bad_op_tx));
+
+    // 5. Event length exceeding remaining payload must be rejected.
+    const trunc_evt = [_]u8{ frame.PrivInit.event, 10, 0x12, 1, 0x0D };
+    const trunc_evt_tx = buildIfNumDefectInit(frame.Iface.priv, 1, &trunc_evt);
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&trunc_evt_tx));
+
+    // 6. Truncated TLV length inside `event_len` must be rejected.
+    const trunc_tlv = [_]u8{ frame.PrivInit.event, 3, 0x17, 4, 0x01 };
+    const trunc_tlv_tx = buildIfNumDefectInit(frame.Iface.priv, 1, &trunc_tlv);
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&trunc_tlv_tx));
+
+    // 7. Corrupted payload octet on an otherwise valid tolerated INIT frame.
+    var flipped_tx = buildIfNumDefectInit(frame.Iface.priv, 2, &valid_init);
+    flipped_tx[Frame.header_bytes + 4] ^= 0x01;
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&flipped_tx));
+}

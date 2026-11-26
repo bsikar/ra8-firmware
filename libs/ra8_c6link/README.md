@@ -39,11 +39,13 @@ which is exactly the shape of protobuf-c's own unwind on a failed decode.
 
 - **The usable boot announcement is `Event_ESPInit`**, surfaced as
   `k_ra8_c6link_event_boot`.
-- **`ESP_PRIV_IF`'s `ESP_PRIV_EVENT_INIT` is unusable on this build** and
-  nothing here depends on it: it is transmitted with a non-zero `if_num` but
-  checksummed as if that nibble were zero, so every conformant host drops it
-  (RA8FW-276). Frames on that
-  interface are counted as unrouted and ignored.
+- **`ESP_PRIV_IF`'s `ESP_PRIV_EVENT_INIT` carries a narrow tolerance (RA8FW-276)**:
+  esp-hosted-mcu 2.12.11 transmits this one boot frame with a non-zero `if_num`
+  but computes its checksum as if `if_num` were zero. The frame classifier
+  accepts that exact frame shape (`ESP_PRIV_IF`, `ESP_PRIV_EVENT_INIT` with a
+  bounded TLV list, checksum matching with `if_num` zeroed) and routes it as
+  `k_ra8_c6link_event_boot` while rejecting every other mismatch and counting
+  non-INIT `ESP_PRIV_IF` frames as `unrouted`.
 
 Also: the co-processor's idle filler frame legitimately carries `offset = 0`.
 Judging it by data-frame rules is what made a healthy link report a failure

@@ -101,8 +101,9 @@ pub export fn priv_c6link_frame_seal(
 
 /// `priv_c6link_frame_classify`: decide what a received transaction is.
 ///
-/// Fills `view` only for a data frame, as the C did, so a caller that ignores
-/// the verdict cannot read a payload the checksum never covered.
+/// Fills `view` only for an accepted payload frame (`.data` or the narrow
+/// RA8FW-276 `.priv_init` bootup event), so a caller that inspects the verdict
+/// cannot read a payload the checksum never covered.
 pub export fn priv_c6link_frame_classify(rx: ?[*]const u8, view: ?*RxView) callconv(.c) u8 {
     const buf = rx orelse return Class.malformed;
     const out = view orelse return Class.malformed;
@@ -111,7 +112,7 @@ pub export fn priv_c6link_frame_classify(rx: ?[*]const u8, view: ?*RxView) callc
         .idle => Class.idle,
         .malformed => Class.malformed,
         .bad_checksum => Class.bad_checksum,
-        .data => |found| {
+        .data, .priv_init => |found| {
             out.* = .{
                 .offset = found.offset,
                 .len = found.len,

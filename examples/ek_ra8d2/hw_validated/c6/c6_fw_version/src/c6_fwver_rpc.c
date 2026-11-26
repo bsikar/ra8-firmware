@@ -453,8 +453,7 @@ static void c6_fwver_rpc_print_crosscheck(void)
   c6_fwver_puts("c6_fwver: crosscheck priv_init_event=");
   if (seen == 0U) {
     c6_fwver_puts("absent -- either the co-processor has not been power-cycled since its "
-                  "last drain, or its INIT event was dropped (read ifnum_defect on the "
-                  "caps pump line)\r\n");
+                  "last drain, or no tolerably-checksummed bootup INIT event arrived\r\n");
     return;
   }
   c6_fwver_put_u32(ESP_HOSTED_VERSION_MAJOR(seen));

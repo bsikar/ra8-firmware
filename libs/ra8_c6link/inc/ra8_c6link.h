@@ -26,15 +26,17 @@
  * compatibility the link does not have.
  *
  * @par Liveness is measured, never inferred
- * Neither boot announcement is load-bearing here. The `ESP_PRIV_IF`
- * `ESP_PRIV_EVENT_INIT` frame upstream normally uses is unusable on this
- * co-processor build -- transmitted with a non-zero `if_num` but checksummed as
- * if that nibble were zero, so every conformant host drops it (RA8FW-276) -- and the
- * `Event_ESPInit` RPC event that replaces it is a **one-shot fired when the
- * co-processor boots**, which on this bench is not when the RA8 boots: the C6
- * has its own supply. Both are reported (::k_ra8_c6link_event_boot) and neither
- * is a precondition. ::ra8_c6link_await_ready establishes liveness by asking a
- * question and getting an answer, which is true whenever it is true.
+ * Neither boot announcement is load-bearing here. The co-processor's bootup
+ * `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` frame is transmitted by esp-hosted-mcu
+ * 2.12.11 with a non-zero `if_num` stamped after the checksum was computed
+ * with `if_num` zero; the classifier accepts that exact bootup INIT shape
+ * under a narrow `if_num = 0` checksum tolerance (RA8FW-276) while rejecting
+ * every other mismatch. The `Event_ESPInit` RPC event that complements it is a
+ * **one-shot fired when the co-processor boots**, which on this bench is not
+ * when the RA8 boots: the C6 has its own supply. Valid `ESP_PRIV_EVENT_INIT`
+ * and `Event_ESPInit` frames are both reported as ::k_ra8_c6link_event_boot,
+ * and neither is a precondition. ::ra8_c6link_await_ready establishes liveness
+ * by asking a question and getting an answer, which is true whenever it is true.
  *
  * @par Threading
  * A link handle is single-threaded. Every entry point that can move bytes
@@ -738,9 +740,10 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * -- it was consumed by whichever application was clocking the bus when it
  * fired. A facade that waited for it therefore worked exactly once, on a
  * freshly-flashed co-processor, and timed out on every run after. Waiting on a
- * one-shot announcement to decide a steady-state property is the same defect
- * RA8FW-276 records against the `ESP_PRIV_IF` frame, wearing the RPC layer's
- * clothes; the fix is to stop inferring liveness and measure it.
+ * one-shot announcement to decide a steady-state property is the same pitfall
+ * whether the boot event arrives via `Event_ESPInit` or the bootup
+ * `ESP_PRIV_IF` frame (RA8FW-276); the fix is to stop inferring liveness and
+ * measure it.
  *
  * The announcement is still sent, because a co-processor that *has* just
  * booted services no RPC until the host has introduced itself. Sending it to

@@ -80,6 +80,12 @@ typedef enum : uint16_t {
   /**< Bit position of ``if_num`` within the header's first byte. Used to
        reconstruct how much a non-zero ``if_num`` contributes to the frame
        checksum, which is what identifies the co-processor defect below. */
+  k_c6_fwver_priv_hdr_bytes = 2U,
+  /**< Bytes before the first TLV in an ``ESP_PRIV_EVENT_INIT`` payload. */
+  k_c6_fwver_priv_evt_type = 0U,
+  /**< Offset of event_type inside an ``ESP_PRIV_IF`` event payload. */
+  k_c6_fwver_priv_evt_len = 1U,
+  /**< Offset of event_len inside an ``ESP_PRIV_IF`` event payload. */
 } c6_fwver_proto_t;
 
 /**
@@ -300,6 +306,44 @@ static bool c6_fwver_ifnum_defect(uint16_t calc, uint16_t stated)
 }
 
 /**
+ * @brief Decide whether a checksum mismatch is strictly the bootup
+ *        ``ESP_PRIV_IF`` INIT event defect and safe to tolerate (RA8FW-276).
+ *
+ * @details
+ * Accepts a checksum computed with ``if_num = 0`` ONLY when every condition of
+ * the bootup ``ESP_PRIV_EVENT_INIT`` frame holds: ``if_type == ESP_PRIV_IF``,
+ * ``if_num != 0``, ``calc - stated == (if_num << 4)``, payload length covers
+ * the two-byte event header, ``event_type == ESP_PRIV_EVENT_INIT``, and
+ * ``event_len`` fits inside @p len without truncation.
+ *
+ * @param[in] calc Checksum recomputed over the frame as received.
+ * @param[in] stated Checksum the co-processor put in the header.
+ * @param[in] offset Payload offset in ::s_c6_fwver_rx.
+ * @param[in] len Declared payload length in bytes.
+ * @return ``true`` when every narrow bootup INIT tolerance check holds.
+ * @since 0.1.0
+ */
+static bool
+c6_fwver_priv_init_tolerable(uint16_t calc, uint16_t stated, uint16_t offset, uint16_t len)
+{
+  if (!c6_fwver_ifnum_defect(calc, stated)) {
+    return false;
+  }
+  if ((s_c6_fwver_rx.header.if_type != (uint8_t)ESP_PRIV_IF) ||
+      (len < (uint16_t)k_c6_fwver_priv_hdr_bytes)) {
+    return false;
+  }
+  const uint8_t* payload   = &s_c6_fwver_rx.bytes[offset];
+  const uint8_t  evt_type  = payload[k_c6_fwver_priv_evt_type];
+  const uint16_t evt_bytes = (uint16_t)payload[k_c6_fwver_priv_evt_len];
+  if ((evt_type != (uint8_t)ESP_PRIV_EVENT_INIT) ||
+      ((uint16_t)(evt_bytes + (uint16_t)k_c6_fwver_priv_hdr_bytes) > len)) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * @brief Classify the received frame and deliver it if it is real.
  * @param[in] sink Receiver for a well-formed data frame, or null.
  * @param[in,out] stats Counters to update; must be non-null.
@@ -309,7 +353,8 @@ static bool c6_fwver_ifnum_defect(uint16_t calc, uint16_t stated)
  * @pre The transfer has completed and ::s_c6_fwver_rx is stable.
  * @pre @p stats is the caller's live counter block.
  * @post Exactly one counter in @p stats was incremented.
- * @post The sink saw the frame only if it verified.
+ * @post The sink saw the frame only if it verified (or matched the narrow
+ *       RA8FW-276 bootup ``ESP_PRIV_EVENT_INIT`` ``if_num=0`` checksum defect).
  * @note Ordering matches the vendored ``process_spi_rx_buf()``: zero length
  *       first (filler), then the header sanity tests, then the checksum.
  * @since 0.1.0
@@ -330,15 +375,19 @@ static bool c6_fwver_rx_dispatch(c6_fwver_sink_t sink, c6_fwver_pump_stats_t* st
   }
   const uint16_t calc = c6_fwver_rx_checksum((uint16_t)(offset + len));
   if (calc != s_c6_fwver_rx.header.checksum) {
-    stats->bad_checksum++;
-    c6_fwver_print_reject("bad-checksum", calc);
-    if (c6_fwver_ifnum_defect(calc, s_c6_fwver_rx.header.checksum)) {
+    if (c6_fwver_priv_init_tolerable(calc, s_c6_fwver_rx.header.checksum, offset, len)) {
       stats->ifnum_defect++;
-      c6_fwver_puts("c6_fwver:   ^ explained: the co-processor checksummed this frame with "
-                    "if_num=0 and then transmitted a non-zero if_num. A conformant host "
-                    "drops it -- upstream's own process_spi_rx_buf() would too.\r\n");
+      c6_fwver_puts("c6_fwver: tolerated bootup ESP_PRIV_IF INIT (if_num=0 checksum; "
+                    "RA8FW-276)\r\n");
+    } else {
+      stats->bad_checksum++;
+      c6_fwver_print_reject("bad-checksum", calc);
+      if (c6_fwver_ifnum_defect(calc, s_c6_fwver_rx.header.checksum)) {
+        stats->ifnum_defect++;
+        c6_fwver_puts("c6_fwver:   ^ explained: if_num checksum mismatch outside bootup INIT\r\n");
+      }
+      return false;
     }
-    return false;
   }
 
   stats->frames++;

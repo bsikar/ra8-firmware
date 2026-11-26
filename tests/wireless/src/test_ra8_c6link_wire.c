@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "esp_hosted_rpc.pb-c.h"
+#include "esp_hosted_transport_init.h"
 #include "protobuf-c/protobuf-c.h"
 #include "ra8_attributes.h"
 #include "ra8_c6link.h"
@@ -718,6 +719,137 @@ RA8_INTERNAL static void internal_test_protobuf_c_ub_regression(void)
   TEST_END("c6link protobuf-c UB regression vectors");
 }
 
+/**
+ * @brief Build a received frame with checksum computed as if `if_num` were zero.
+ * @details Stages @p payload via ::priv_c6link_frame_seal with `if_num = 0`, then
+ * stamps non-zero @p if_num into the header's high nibble to reproduce the
+ * esp-hosted-mcu 2.12.11 defect without recomputing the checksum.
+ * @param[in] if_type Interface type nibble (`0..15`).
+ * @param[in] if_num Interface number nibble (`0..15`) stamped post-checksum.
+ * @param[in] payload Payload octets to copy before sealing.
+ * @param[in] len Byte length of @p payload.
+ * @pre @p payload is non-null and @p len fits inside ::s_frame.
+ * @post ::s_frame holds the forged wire transaction and is safe to classify.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void
+internal_t_stage_ifnum_defect(uint8_t if_type, uint8_t if_num, const uint8_t* payload, uint16_t len)
+{
+  (void)memset(s_frame, 0, sizeof s_frame);
+  (void)memcpy(&s_frame[(uint16_t)k_ra8_c6link_header_bytes], payload, (size_t)len);
+  priv_c6link_frame_seal(s_frame, if_type, 0U, len);
+  s_frame[0] = (uint8_t)((if_type & 0x0FU) | ((uint8_t)(if_num & 0x0FU) << 4U));
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(if_type == ESP_PRIV_IF) && (if_num != 0) && (len >= 2) &&
+ *            (evt_type == ESP_PRIV_EVENT_INIT) && (valid_tlv_bounds) &&
+ *            (actual - (if_num << 4) == claimed)` (6 conditions)
+ * - Vector 1: PRIV, if_num=1, INIT valid TLVs, if_num=0 sum    -> data (control)
+ * - Vector 2: SERIAL, if_num=1, INIT valid, if_num=0 sum       -> bad_checksum (varies if_type)
+ * - Vector 3: PRIV, if_num=0, INIT valid, mismatched csum      -> bad_checksum (varies if_num)
+ * - Vector 4: PRIV, if_num=1, len=1, if_num=0 sum              -> bad_checksum (varies len)
+ * - Vector 5: PRIV, if_num=1, non-INIT opcode, if_num=0 sum    -> bad_checksum (varies evt_type)
+ * - Vector 6: PRIV, if_num=1, truncated TLV len, if_num=0 sum  -> bad_checksum (varies bounds)
+ * - Vector 7: PRIV, if_num=1, INIT valid, corrupted payload    -> bad_checksum (varies csum)
+ * Vector 1 paired with 2..7 proves each condition independently decides.
+ * N+1 = 7 vectors for N=6: minimal MC/DC.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_classify
+ * Decisions: libs/ra8_c6link/src/internal/frame.zig@privInitDefect
+ * @brief Verify narrow bootup `ESP_PRIV_IF` INIT `if_num=0` checksum tolerance.
+ * @details Exercises all N+1 MC/DC vectors for RA8FW-276 across valid C6 TLVs
+ * and negative near-misses, asserting read-only classification.
+ * @pre ::s_frame has capacity ::k_ra8_c6link_frame_bytes.
+ * @post Accepted vector yields ::k_ra8_c6link_frame_data without mutating ::s_frame.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_priv_init_tolerance(void)
+{
+  TEST_BEGIN("c6link RA8FW-276 PRIV INIT tolerance MC/DC");
+  static const uint8_t k_valid_init[] = {
+    (uint8_t)ESP_PRIV_EVENT_INIT,
+    12U,
+    (uint8_t)ESP_PRIV_FIRMWARE_CHIP_ID,
+    1U,
+    0x0DU,
+    (uint8_t)ESP_PRIV_CAPABILITY,
+    1U,
+    0x60U,
+    (uint8_t)ESP_PRIV_FIRMWARE_VERSION,
+    4U,
+    11U,
+    12U,
+    2U,
+    0U,
+  };
+  ra8_c6link_rx_view_t view = {};
+
+  /* Vector 1 (control): bootup ESP_PRIV_IF INIT event with if_num=1 and if_num=0 csum. */
+  internal_t_stage_ifnum_defect((uint8_t)ESP_PRIV_IF,
+                                1U,
+                                k_valid_init,
+                                (uint16_t)sizeof k_valid_init);
+  uint8_t before[(size_t)k_ra8_c6link_frame_bytes] = {};
+  (void)memcpy(before, s_frame, sizeof before);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_data, priv_c6link_frame_classify(s_frame, &view));
+  TEST_ASSERT_EQ(k_ra8_c6link_header_bytes, view.offset);
+  TEST_ASSERT_EQ((uint16_t)sizeof k_valid_init, view.len);
+  TEST_ASSERT_EQ((uint8_t)ESP_PRIV_IF, view.if_type);
+  TEST_ASSERT_EQ(1U, view.if_num);
+  TEST_ASSERT_EQ(0, memcmp(before, s_frame, sizeof before));
+
+  /* Vector 2: non-PRIV interface with the same payload/defect stays rejected. */
+  internal_t_stage_ifnum_defect((uint8_t)ESP_SERIAL_IF,
+                                1U,
+                                k_valid_init,
+                                (uint16_t)sizeof k_valid_init);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  /* Vector 3: PRIV with if_num=0 and mismatched checksum stays rejected. */
+  priv_c6link_frame_seal(s_frame, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)sizeof k_valid_init);
+  s_frame[k_t_hdr_csum_lo]++;
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  /* Vector 4: PRIV with if_num=1 and len < 2 stays rejected. */
+  const uint8_t short_evt = (uint8_t)ESP_PRIV_EVENT_INIT;
+  internal_t_stage_ifnum_defect((uint8_t)ESP_PRIV_IF, 1U, &short_evt, 1U);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  /* Vector 5: PRIV with if_num=1 and non-INIT opcode stays rejected. */
+  static const uint8_t k_bad_opcode[] = {0x23U, 0U};
+  internal_t_stage_ifnum_defect((uint8_t)ESP_PRIV_IF,
+                                1U,
+                                k_bad_opcode,
+                                (uint16_t)sizeof k_bad_opcode);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  /* Vector 6: PRIV with if_num=1, INIT opcode, and truncated TLV bounds stays rejected. */
+  static const uint8_t k_trunc_tlv[] = {
+    (uint8_t)ESP_PRIV_EVENT_INIT,
+    3U,
+    (uint8_t)ESP_PRIV_FIRMWARE_VERSION,
+    4U,
+    11U,
+  };
+  internal_t_stage_ifnum_defect((uint8_t)ESP_PRIV_IF,
+                                1U,
+                                k_trunc_tlv,
+                                (uint16_t)sizeof k_trunc_tlv);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  /* Vector 7: PRIV with if_num=1, valid INIT header, but corrupted payload byte stays rejected. */
+  internal_t_stage_ifnum_defect((uint8_t)ESP_PRIV_IF,
+                                2U,
+                                k_valid_init,
+                                (uint16_t)sizeof k_valid_init);
+  s_frame[(uint16_t)k_ra8_c6link_header_bytes + 4U] ^= 0x01U;
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  TEST_END("c6link RA8FW-276 PRIV INIT tolerance MC/DC");
+}
+
 int main(void)
 {
   internal_test_arena_guards();
@@ -732,5 +864,6 @@ int main(void)
   internal_test_mcdc_wire_guards();
   internal_test_mcdc_caps_guard();
   internal_test_protobuf_c_ub_regression();
+  internal_test_mcdc_priv_init_tolerance();
   return 0;
 }

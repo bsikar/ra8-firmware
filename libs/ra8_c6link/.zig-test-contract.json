@@ -369,5 +369,5 @@
       "-Mc6link_rpc_h=src/internal/standalone_c6link_rpc_h.zig"
     ]
   },
-  "minimum_tests": 284
+  "minimum_tests": 289
 }

@@ -9,6 +9,7 @@
 //! HCI frames to the BLE receive callback, and everything else is counted and
 //! dropped.
 
+const std = @import("std");
 const rx_route = @import("internal/rx_route.zig");
 const frame = @import("internal/frame.zig");
 const header = @import("c6link_c.zig");
@@ -19,6 +20,7 @@ pub const c = header.c;
 pub const RxView = header.RxView;
 
 extern fn priv_c6link_rpc_consume(link: *c.ra8_c6link_t, payload: [*]const u8, len: u16) callconv(.c) bool;
+extern fn priv_c6link_emit(link: *c.ra8_c6link_t, ev: *const c.ra8_c6link_event_t) callconv(.c) void;
 
 /// Count one frame on the running pump's counters, when a pump is running.
 fn bump(link: *c.ra8_c6link_t, comptime field: []const u8) void {
@@ -38,6 +40,15 @@ pub fn dispatch(link: *c.ra8_c6link_t, view: header.RxView) bool {
         },
         .hci => {
             if (link.hci_rx_cb) |deliver| deliver(link.hci_ctx, payload.ptr, view.len);
+        },
+        .priv => {
+            if (frame.isPrivInitPayload(payload)) {
+                var ev = std.mem.zeroes(c.ra8_c6link_event_t);
+                ev.kind = c.k_ra8_c6link_event_boot;
+                priv_c6link_emit(link, &ev);
+            } else {
+                bump(link, "unrouted");
+            }
         },
         .counted => bump(link, "unrouted"),
     }

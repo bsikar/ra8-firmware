@@ -155,3 +155,30 @@ test "a staged payload with pkt_type seals header octet 11 once" {
     try std.testing.expectEqual(@as(u8, 0), model.tx_buf[frame.Hdr.pkt_type]);
     try std.testing.expectEqual(@as(u16, 0), model.sent_len[1]);
 }
+
+test "a bootup PRIV INIT event with if_num=0 checksum is counted as data and dispatched" {
+    var model: Model = .{ .stop_on_dispatch = true };
+    const init_payload = [_]u8{ frame.PrivInit.event, 3, 0x12, 1, 0x0D };
+    @memcpy(model.reply[Frame.header_bytes..][0..init_payload.len], &init_payload);
+    _ = frame.seal(&model.reply, frame.Iface.priv, 0, init_payload.len);
+    model.reply[frame.Hdr.iface] = frame.Iface.priv | (2 << frame.PrivInit.ifnum_shift);
+
+    var stats: pump.Stats = .{};
+    try std.testing.expectEqual(pump.Outcome.ok, pump.run(&model, 4, &stats));
+    try std.testing.expectEqual(@as(u16, 1), stats.data);
+    try std.testing.expectEqual(@as(u16, 0), stats.bad_checksum);
+    try std.testing.expectEqual(@as(usize, 1), model.dispatched);
+
+    // A non-INIT privileged frame with the same if_num mismatch stays bad_checksum.
+    model = .{ .stop_on_dispatch = false };
+    const non_init = [_]u8{ frame.PrivInit.event + 1, 3, 0x12, 1, 0x0D };
+    @memcpy(model.reply[Frame.header_bytes..][0..non_init.len], &non_init);
+    _ = frame.seal(&model.reply, frame.Iface.priv, 0, non_init.len);
+    model.reply[frame.Hdr.iface] = frame.Iface.priv | (2 << frame.PrivInit.ifnum_shift);
+
+    stats = .{};
+    _ = pump.run(&model, 2, &stats);
+    try std.testing.expectEqual(@as(u16, 2), stats.bad_checksum);
+    try std.testing.expectEqual(@as(u16, 0), stats.data);
+    try std.testing.expectEqual(@as(usize, 0), model.dispatched);
+}
