@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors the bring-up sequence run by
- * ``examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c`` (::ehb_run_once):
+ * ``examples/ek_ra8d2/hw_validated/hil/eth_hal_bringup/src/main.c`` (::ehb_run_once):
  *
  *   ra8_cgc_eswclk_init -> ra8_mstp_enable(k_ra8_mstp_eswm)
  *     -> ra8_eth_coma_bringup -> ra8_eth_rgmii_select(k_ra8_eth_mii_port_1)
