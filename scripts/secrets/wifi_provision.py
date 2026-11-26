@@ -43,6 +43,7 @@ MAX_EMIT_TIMEOUT_S = 600
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
+
 class ProvisionError(ValueError):
     """A credential source or effective runtime value is invalid."""
 
@@ -397,8 +398,6 @@ def _selftest_values(state: _SelftestState) -> bytes:
         "packet framing changed",
     )
     return packet
-
-
 
 
 def _selftest_emission(state: _SelftestState, packet: bytes) -> None:

@@ -16,21 +16,24 @@ R8LA_FLAG_RLE2 = 1
 FONT = ROOT / "libs/ra8_fonts/Literata-Regular.ttf"
 OUTPUT = ROOT / "libs/ra8_gfx/src/internal/literata_atlas.bin"
 PIXEL_SIZE = 20
+RLE2_MAX_RUN = 64
 EXTRA_CODEPOINTS = (0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D, 0x2026, 0x20AC)
 
 
 def codepoints() -> list[int]:
+    """Return all Latin-1 printable and typographic codepoints in the atlas."""
     return list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) + list(EXTRA_CODEPOINTS)
 
 
 def packed_coverage(values: bytes) -> bytes:
+    """Encode 8-bit glyph coverage into 2-bit RLE2 spans."""
     levels = [min(3, (coverage * 3 + 127) // 255) for coverage in values]
     packed = bytearray()
     index = 0
     while index < len(levels):
         level = levels[index]
         run = 1
-        while index + run < len(levels) and levels[index + run] == level and run < 64:
+        while index + run < len(levels) and levels[index + run] == level and run < RLE2_MAX_RUN:
             run += 1
         packed.append((level << 6) | (run - 1))
         index += run
@@ -38,6 +41,7 @@ def packed_coverage(values: bytes) -> bytes:
 
 
 def generate() -> bytes:
+    """Rasterize the Literata font glyphs into the binary R8LA v2 atlas."""
     font = ImageFont.truetype(str(FONT), PIXEL_SIZE)
     ascent, descent = font.getmetrics()
     glyphs: list[tuple[int, int, int, int, int, int, int]] = []
@@ -48,7 +52,8 @@ def generate() -> bytes:
         left, top, right, bottom = font.getbbox(character)
         mask = font.getmask(character)
         if mask.size != (right - left, bottom - top):
-            raise ValueError(f"unexpected mask bounds for U+{cp:04X}")
+            msg = f"unexpected mask bounds for U+{cp:04X}"
+            raise ValueError(msg)
         packed = packed_coverage(bytes(mask))
         advance = round(font.getlength(character))
         glyphs.append((cp, left, top, advance, mask.size[0], mask.size[1], pixel_offset))
@@ -57,13 +62,18 @@ def generate() -> bytes:
     records = bytearray()
     for cp, left, top, advance, width, height, offset in glyphs:
         records.extend(struct.pack("<IhhhBBI", cp, left, top, advance, width, height, offset))
-    header = b"R8LA" + struct.pack("<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(glyphs), ascent, descent)
+    header = b"R8LA" + struct.pack(
+        "<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(glyphs), ascent, descent
+    )
     return header + records + bytes(pixels)
 
 
 def main() -> int:
+    """Write or verify the checked-in Literata glyph atlas."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true", help="fail if the checked-in atlas is stale")
+    parser.add_argument(
+        "--check", action="store_true", help="fail if the checked-in atlas is stale"
+    )
     args = parser.parse_args()
     generated = generate()
     if args.check:

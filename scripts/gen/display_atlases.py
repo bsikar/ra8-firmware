@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Build native-resolution ra8_gfx atlases for the UI display text sizes."""
+
 from __future__ import annotations
 
 import argparse
 import struct
 from pathlib import Path
+
 from PIL import ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 # R8LA v2 header uses version 2 and flag bit 0 for RLE2 coverage.
 R8LA_VERSION = 2
 R8LA_FLAG_RLE2 = 1
+RLE2_MAX_RUN = 64
+ATLAS_MAX_U8 = 255
+ATLAS_MAX_I16 = 32767
+ATLAS_MIN_I16 = -32768
 OUTPUT = ROOT / "libs/ra8_gfx/src/internal/display_atlases"
 SERIF = ROOT / "libs/ra8_fonts/Literata-Regular.ttf"
 SANS_REGULAR = ROOT / "libs/ra8_fonts/RA8UISans/RA8UISans-Regular.ttf"
@@ -36,19 +42,21 @@ FONTS = {
 
 
 def codepoints(kind: str) -> list[int]:
+    """Return the glyph codepoint list for a display atlas kind."""
     if kind == "clock":
         return sorted(ord(c) for c in " 0123456789:.?")
     return list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) + list(EXTRA_CODEPOINTS)
 
 
 def packed_coverage(values: bytes) -> bytes:
+    """Encode 8-bit glyph coverage values into 2-bit RLE2 spans."""
     levels = [min(3, (coverage * 3 + 127) // 255) for coverage in values]
     packed = bytearray()
     index = 0
     while index < len(levels):
         level = levels[index]
         run = 1
-        while index + run < len(levels) and levels[index + run] == level and run < 64:
+        while index + run < len(levels) and levels[index + run] == level and run < RLE2_MAX_RUN:
             run += 1
         packed.append((level << 6) | (run - 1))
         index += run
@@ -56,12 +64,14 @@ def packed_coverage(values: bytes) -> bytes:
 
 
 def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke: int) -> bytes:
+    """Rasterize one font/size/stroke display atlas in R8LA v2 format."""
     font = ImageFont.truetype(str(font_path), pixel_size)
     ascent, descent = font.getmetrics()
     ascent += stroke
     descent += stroke
-    if ascent + descent > 255:
-        raise ValueError(f"font height {ascent + descent} exceeds atlas format")
+    if ascent + descent > ATLAS_MAX_U8:
+        msg = f"font height {ascent + descent} exceeds atlas format"
+        raise ValueError(msg)
     records = bytearray()
     coverage = bytearray()
     for cp in codepoints_:
@@ -71,14 +81,19 @@ def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke:
         stroked_mask = font.getmask(character, stroke_width=stroke)
         mask = bytearray(stroked_mask)
         width, height = right - left, bottom - top
-        if stroked_mask.size != (width, height) or width > 255 or height > 255:
-            raise ValueError(f"invalid glyph bounds for U+{cp:04X}: {stroked_mask.size} vs {(width, height)}")
+        if stroked_mask.size != (width, height) or width > ATLAS_MAX_U8 or height > ATLAS_MAX_U8:
+            msg = f"invalid glyph bounds for U+{cp:04X}: {stroked_mask.size} vs {(width, height)}"
+            raise ValueError(msg)
         if stroke > 0:
             fill_left, fill_top, fill_right, fill_bottom = font.getbbox(character)
             fill_mask = font.getmask(character)
             fill_width, fill_height = fill_right - fill_left, fill_bottom - fill_top
             if fill_mask.size != (fill_width, fill_height):
-                raise ValueError(f"invalid fill bounds for U+{cp:04X}: {fill_mask.size} vs {(fill_width, fill_height)}")
+                msg = (
+                    f"invalid fill bounds for U+{cp:04X}: "
+                    f"{fill_mask.size} vs {(fill_width, fill_height)}"
+                )
+                raise ValueError(msg)
             offset_x, offset_y = fill_left - left, fill_top - top
             for fill_y in range(fill_height):
                 for fill_x in range(fill_width):
@@ -88,22 +103,33 @@ def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke:
                         source = fill_y * fill_width + fill_x
                         mask[target] = max(mask[target], fill_mask[source])
         if len(mask) != width * height:
-            raise ValueError(f"invalid glyph mask for U+{cp:04X}: {len(mask)} pixels vs {(width, height)}")
-        if left < -32768 or top < -32768 or left > 32767 or top > 32767:
-            raise ValueError(f"glyph offset exceeds atlas format for U+{cp:04X}")
+            msg = f"invalid glyph mask for U+{cp:04X}: {len(mask)} pixels vs {(width, height)}"
+            raise ValueError(msg)
+        if not (ATLAS_MIN_I16 <= left <= ATLAS_MAX_I16 and ATLAS_MIN_I16 <= top <= ATLAS_MAX_I16):
+            msg = f"glyph offset exceeds atlas format for U+{cp:04X}"
+            raise ValueError(msg)
         advance = round(font.getlength(character)) + 2 * stroke
-        if advance > 32767:
-            raise ValueError(f"glyph advance exceeds atlas format for U+{cp:04X}")
+        if advance > ATLAS_MAX_I16:
+            msg = f"glyph advance exceeds atlas format for U+{cp:04X}"
+            raise ValueError(msg)
         records.extend(struct.pack("<IhhhBBI", cp, left, top, advance, width, height, pixel_offset))
         coverage.extend(packed_coverage(mask))
-    return b"R8LA" + struct.pack("<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(codepoints_), ascent, descent) + records + coverage
+    header = b"R8LA" + struct.pack(
+        "<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(codepoints_), ascent, descent
+    )
+    return header + records + coverage
 
 
 def outputs() -> dict[Path, bytes]:
+    """Generate every display atlas keyed by destination file path."""
     result: dict[Path, bytes] = {}
     for size_name, (pixel_size, glyph_kind) in SIZES.items():
         cps = codepoints(glyph_kind)
-        fonts = FONTS.items() if glyph_kind != "ui" else ((key, value) for key, value in FONTS.items() if key[0] == "sans")
+        fonts = (
+            FONTS.items()
+            if glyph_kind != "ui"
+            else ((key, value) for key, value in FONTS.items() if key[0] == "sans")
+        )
         for (face, weight), (font_path, stroke) in fonts:
             if glyph_kind == "reader" and weight != "regular":
                 continue
@@ -113,14 +139,21 @@ def outputs() -> dict[Path, bytes]:
 
 
 def main() -> int:
+    """Write or verify all checked-in display glyph atlases."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="fail if a checked-in atlas is stale")
     args = parser.parse_args()
     generated = outputs()
     if args.check:
-        stale = [path for path, data in generated.items() if not path.exists() or path.read_bytes() != data]
+        stale = [
+            path
+            for path, data in generated.items()
+            if not path.exists() or path.read_bytes() != data
+        ]
         if stale:
-            print("stale display atlases: " + ", ".join(str(path.relative_to(ROOT)) for path in stale))
+            print(
+                "stale display atlases: " + ", ".join(str(path.relative_to(ROOT)) for path in stale)
+            )
             return 1
         total = sum(len(data) for data in generated.values())
         print(f"{len(generated)} display atlases are current ({total} bytes)")

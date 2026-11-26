@@ -9,11 +9,12 @@ The self-hosted runner and the dev box resolve tools through PATH, and PATH
 differs between a login shell and a non-interactive one. Measured on the dev
 box, ``ssh dev '<cmd>'`` and ``ssh dev 'bash -lc "<cmd>"'`` resolved DIFFERENT
 binaries: shellcheck 0.9.0 vs 0.11.0, shfmt 3.6.0 vs 3.13.1, ruff absent vs
-0.15.19. A gate run through the wrong PATH produces findings CI never
+0.16.10. A gate run through the wrong PATH produces findings CI never
 reproduces, or -- worse -- misses findings CI has. ``use_pinned_tool_path`` in
-the ra8ci gate (bsikar/ra8ci, scripts/ci.sh) makes the resolution deterministic; this check makes the WRONG
-version FAIL LOUD rather than pass quietly, the same class of hole as a
-gate exiting 0 while the tool its enforcement needs is missing.
+the ra8ci gate (bsikar/ra8ci, scripts/ci.sh) makes the resolution deterministic;
+this check makes the WRONG version FAIL LOUD rather than pass quietly, the same
+class of hole as a gate exiting 0 while the tool its enforcement needs is
+missing.
 
 Single source of truth
 -----------------------
@@ -55,7 +56,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -65,7 +65,6 @@ import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = REPO_ROOT / ".devcontainer" / "Dockerfile"
@@ -85,7 +84,6 @@ MODE_MAJOR = "major"
 # copyright range in a --version banner is never mistaken for the version).
 _VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 _ARG_RE = re.compile(r"^\s*ARG\s+([A-Z0-9_]+)=(\S+)", re.MULTILINE)
-
 
 
 @dataclass(frozen=True)
@@ -268,7 +266,6 @@ def _python_spec(binary: str, package: str) -> ToolSpec:
         Exact ToolSpec sourced from pyproject.toml.
     """
     return ToolSpec(binary, _python_pin(package), MODE_EXACT, f"pyproject.toml:{package}")
-
 
 
 def build_specs() -> list[ToolSpec]:
@@ -662,9 +659,7 @@ def selftest() -> int:
         sys.stderr.write("\n".join(failures) + "\n")
         sys.stderr.write("The comparator does not judge versions as claimed.\n")
         return EXIT_FAIL
-    print(
-        "check_tool_versions.py --selftest: OK (all modes both ways, plus missing-tool)."
-    )
+    print("check_tool_versions.py --selftest: OK (all modes both ways, plus missing-tool).")
     return EXIT_OK
 
 

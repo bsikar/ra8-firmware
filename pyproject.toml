@@ -21,7 +21,7 @@ dev = [
   { include-group = "runtime" },
   "cmakelang==0.6.13",
   "libclang==18.1.1",
-  "ruff==0.15.19",
+  "ruff==0.16.10",
   "yamllint==1.37.1",
 ]
 ci = [
@@ -201,8 +201,7 @@ select = [
 ]
 ignore = [
   "ISC001",    # single-line implicit string concat -- conflicts with the formatter
-  "ISC004",    # multi-line implicit concat is the house idiom for wrapped prose;
-  #              preview-gated in the 0.15.19 pin, so inert until the next upgrade
+  "ISC004",    # multi-line implicit concat is the house idiom for wrapped prose
   "COM812",    # trailing comma -- owned by the formatter
 ]
 
@@ -225,6 +224,7 @@ ignore = [
 # both would make the syntax disagree with the portable stdlib runner. Normal
 # TestCase assertions and assertRaises keep unittest's failure context and
 # avoid the custom Expectations mixin this suite previously used to evade it.
+"tools/vela/tests/test_vela_gen.py" = ["PT009", "PT027"]
 
 [tool.ruff.lint.pydocstyle]
 # MEASURED across all 143 first-party Python files before choosing, the same
@@ -316,9 +316,10 @@ max-complexity = 15
 
 # ---------------------------------------------------------------------------
 # Deliberately NOT selected. Every count below was RE-MEASURED against
-# the current tree (124 first-party Python files, ruff 0.15.19), not carried
-# over from the previous pass -- a stale number is how a dropped family stops
-# being a decision and becomes an omission.
+# the current tree (124 first-party Python files, ruff 0.15.19 baseline,
+# bumped to ruff 0.16.10 cleanly), not carried over from the previous pass --
+# a stale number is how a dropped family stops being a decision and becomes
+# an omission.
 #
 # Two families have LEFT this list rather than being re-justified: D and
 # ANN are both selected above, with their measurements recorded there.

@@ -438,7 +438,9 @@ def _selftest_detector(failures: list[str]) -> None:
     )
     expect(
         scan_text(
-            '// ThreadX ticks via _tx_timer_interrupt\nconst label = "ux_device";\nconst tx_len: usize = 0;',
+            "// ThreadX ticks via _tx_timer_interrupt\n"
+            'const label = "ux_device";\n'
+            "const tx_len: usize = 0;",
             ".zig",
         )
         == {},

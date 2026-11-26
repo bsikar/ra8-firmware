@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verify v2 RLE decodes to the v1 quantized Pillow masks for every glyph."""
+
 from __future__ import annotations
 
 import struct
@@ -16,16 +17,22 @@ HEADER_BYTES = 10
 RECORD_BYTES = 16
 
 
+GlyphRow = tuple[int, int, int, int, int, int, list[int]]
+
+
 def quantize(mask: bytes) -> list[int]:
+    """Quantize 8-bit glyph coverage values to 2-bit atlas levels."""
     return [min(3, (coverage * 3 + 127) // 255) for coverage in mask]
 
 
-def decode_v2(data: bytes) -> tuple[int, int, int, list[tuple[int, int, int, int, int, int, list[int]]]]:
+def decode_v2(data: bytes) -> tuple[int, int, int, list[GlyphRow]]:
+    """Decode an R8LA v2 binary blob into header metrics and unpacked glyph rows."""
     if data[:4] != b"R8LA" or data[4:6] != bytes((2, 1)):
-        raise AssertionError("wrong R8LA v2 header")
+        msg = "wrong R8LA v2 header"
+        raise AssertionError(msg)
     count, ascent, descent = struct.unpack_from("<HBB", data, 6)
     coverage_start = HEADER_BYTES + count * RECORD_BYTES
-    glyphs = []
+    glyphs: list[GlyphRow] = []
     for index in range(count):
         cp, left, top, advance, width, height, offset = struct.unpack_from(
             "<IhhhBBI", data, HEADER_BYTES + index * RECORD_BYTES
@@ -38,17 +45,21 @@ def decode_v2(data: bytes) -> tuple[int, int, int, list[tuple[int, int, int, int
             cursor += 1
             decoded.extend([run >> 6] * ((run & 0x3F) + 1))
         if len(decoded) != expected_pixels:
-            raise AssertionError(f"run crosses glyph bounds for U+{cp:04X}")
+            msg = f"run crosses glyph bounds for U+{cp:04X}"
+            raise AssertionError(msg)
         glyphs.append((cp, left, top, advance, width, height, decoded))
     return count, ascent, descent, glyphs
 
 
-def expected_display(path: Path, size: int, cps: list[int], stroke: int):
+def expected_display(
+    path: Path, size: int, cps: list[int], stroke: int
+) -> tuple[int, int, list[GlyphRow]]:
+    """Render expected display atlas glyph metrics and 2-bit masks via Pillow."""
     font = ImageFont.truetype(str(path), size)
     ascent, descent = font.getmetrics()
     ascent += stroke
     descent += stroke
-    rows = []
+    rows: list[GlyphRow] = []
     for cp in cps:
         char = chr(cp)
         left, top, right, bottom = font.getbbox(char, stroke_width=stroke)
@@ -68,30 +79,51 @@ def expected_display(path: Path, size: int, cps: list[int], stroke: int):
     return ascent, descent, rows
 
 
-def expected_literata():
+def expected_literata() -> tuple[int, int, list[GlyphRow]]:
+    """Render expected Literata atlas glyph metrics and 2-bit masks via Pillow."""
     font = ImageFont.truetype(str(literata_atlas.FONT), literata_atlas.PIXEL_SIZE)
     ascent, descent = font.getmetrics()
-    rows = []
+    rows: list[GlyphRow] = []
     for cp in literata_atlas.codepoints():
         char = chr(cp)
         left, top, right, bottom = font.getbbox(char)
         mask = font.getmask(char)
-        rows.append((cp, left, top, round(font.getlength(char)), right - left, bottom - top, quantize(bytes(mask))))
+        rows.append(
+            (
+                cp,
+                left,
+                top,
+                round(font.getlength(char)),
+                right - left,
+                bottom - top,
+                quantize(bytes(mask)),
+            )
+        )
     return ascent, descent, rows
 
 
-def compare(label: str, data: bytes, expected_ascent: int, expected_descent: int, expected_rows) -> int:
+def compare(
+    label: str,
+    data: bytes,
+    expected_ascent: int,
+    expected_descent: int,
+    expected_rows: list[GlyphRow],
+) -> int:
+    """Assert decoded R8LA v2 atlas matches the expected metrics and coverage."""
     count, ascent, descent, actual_rows = decode_v2(data)
     if (count, ascent, descent) != (len(expected_rows), expected_ascent, expected_descent):
-        raise AssertionError(f"{label}: header differs from v1 metrics")
+        msg = f"{label}: header differs from v1 metrics"
+        raise AssertionError(msg)
     for actual, expected in zip(actual_rows, expected_rows, strict=True):
         if actual != expected:
-            raise AssertionError(f"{label}: v1/v2 coverage differs for U+{actual[0]:04X}")
+            msg = f"{label}: v1/v2 coverage differs for U+{actual[0]:04X}"
+            raise AssertionError(msg)
     print(f"{label}: {count} glyphs decode byte-for-byte to v1 coverage")
     return len(data)
 
 
 def main() -> int:
+    """Verify Literata and display atlases decode identically to Pillow masks."""
     total_v1 = 0
     total_v2 = 0
     data = literata_atlas.generate()
@@ -109,8 +141,10 @@ def main() -> int:
             v2 = display_atlases.make_atlas(font_path, pixel_size, cps, stroke)
             ascent, descent, expected_rows = expected_display(font_path, pixel_size, cps, stroke)
             total_v2 += compare(name, v2, ascent, descent, expected_rows)
-            total_v1 += 8 + len(cps) * RECORD_BYTES + sum((len(row[6]) + 3) // 4 for row in expected_rows)
-    print(f"legacy v1 total {total_v1} bytes; v2 total {total_v2} bytes; saved {100 * (total_v1 - total_v2) / total_v1:.1f}%")
+            v1_payload = sum((len(row[6]) + 3) // 4 for row in expected_rows)
+            total_v1 += 8 + len(cps) * RECORD_BYTES + v1_payload
+    saved = 100 * (total_v1 - total_v2) / total_v1
+    print(f"legacy v1 total {total_v1} bytes; v2 total {total_v2} bytes; saved {saved:.1f}%")
     return 0
 
 
