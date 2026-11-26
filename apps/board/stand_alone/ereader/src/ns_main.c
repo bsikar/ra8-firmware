@@ -28,10 +28,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "er_panel.h"
 #include "ra8_attributes.h"
 #include "ra8_display_pal_backlight.h"
 #include "ra8_err.h"
 #include "ra8_nsc.h"
+#include "ra8_nsc_io.h"
+#include "ra8_panel.h"
+#include "ra8_panel_timing.h"
 #include "ra8_wdt_supervisor.h"
 #include "tx_api.h"
 
@@ -189,7 +193,41 @@ volatile uint32_t g_ns_backlight_transitions = 0U;
  * @brief Error status captured during NS backlight controller bring-up.
  */
 volatile ra8_err_t g_ns_backlight_init_err = k_ra8_ok;
+/**
+ * @var g_ns_panel_ready
+ * @brief Non-zero once NS display PAL + ``ra8_gfx`` initial frame flush succeeded.
+ */
+volatile uint32_t g_ns_panel_ready = 0U;
+/**
+ * @var g_ns_panel_init_err
+ * @brief Error status captured during NS SDRAM + display PAL bring-up.
+ */
+volatile ra8_err_t g_ns_panel_init_err = k_ra8_ok;
+/**
+ * @var g_ns_refresh_mode
+ * @brief Active selectable panel refresh mode (``er_refresh_mode_t``).
+ */
+volatile uint32_t g_ns_refresh_mode = (uint32_t)k_er_refresh_fast_clean;
+/**
+ * @var g_ns_refresh_hint
+ * @brief Latest ``display_refresh_hint_t`` submitted to ``display_flush()``.
+ */
+volatile uint32_t g_ns_refresh_hint = (uint32_t)k_display_refresh_init;
+/**
+ * @var g_ns_frames_flushed
+ * @brief Total frames rendered through ``ra8_gfx`` and flushed via display PAL.
+ */
+volatile uint32_t g_ns_frames_flushed = 0U;
+/**
+ * @var g_ns_fb_crc
+ * @brief FNV-1a checksum across the SDRAM panel framebuffer after the latest flush.
+ */
+volatile uint32_t g_ns_fb_crc = 0U;
 
+/** @brief 1024x600 RGB565 panel framebuffer placed in NOLOAD external SDRAM. */
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
+
+static er_panel_state_t           s_ns_panel                   = {};
 static display_backlight_t        s_ns_backlight               = {};
 static display_backlight_policy_t s_ns_backlight_policy        = {};
 static ra8_nsc_backlight_caps_t   s_ns_backlight_caps          = {};
@@ -228,6 +266,71 @@ void ra8_ereader_backlight_notify_activity(void)
   s_backlight_activity_pending = true;
 }
 
+/** @brief Compute deterministic 32-bit FNV-1a digest over the SDRAM panel framebuffer. */
+RA8_INTERNAL static uint32_t internal_ns_fb_checksum(void)
+{
+  uint32_t       h     = 2166136261U;
+  const uint8_t* bytes = (const uint8_t*)s_framebuffer;
+  for (size_t i = 0U; i < sizeof(s_framebuffer); ++i) {
+    h = (h ^ (uint32_t)bytes[i]) * 16777619U;
+  }
+  return h;
+}
+
+/** @brief Sync exported display/refresh inspection variables from active panel state. */
+RA8_INTERNAL static void internal_ns_panel_publish(void)
+{
+  g_ns_refresh_mode   = (uint32_t)s_ns_panel.mode;
+  g_ns_refresh_hint   = (uint32_t)s_ns_panel.last_hint;
+  g_ns_frames_flushed = s_ns_panel.frame_count;
+  g_ns_fb_crc         = internal_ns_fb_checksum();
+}
+
+/** @brief Initialize SDRAM + EK-RA8D2 GLCDC panel via display PAL and render first frame. */
+RA8_INTERNAL static void internal_ns_panel_setup(void)
+{
+  ra8_err_t err = ra8_nsc_sdramc_init();
+  if (err != k_ra8_ok) {
+    g_ns_panel_init_err = err;
+    (void)ra8_nsc_log_emit("UI", "Panel SDRAM init failed");
+    return;
+  }
+
+  const display_fb_cfg_t fb_cfg = {
+    .pixels    = s_framebuffer,
+    .bytes     = (uint32_t)sizeof(s_framebuffer),
+    .width_px  = (uint16_t)k_panel_width_px,
+    .height_px = (uint16_t)k_panel_height_px,
+    .pixfmt    = k_display_pixfmt_rgb565,
+  };
+  err = er_panel_init_glcdc(&s_ns_panel,
+                            &fb_cfg,
+                            &s_ra8_panel_ek_ra8d2_timing,
+                            k_er_refresh_fast_clean,
+                            (uint16_t)k_display_policy_clean_every_default);
+  if (err != k_ra8_ok) {
+    g_ns_panel_init_err = err;
+    (void)ra8_nsc_log_emit("UI", "Panel display PAL init failed");
+    return;
+  }
+
+  err = er_panel_render_frame(&s_ns_panel,
+                              k_display_event_open,
+                              "RA8D2 E-Reader",
+                              "Panel ready through ra8_display_pal + ra8_gfx");
+  if (err != k_ra8_ok) {
+    g_ns_panel_init_err = err;
+    (void)ra8_nsc_log_emit("UI", "Panel initial frame flush failed");
+    return;
+  }
+
+  g_ns_panel_init_err = k_ra8_ok;
+  g_ns_panel_ready    = 1U;
+  internal_ns_panel_publish();
+  (void)ra8_nsc_log_emit("UI", "Panel initialized: frame 1 flushed");
+  (void)ra8_nsc_log_emit("UI", er_panel_refresh_mode_label(s_ns_panel.mode));
+}
+
 /**
  * @brief Bring up the NS backlight controller, 30s idle policy, and wake switches.
  * @param[in] now_ms Monotonic timestamp in milliseconds.
@@ -239,10 +342,12 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
     g_ns_backlight_init_err = err;
     return;
   }
-  err = ra8_nsc_backlight_init(false);
-  if (err != k_ra8_ok) {
-    g_ns_backlight_init_err = err;
-    return;
+  if (g_ns_panel_ready == 0U) {
+    err = ra8_nsc_backlight_init(false);
+    if (err != k_ra8_ok) {
+      g_ns_backlight_init_err = err;
+      return;
+    }
   }
 
   const display_backlight_cfg_t cfg = {
@@ -291,8 +396,11 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
  * @param[in,out] prev_sw1 Prior sampled SW1 pressed state.
  * @param[in,out] prev_sw2 Prior sampled SW2 pressed state.
  */
-RA8_INTERNAL static void internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2)
+RA8_INTERNAL static void
+internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2, bool* out_sw1_edge, bool* out_sw2_edge)
 {
+  *out_sw1_edge = false;
+  *out_sw2_edge = false;
   if (!s_ns_backlight_ready) {
     return;
   }
@@ -302,9 +410,13 @@ RA8_INTERNAL static void internal_ns_backlight_tick(bool* prev_sw1, bool* prev_s
   (void)ra8_nsc_sw_read(0U, &sw1_now);
   (void)ra8_nsc_sw_read(1U, &sw2_now);
 
-  const bool sw_edge = (sw1_now && !(*prev_sw1)) || (sw2_now && !(*prev_sw2));
-  *prev_sw1          = sw1_now;
-  *prev_sw2          = sw2_now;
+  const bool sw1_edge = sw1_now && !(*prev_sw1);
+  const bool sw2_edge = sw2_now && !(*prev_sw2);
+  const bool sw_edge  = sw1_edge || sw2_edge;
+  *prev_sw1           = sw1_now;
+  *prev_sw2           = sw2_now;
+  *out_sw1_edge       = sw1_edge;
+  *out_sw2_edge       = sw2_edge;
 
   const uint32_t                      now_ms = internal_ns_now_ms();
   display_backlight_policy_decision_t dec    = {};
@@ -421,6 +533,7 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   (void)ra8_nsc_log_emit("UI", "UI thread started");
+  internal_ns_panel_setup();
   internal_ns_backlight_setup(internal_ns_now_ms());
 
   uint32_t frame    = 0U;
@@ -429,7 +542,28 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
   for (;;) {
     frame++;
     g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
-    internal_ns_backlight_tick(&prev_sw1, &prev_sw2);
+    bool sw1_edge  = false;
+    bool sw2_edge  = false;
+    internal_ns_backlight_tick(&prev_sw1, &prev_sw2, &sw1_edge, &sw2_edge);
+    if (s_ns_panel.initialized) {
+      if (sw2_edge) {
+        if (er_panel_cycle_refresh_mode(&s_ns_panel) == k_ra8_ok) {
+          (void)er_panel_render_frame(&s_ns_panel,
+                                      k_display_event_turn,
+                                      "RA8D2 E-Reader",
+                                      "Refresh mode switched by user input");
+          internal_ns_panel_publish();
+          (void)ra8_nsc_log_emit("UI", er_panel_refresh_mode_label(s_ns_panel.mode));
+        }
+      } else if (sw1_edge) {
+        if (er_panel_render_frame(&s_ns_panel,
+                                  k_display_event_turn,
+                                  "RA8D2 E-Reader",
+                                  "Page turn flushed via display PAL") == k_ra8_ok) {
+          internal_ns_panel_publish();
+        }
+      }
+    }
     /* Prove liveness to the watchdog supervisor once per frame. */
     (void)ra8_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {

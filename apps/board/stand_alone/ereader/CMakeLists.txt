@@ -51,7 +51,7 @@ ra8_add_app(
   NAME ra8d2-ereader BOOT_PROFILE ns_usb_handoff
   STACK_BYTES 2200 MRAM_LENGTH 512K
   DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
-  LIBS ra8_mpu ra8_tz_secure_boot AUX_SRCS src/ns_main.c
+  LIBS ra8_mpu ra8_tz_secure_boot AUX_SRCS src/ns_main.c src/er_panel.c src/ns_pal_shims.c
 )
 
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
@@ -113,6 +113,16 @@ ra8_zig_archive_for_cpu(
   hard
 )
 
+ra8_zig_archive_for_cpu(
+  _ra8_ns_gfx
+  LIB
+  ra8_gfx
+  CPU
+  cortex_m85
+  FLOAT
+  hard
+)
+
 ra8_add_ns_image(
   SECURE_TARGET
   ra8d2-ereader.elf
@@ -127,12 +137,15 @@ ra8_add_ns_image(
   ra8d2-ereader.hex
   SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/er_panel.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_pal_shims.c
   DEFINES
   RA8_TRUSTZONE_ENABLE
   RA8_PERIPH_NS_ALIAS
   RA8_USB_POLLED_ONLY
   $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
   INCLUDES
+  ${CMAKE_CURRENT_SOURCE_DIR}/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${RA8_REPO_ROOT}/libs/ra8_core/inc
   ${RA8_REPO_ROOT}/libs/ra8_hal/inc
@@ -140,10 +153,12 @@ ra8_add_ns_image(
   ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
   ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
   ${RA8_REPO_ROOT}/libs/ra8_display_pal/inc
+  ${RA8_REPO_ROOT}/libs/ra8_gfx/inc
   ${RA8_REPO_ROOT}/libs/if/inc
   LINK_LIBS
   ${_ra8_ns_wdt_sup}
   ${_ra8_ns_display_pal}
+  ${_ra8_ns_gfx}
   threadx_ns
 )
 
@@ -152,6 +167,8 @@ ra8_add_ns_image(
 # image is also reachable as a bare `ninja ra8d2-ereader_ns.elf`.
 add_custom_target(ra8d2-ereader_ns_zig_wdt_supervisor DEPENDS ${_ra8_ns_wdt_sup})
 add_custom_target(ra8d2-ereader_ns_zig_display_pal DEPENDS ${_ra8_ns_display_pal})
+add_custom_target(ra8d2-ereader_ns_zig_gfx DEPENDS ${_ra8_ns_gfx})
 add_dependencies(
   ra8d2-ereader_ns.elf ra8d2-ereader_ns_zig_wdt_supervisor ra8d2-ereader_ns_zig_display_pal
+  ra8d2-ereader_ns_zig_gfx
 )

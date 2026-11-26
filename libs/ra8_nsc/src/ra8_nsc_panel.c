@@ -27,6 +27,7 @@
 
 #if defined(RA8_OFF_TARGET) || __has_include("ra8_board_ek_ra8d2.h")
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_port_utils.h"
 #define RA8_NSC_HAVE_PANEL_BOARD 1
 #else
 #define RA8_NSC_HAVE_PANEL_BOARD 0
@@ -114,6 +115,50 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_sw_read(uint8_t sw_id, bool* out_pressed)
   return k_ra8_ok;
 #else
   (void)sw_id;
+  return k_ra8_err_not_supported;
+#endif
+}
+
+RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_power_on(void)
+{
+#if RA8_NSC_HAVE_PANEL_BOARD
+  return ra8_board_lcd_panel_power_on();
+#else
+  return k_ra8_err_not_supported;
+#endif
+}
+
+RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_reset_init(bool high)
+{
+#if RA8_NSC_HAVE_PANEL_BOARD
+  return ra8_gpio_output_init((ra8_port_pin_t)k_ra8_board_lcd_reset_l,
+                              high ? k_ra8_level_high : k_ra8_level_low);
+#else
+  (void)high;
+  return k_ra8_err_not_supported;
+#endif
+}
+
+RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_reset_write(bool high)
+{
+#if RA8_NSC_HAVE_PANEL_BOARD
+  return ra8_gpio_write((ra8_port_pin_t)k_ra8_board_lcd_reset_l,
+                        high ? k_ra8_level_high : k_ra8_level_low);
+#else
+  (void)high;
+  return k_ra8_err_not_supported;
+#endif
+}
+
+RA8_NSC_VENEER ra8_err_t ra8_nsc_board_glcdc_init(uint8_t fmt)
+{
+#if RA8_NSC_HAVE_PANEL_BOARD
+  if (fmt > (uint8_t)k_ra8_board_glcdc_fmt_rgb565) {
+    return k_ra8_err_invalid_arg;
+  }
+  return ra8_board_glcdc_init((ra8_board_glcdc_fmt_t)fmt);
+#else
+  (void)fmt;
   return k_ra8_err_not_supported;
 #endif
 }

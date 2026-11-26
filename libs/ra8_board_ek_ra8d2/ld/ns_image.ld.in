@@ -33,6 +33,8 @@ MEMORY
     @RA8_NS_ROM_NAME@ (rx)    : ORIGIN = @RA8_NS_ROM_ORIGIN@, LENGTH = @RA8_NS_ROM_LENGTH@
     /* Writable run-time home: SRAM2 via the bit[28] Non-secure alias. */
     NS_SRAM_RUN (rwx) : ORIGIN = @RA8_NS_SRAM_ORIGIN@, LENGTH = @RA8_NS_SRAM_LENGTH@
+    /* External SDRAM (IDAU/SAU Non-secure >= 0x5000_0000) for NOLOAD framebuffers. */
+    SDRAM (rwx)       : ORIGIN = @RA8_NS_SDRAM_ORIGIN@, LENGTH = @RA8_NS_SDRAM_LENGTH@
 }
 
 /* NS main stack tops out at the top of NS_SRAM_RUN. Slot 0 of the NS vector
@@ -139,6 +141,15 @@ SECTIONS
         g_ra8_threadx_unused_memory_start = .;
     } > NS_SRAM_RUN
 
+    /* NOLOAD external SDRAM buffers (framebuffers, tile arenas, scratch). */
+    .sdram_data (NOLOAD) : ALIGN(8)
+    {
+        g_ra8_ls_ssdram = .;
+        *(.sdram_data)
+        *(.sdram_data.*)
+        g_ra8_ls_esdram = .;
+    } > SDRAM
+
     /DISCARD/ :
     {
         *(.note.GNU-stack)
@@ -151,6 +162,8 @@ ASSERT(g_ra8_ls_ns_load_end <= ORIGIN(@RA8_NS_ROM_NAME@) + LENGTH(@RA8_NS_ROM_NA
        "FATAL: NS image overflows @RA8_NS_ROM_NAME@")
 ASSERT(g_ra8_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
        "FATAL: NS image overflows NS_SRAM_RUN (SRAM2)")
+ASSERT(g_ra8_ls_esdram <= ORIGIN(SDRAM) + LENGTH(SDRAM),
+       "FATAL: NS image overflows SDRAM")
 /* The RoT header MUST land at ns_base + 0x40 (== k_ra8_tz_ns_rot_header_offset):
  * the Secure verifier reads it there. This holds only while the NS vector table
  * is exactly 16 entries (64 bytes); a drift is a loud link error, not a silent

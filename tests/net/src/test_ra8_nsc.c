@@ -413,6 +413,9 @@ static void internal_test_panel_and_switch_veneers(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_backlight_set_brightness(101U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_set_brightness(0U));
 
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_lcd_panel_reset_init(false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_lcd_panel_reset_write(true));
+
   bool pressed = true;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_sw_read(0U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_sw_init(2U));

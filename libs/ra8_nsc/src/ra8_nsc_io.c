@@ -14,10 +14,12 @@
 
 #include "ra8_nsc_io.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_acmphs.h"
 #include "ra8_adc.h"
+#include "ra8_cache.h"
 #include "ra8_check.h"
 #include "ra8_crc.h"
 #include "ra8_dac_b.h"
@@ -27,6 +29,7 @@
 #include "ra8_gpt.h"
 #include "ra8_nsc_veneer.h"
 #include "ra8_pdm.h"
+#include "ra8_sdramc.h"
 
 static const char* const s_tag = "NSCIO";
 
@@ -356,7 +359,73 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_init(const ra8_glcdc_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "glcdc_init: cfg");
   RA8_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
+  if ((cfg->framebuffer_addr != 0U) && (cfg->width_px > 0U) && (cfg->height_px > 0U)) {
+    const size_t fb_min_bytes = (size_t)cfg->width_px * (size_t)cfg->height_px * 2U;
+    RA8_NSC_CHECK_NS_RANGE_RW((void*)(uintptr_t)cfg->framebuffer_addr, fb_min_bytes);
+  }
   return ra8_glcdc_init(cfg);
+}
+
+/**
+ * @brief NSC veneer: configure the GLCDC background plane colour.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_set_background_color(uint32_t argb)
+{
+  return ra8_glcdc_set_background_color(argb);
+}
+
+/**
+ * @brief NSC veneer: start or stop GLCDC scanout.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_start(bool enable)
+{
+  return ra8_glcdc_start(enable);
+}
+
+/**
+ * @brief NSC veneer: enable GLCDC layer 1 over an NS framebuffer address.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_layer1_show(uintptr_t fb_addr)
+{
+  if (fb_addr == 0U) {
+    return k_ra8_err_null_ptr;
+  }
+  RA8_NSC_CHECK_NS_RANGE_R((const void*)fb_addr, sizeof(uint32_t));
+  return ra8_glcdc_layer1_show(fb_addr);
+}
+
+/**
+ * @brief NSC veneer: shut down the GLCDC peripheral.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_deinit(void)
+{
+  return ra8_glcdc_deinit();
+}
+
+/**
+ * @brief NSC veneer: initialise the external SDRAM controller.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_sdramc_init(void)
+{
+  return ra8_sdramc_init();
+}
+
+/**
+ * @brief NSC veneer: clean D-cache lines over an NS address range.
+ * @since 0.1.0
+ */
+RA8_NSC_VENEER ra8_err_t ra8_nsc_dcache_clean_by_addr(const void* addr, uint32_t size)
+{
+  RA8_CHECK_NULL_PTR(addr, s_tag, "dcache_clean: addr");
+  if (size > 0U) {
+    RA8_NSC_CHECK_NS_RANGE_R(addr, size);
+  }
+  return ra8_cache_dcache_clean_by_addr(addr, size);
 }
 
 /**

@@ -20,6 +20,7 @@
 #include "ra8_gpt.h"
 #include "ra8_mstp.h"
 #include "ra8_nsc_io.h"
+#include "ra8_pin_validator.h"
 #include "unity_minimal.h"
 
 /**
@@ -193,16 +194,26 @@ static void internal_test_crc_init_compute(void)
 RA8_INTERNAL
 static void internal_test_glcdc_pdm_eth_init(void)
 {
-  TEST_BEGIN("ra8_nsc_{glcdc,pdm,eth}_init forwards");
+  TEST_BEGIN("ra8_nsc_{glcdc,sdramc,pdm,eth,dcache} forwards");
   internal_prep();
+  ra8_pin_validator_reset();
   ra8_glcdc_config_t glcfg = {};
   glcfg.width_px           = k_t_screen_w;
   glcfg.height_px          = k_t_screen_h;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_sdramc_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_init(&glcfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_glcdc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_set_background_color(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_start(true));
+  uint32_t dummy_fb = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_layer1_show((uintptr_t)&dummy_fb));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_glcdc_layer1_show(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_dcache_clean_by_addr(&dummy_fb, (uint32_t)sizeof(dummy_fb)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_dcache_clean_by_addr(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_deinit());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_pdm_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_init());
-  TEST_END("ra8_nsc_{glcdc,pdm,eth}_init forwards");
+  TEST_END("ra8_nsc_{glcdc,sdramc,pdm,eth,dcache} forwards");
 }
 
 int main(void)

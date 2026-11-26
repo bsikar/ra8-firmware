@@ -134,7 +134,7 @@ extern "C" {
                                                            uint32_t*      out_crc);
 
 /* =============================================================================
- * GLCDC
+ * GLCDC / SDRAMC / Cache
  * =============================================================================
  */
 
@@ -143,6 +143,43 @@ extern "C" {
  * @since 0.1.0
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_init(const ra8_glcdc_config_t* cfg);
+
+/**
+ * @brief NSC veneer: set the GLCDC background colour behind layer 1.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_set_background_color(uint32_t argb);
+
+/**
+ * @brief NSC veneer: start or stop GLCDC scanout.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_start(bool enable);
+
+/**
+ * @brief NSC veneer: show layer 1 pointing at an NS framebuffer address.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_layer1_show(uintptr_t fb_addr);
+
+/**
+ * @brief NSC veneer: tear down the graphics LCD controller.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_glcdc_deinit(void);
+
+/**
+ * @brief NSC veneer: initialise the external SDRAM controller.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_sdramc_init(void);
+
+/**
+ * @brief NSC veneer: clean D-cache lines covering an NS buffer before DMA/GLCDC scanout.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_dcache_clean_by_addr(const void* addr,
+                                                                    uint32_t    size);
 
 /* =============================================================================
  * PDM
