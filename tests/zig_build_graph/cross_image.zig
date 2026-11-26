@@ -61,8 +61,8 @@ const armWarningFlags = arm_flags.warningFlags;
 
 /// The cross toolchain and the per-sub-target contexts, in their own module
 /// since the build-type slice. Aliased here so the call sites below read as they did.
-const ArmTools = cross_build.Tools;
-const findArmTools = cross_build.findTools;
+pub const ArmTools = cross_build.Tools;
+pub const findArmTools = cross_build.findTools;
 
 /// The sets that do not vary by configuration, as build_type.Base names them.
 pub fn base() build_type.Base {
@@ -72,6 +72,18 @@ pub fn base() build_type.Base {
         .asm_flags = &arm_flags.cpu_select_flags,
         .link_flags = &arm_link_flags,
     };
+}
+
+/// Host helper checking binary size against app `mram_length`.
+pub fn mramBudgetChecker(b: *std.Build) *std.Build.Step.Compile {
+    return b.addExecutable(.{
+        .name = "mram_budget_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/mram_budget_check.zig"),
+            .target = b.graph.host,
+            .optimize = build_type.release_tool_optimize,
+        }),
+    });
 }
 
 /// Wire the cross-build into `arm_step`. Missing cross tools are a skip, not a
@@ -90,14 +102,7 @@ pub fn addCrossBuild(
         arm_step.dependOn(&notice.step);
         return;
     };
-    const budget_checker = b.addExecutable(.{
-        .name = "mram_budget_check",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/zig_build_graph/mram_budget_check.zig"),
-            .target = b.graph.host,
-            .optimize = build_type.release_tool_optimize,
-        }),
-    });
+    const budget_checker = mramBudgetChecker(b);
     for (cross_sources.cross_apps) |app| addCrossApp(b, arm_step, tools, budget_checker, app, globals);
 }
 
@@ -279,6 +284,22 @@ fn addCrossApp(
     budget_checker: *std.Build.Step.Compile,
     app: CrossApp,
     globals: build_type.Globals,
+) void {
+    addCrossAppWithExtra(b, arm_step, tools, budget_checker, app, globals, null, true);
+}
+
+/// Cross-build `app` into `arm_step`, optionally folding an external
+/// static archive (such as a Cargo-built Rust firmware client) into the
+/// link group and omitting `<dir>/src/main.c` when that archive owns `main`.
+pub fn addCrossAppWithExtra(
+    b: *std.Build,
+    arm_step: *std.Build.Step,
+    tools: ArmTools,
+    budget_checker: *std.Build.Step.Compile,
+    app: CrossApp,
+    globals: build_type.Globals,
+    extra_archive: ?std.Build.LazyPath,
+    include_c_main: bool,
 ) void {
     const app_globals = build_type.globalsForTarget(b.allocator, globals, app.min_build_type, base());
     const global_defines = arm_flags.globalDefines(app_globals.production_build);
@@ -558,7 +579,7 @@ fn addCrossApp(
     // The middleware's port sources (port/usbx/src) are the app's own TUs as
     // far as CMake is concerned, compiled at the app's -Werror bar.
     var app_sources: std.ArrayList([]const u8) = .empty;
-    app_sources.appendSlice(b.allocator, cross_sources.crossSources(b, app)) catch @panic("OOM");
+    app_sources.appendSlice(b.allocator, cross_sources.crossSourcesWithMain(b, app, include_c_main)) catch @panic("OOM");
     app_sources.appendSlice(b.allocator, middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
 
     var objects: std.ArrayList(std.Build.LazyPath) = .empty;
@@ -717,6 +738,7 @@ fn addCrossApp(
     // resolves what is still undefined, so links that already closed pull
     // the same members as before.
     link.addArg("-Wl,--start-group");
+    if (extra_archive) |archive| link.addFileArg(archive);
     for (middleware_archives.items) |archive| link.addFileArg(archive);
     for (archives.items) |archive| link.addFileArg(archive);
     link.addArg("-Wl,--end-group");

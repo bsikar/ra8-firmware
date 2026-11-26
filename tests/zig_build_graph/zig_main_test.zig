@@ -74,3 +74,7 @@ test "a named import carries its module name and a repo-relative root" {
     try std.testing.expect(!std.mem.startsWith(u8, import.path.?, row.dir));
     try std.testing.expect(std.mem.endsWith(u8, import.path.?, ".zig"));
 }
+
+test {
+    _ = @import("rust_apps_test.zig");
+}

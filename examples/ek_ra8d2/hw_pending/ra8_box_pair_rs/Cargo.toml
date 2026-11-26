@@ -1,0 +1,23 @@
+[package]
+name = "ra8_box_pair_rs"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+build = "build.rs"
+
+[lib]
+name = "ra8_box_pair_rs"
+crate-type = ["staticlib", "rlib"]
+path = "src/lib.rs"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+codegen-units = 1
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = "deny"
