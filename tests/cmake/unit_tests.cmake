@@ -339,6 +339,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES
      ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_transport.c
 )
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_wire.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_ble_c6link.c)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
 # c6link tests above -- links libs/ra8_c6link + the vendored codec against the

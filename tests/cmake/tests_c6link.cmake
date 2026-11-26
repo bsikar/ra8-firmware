@@ -82,3 +82,23 @@ target_include_directories(
   test_ra8_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/wireless/inc
 )
 add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
+
+# test_ra8_ble_c6link: end-to-end BLE HCI transport binding connecting `ra8_ble`
+# (libs/ra8_hal) through `port/nimble/src/ble_hci_c6link.c` onto `ra8_c6link`
+# against the bounded C6 model.
+add_executable(
+  test_ra8_ble_c6link
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_ble_c6link.c
+  ${FW_ROOT}/port/nimble/src/ble_hci_c6link.c
+  ${RA8_C6LINK_TEST_SUPPORT}
+  ${RA8_C6LINK_TEST_MODEL}
+  ${RA8_C6LINK_SOURCES}
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_ble_c6link PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_ble_c6link PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_ra8_ble_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_hal/inc
+                              ${FW_ROOT}/libs/ra8_hal/src ${FW_ROOT}/port/nimble/inc
+)
+add_test(NAME test_ra8_ble_c6link COMMAND test_ra8_ble_c6link)

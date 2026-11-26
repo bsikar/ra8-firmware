@@ -187,3 +187,17 @@ test "the interface nibbles survive a round trip through the wire layout" {
         }
     }
 }
+
+test "sealPkt writes hci_pkt_type into header octet 11 under checksum" {
+    var tx = buffer();
+    tx[Frame.header_bytes] = 0xAA;
+    tx[Frame.header_bytes + 1] = 0x55;
+    try testing.expect(frame.sealPkt(&tx, 4, 0, 0x01, 2));
+    try testing.expectEqual(@as(u8, 0x01), tx[Hdr.pkt_type]);
+    const got = frame.classify(&tx).data;
+    try testing.expectEqual(@as(u8, 4), got.if_type);
+    try testing.expectEqual(@as(u16, 2), got.len);
+
+    tx[Hdr.pkt_type] ^= 0x02;
+    try testing.expectEqual(frame.Class.bad_checksum, frame.classify(&tx));
+}

@@ -37,6 +37,7 @@ pub const Route = enum(u8) {
     rpc = 0,
     ethernet = 1,
     counted = 2,
+    hci = 3,
 };
 
 /// Which consumer this interface number belongs to.
@@ -44,6 +45,7 @@ pub fn routeFor(if_type: u8) Route {
     return switch (if_type) {
         If.serial => .rpc,
         If.sta, If.ap => .ethernet,
+        If.hci => .hci,
         else => .counted,
     };
 }

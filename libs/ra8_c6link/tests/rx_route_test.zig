@@ -28,8 +28,11 @@ test "the invalid interface is counted" {
     try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(rx_route.If.invalid));
 }
 
-test "the bluetooth and diagnostic interfaces are counted" {
-    try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(rx_route.If.hci));
+test "the bluetooth interface carries HCI data" {
+    try std.testing.expectEqual(rx_route.Route.hci, rx_route.routeFor(rx_route.If.hci));
+}
+
+test "the diagnostic interface is counted" {
     try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(rx_route.If.diagnostic));
 }
 
@@ -49,20 +52,21 @@ test "every byte past the declared interfaces is counted" {
     try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(255));
 }
 
-test "exactly three interfaces route anywhere but the counter" {
+test "exactly four interfaces route anywhere but the counter" {
     var routed: usize = 0;
     var if_type: u8 = 0;
     while (true) : (if_type += 1) {
         if (rx_route.routeFor(if_type) != .counted) routed += 1;
         if (if_type == 255) break;
     }
-    try std.testing.expectEqual(@as(usize, 3), routed);
+    try std.testing.expectEqual(@as(usize, 4), routed);
 }
 
 test "the route ordinals are the ABI the C side reads back" {
     try std.testing.expectEqual(@as(u8, 0), @backingInt(rx_route.Route.rpc));
     try std.testing.expectEqual(@as(u8, 1), @backingInt(rx_route.Route.ethernet));
     try std.testing.expectEqual(@as(u8, 2), @backingInt(rx_route.Route.counted));
+    try std.testing.expectEqual(@as(u8, 3), @backingInt(rx_route.Route.hci));
 }
 
 test "the interface numbers mirror the vendored header order" {

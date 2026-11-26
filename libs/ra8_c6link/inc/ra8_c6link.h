@@ -111,6 +111,8 @@ typedef enum : uint16_t {
   /**< `sizeof(struct esp_payload_header)` on this ABI. */
   k_ra8_c6link_max_payload = 1588U,
   /**< Largest payload one frame can carry. */
+  k_ra8_c6link_hci_max_packet = k_ra8_c6link_max_payload + 1U,
+  /**< Longest H4 packet `ra8_c6link_hci_send` accepts (1B header type + payload). */
   k_ra8_c6link_mac_bytes = 6U,
   /**< Octets in an IEEE 802 address. */
   k_ra8_c6link_ssid_max = 32U,
@@ -543,22 +545,24 @@ typedef struct ra8_c6link {
   ra8_c6link_wait_t      wait;        /**< The outstanding request, if any. */
   ra8_c6link_fault_t     fault;       /**< The last failing request.        */
   ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.   */
-  /* tx_len/tx_if/open/boot_seen/scan_done sit AFTER the two DMA-aligned frame buffers,
+  /* hci_rx_cb..scan_done sit AFTER the two DMA-aligned frame buffers,
      not beside the other bookkeeping fields above: the
      bookkeeping ahead of `tx` already sums to an exact multiple of
      k_ra8_c6link_dma_align, so `tx` needs no compiler-inserted padding to
-     reach its alignment boundary. Moving these five scalars back up
-     reintroduces 64 bytes of padding (verified via sizeof/offsetof) and
-     trips clang-analyzer-optin.performance.Padding. */
+     reach its alignment boundary. Placing pointers ahead of scalars here
+     keeps trailing fields dense with no mid-struct padding. */
   alignas(k_ra8_c6link_dma_align) uint8_t tx[k_ra8_c6link_frame_bytes];
   /**< Transmit transaction. */
   alignas(k_ra8_c6link_dma_align) uint8_t rx[k_ra8_c6link_frame_bytes];
   /**< Receive transaction. */
-  uint16_t tx_len;    /**< Staged payload length, or zero.    */
-  uint8_t  tx_if;     /**< Interface the staged payload uses. */
-  bool     open;      /**< The handle is initialised.         */
-  bool     boot_seen; /**< An `Event_ESPInit` has arrived.    */
-  bool     scan_done; /**< An `Event_StaScanDone` has arrived since the scan began. */
+  ra8_c6link_rx_cb_t hci_rx_cb;   /**< BLE H4 receive sink, or null.                            */
+  void*              hci_ctx;     /**< Context handed to `hci_rx_cb`.                           */
+  uint16_t           tx_len;      /**< Staged payload length, or zero.                          */
+  uint8_t            tx_if;       /**< Interface the staged payload uses.                       */
+  uint8_t            tx_pkt_type; /**< Header packet type byte (H4 TX).                         */
+  bool               open;        /**< The handle is initialised.                               */
+  bool               boot_seen;   /**< An `Event_ESPInit` has arrived.                          */
+  bool               scan_done;   /**< An `Event_StaScanDone` has arrived since the scan began. */
 } ra8_c6link_t;
 
 /**
@@ -891,6 +895,73 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_c6link_eth_send(ra8_c6link_t* link, const uint8_t* frame, uint16_t len);
+
+/**
+ * @brief Register or clear the receiver for inbound BLE HCI packets.
+ *
+ * @details
+ * Attaches a sink called from ::ra8_c6link_dispatch whenever a valid
+ * `ESP_HCI_IF` frame arrives from the co-processor. Passing null as @p cb
+ * detaches the receiver so inbound HCI frames are counted as received data
+ * and ignored without invoking a stale callback.
+ *
+ * @param[in,out] link Open handle; must be non-null.
+ * @param[in]     cb   H4 receive callback, or null to detach.
+ * @param[in]     ctx  Opaque caller context passed to @p cb.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Sink registered or detached cleanly.
+ * @retval k_ra8_err_null_ptr @p link was null.
+ * @retval k_ra8_err_not_initialized @p link is not open.
+ *
+ * @pre @p link was opened with ::ra8_c6link_open.
+ * @post Subsequent inbound HCI frames invoke @p cb with @p ctx, or are dropped
+ *       when @p cb is null.
+ *
+ * @note Safe only when called from the link's polling context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_c6link_set_hci_rx(ra8_c6link_t* link, ra8_c6link_rx_cb_t cb, void* ctx);
+
+/**
+ * @brief Transmit one Bluetooth H4 HCI packet to the ESP32-C6 controller.
+ *
+ * @details
+ * Expects @p h4_pkt to carry a Bluetooth Core Vol 4 Part A packet indicator
+ * in byte 0 (`0x01` command, `0x02` ACL data, `0x03` synchronous/SCO, or
+ * `0x05` ISO data) followed by at least one body octet. In matching esp-hosted
+ * wire framing, byte 0 rides in `esp_payload_header.hci_pkt_type` (octet 11)
+ * and `&h4_pkt[1]` (`len - 1` octets) is clocked out starting at offset 12.
+ *
+ * @param[in,out] link   Open handle; must be non-null.
+ * @param[in]     h4_pkt H4-framed HCI packet (`[type][body...]`); must be
+ *                       non-null.
+ * @param[in]     len    Total H4 packet length in octets; must be in
+ *                       `[2, ::k_ra8_c6link_hci_max_packet]`.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok The HCI packet was clocked out cleanly.
+ * @retval k_ra8_err_null_ptr @p link or @p h4_pkt was null.
+ * @retval k_ra8_err_not_initialized @p link is not open.
+ * @retval k_ra8_err_invalid_size @p len is below 2 or exceeds
+ *         ::k_ra8_c6link_hci_max_packet.
+ * @retval k_ra8_err_invalid_arg @p h4_pkt[0] is not a valid host->controller
+ *         H4 packet indicator (`0x01`, `0x02`, `0x03`, or `0x05`).
+ * @retval k_ra8_err_busy Another transmit payload is already staged on @p link.
+ * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE.
+ * @retval k_ra8_err_spi_error The transport refused a transfer.
+ *
+ * @pre @p link is open and no other transmit payload is staged.
+ * @pre @p len readable bytes exist at @p h4_pkt.
+ * @post On success the staged slot is clear and any inbound frames clocked
+ *       during the transaction have been dispatched.
+ * @post On failure the staged transmit slot is cleared before return.
+ *
+ * @note Not thread-safe; runs synchronously through the link pump.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_c6link_hci_send(ra8_c6link_t* link, const uint8_t* h4_pkt, uint16_t len);
 
 /**
  * @brief Report the last request that failed on this link.

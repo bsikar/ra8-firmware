@@ -433,6 +433,95 @@ RA8_INTERNAL static void internal_test_remote_error_mapping(void)
   TEST_END("c6link remote error mapping");
 }
 
+/** @brief Captured H4 receive state for `internal_test_hci_data_plane`. */
+typedef struct {
+  uint8_t  calls;
+  uint16_t last_len;
+  uint8_t  last_pkt[32];
+} t_hci_rx_cap_t;
+
+/** @brief Record an inbound `ESP_HCI_IF` frame delivered by `ra8_c6link`. */
+RA8_INTERNAL static void internal_capture_hci_rx(void* ctx, const uint8_t* frame, uint16_t len)
+{
+  t_hci_rx_cap_t* const cap = (t_hci_rx_cap_t*)ctx;
+  cap->calls++;
+  cap->last_len = len;
+  const uint16_t take =
+    (len <= (uint16_t)sizeof cap->last_pkt) ? len : (uint16_t)sizeof cap->last_pkt;
+  (void)memcpy(cap->last_pkt, frame, (size_t)take);
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises `ra8_c6link_hci_send`
+ * and `ra8_c6link_set_hci_rx` validation, H4 framing across `ESP_HCI_IF`, and
+ * inbound callback registration/detachment via public entry points)
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_hci_abi.zig@ra8_c6link_hci_send
+ */
+RA8_INTERNAL static void internal_test_hci_data_plane(void)
+{
+  TEST_BEGIN("c6link HCI data plane");
+  priv_c6link_test_bringup();
+
+  const uint8_t cmd_reset[4] = {0x01U, 0x03U, 0x0CU, 0x00U};
+  const uint8_t acl_pkt[7]   = {0x02U, 0x42U, 0x00U, 0x02U, 0x00U, 0xAAU, 0xBBU};
+  const uint8_t bad_evt[4]   = {0x04U, 0x0EU, 0x01U, 0x00U};
+
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_hci_send(priv_c6link_test_link(), cmd_reset, (uint16_t)sizeof cmd_reset));
+  TEST_ASSERT_EQ(0x01U, ra8_c6_model()->hci_tx_pkt_type);
+  TEST_ASSERT_EQ(3U, ra8_c6_model()->hci_tx_len);
+  TEST_ASSERT_EQ(0, memcmp(ra8_c6_model()->hci_tx, &cmd_reset[1], 3U));
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_hci_send(priv_c6link_test_link(), acl_pkt, (uint16_t)sizeof acl_pkt));
+  TEST_ASSERT_EQ(0x02U, ra8_c6_model()->hci_tx_pkt_type);
+  TEST_ASSERT_EQ(6U, ra8_c6_model()->hci_tx_len);
+  TEST_ASSERT_EQ(0, memcmp(ra8_c6_model()->hci_tx, &acl_pkt[1], 6U));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_hci_send(nullptr, cmd_reset, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_hci_send(priv_c6link_test_link(), nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_c6link_hci_send(priv_c6link_test_link(), cmd_reset, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_c6link_hci_send(priv_c6link_test_link(),
+                                     cmd_reset,
+                                     (uint16_t)((uint16_t)k_ra8_c6link_hci_max_packet + 1U)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_hci_send(priv_c6link_test_link(), bad_evt, 4U));
+
+  priv_c6link_test_bringup();
+  t_hci_rx_cap_t cap = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_set_hci_rx(nullptr, internal_capture_hci_rx, &cap));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_set_hci_rx(priv_c6link_test_link(), internal_capture_hci_rx, &cap));
+
+  const uint8_t evt_cc[7] = {0x04U, 0x0EU, 0x04U, 0x01U, 0x03U, 0x0CU, 0x00U};
+  ra8_c6_model_emit_hci(evt_cc, (uint16_t)sizeof evt_cc);
+  ra8_c6link_stats_t stats = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_poll(priv_c6link_test_link(), 2U, &stats));
+  TEST_ASSERT_EQ(1U, cap.calls);
+  TEST_ASSERT_EQ((uint16_t)sizeof evt_cc, cap.last_len);
+  TEST_ASSERT_EQ(0, memcmp(cap.last_pkt, evt_cc, sizeof evt_cc));
+  TEST_ASSERT_EQ(0U, priv_c6link_test_rx_len());
+  TEST_ASSERT_EQ(0U, stats.eth_in);
+  TEST_ASSERT_EQ(0U, stats.unrouted);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_set_hci_rx(priv_c6link_test_link(), nullptr, nullptr));
+  ra8_c6_model_emit_hci(evt_cc, (uint16_t)sizeof evt_cc);
+  stats = (ra8_c6link_stats_t){};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_poll(priv_c6link_test_link(), 2U, &stats));
+  TEST_ASSERT_EQ(1U, cap.calls);
+  TEST_ASSERT_EQ(0U, stats.unrouted);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_close(priv_c6link_test_link()));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_c6link_set_hci_rx(priv_c6link_test_link(), internal_capture_hci_rx, &cap));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_c6link_hci_send(priv_c6link_test_link(), cmd_reset, 4U));
+  TEST_END("c6link HCI data plane");
+}
+
 /**
  * @brief Run the transport, framing, and RPC failure scenarios.
  * @return Nothing.
@@ -443,6 +532,7 @@ RA8_INTERNAL static void internal_test_remote_error_mapping(void)
 void ra8_test_c6link_transport(void)
 {
   internal_test_eth_data_plane();
+  internal_test_hci_data_plane();
   internal_test_transport_faults();
   internal_test_undecodable();
   internal_test_rejected_frames();

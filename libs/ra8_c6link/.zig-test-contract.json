@@ -17,6 +17,7 @@
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
     "tests/fw_abi_test.zig",
+    "tests/hci_abi_test.zig",
     "tests/internal_test.zig",
     "tests/lifecycle_abi_test.zig",
     "tests/mac_abi_test.zig",
@@ -72,6 +73,7 @@
     "src/ra8_c6link_event_abi.zig",
     "src/ra8_c6link_field_abi.zig",
     "src/ra8_c6link_fw_abi.zig",
+    "src/ra8_c6link_hci_abi.zig",
     "src/ra8_c6link_lib.zig",
     "src/ra8_c6link_lifecycle_abi.zig",
     "src/ra8_c6link_mac_abi.zig",
@@ -99,6 +101,7 @@
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
     "tests/fw_abi_test.zig",
+    "tests/hci_abi_test.zig",
     "tests/internal_test.zig",
     "tests/lifecycle_abi_test.zig",
     "tests/mac_abi_test.zig",
@@ -259,6 +262,12 @@
       "c6link_h",
       "-Mc6link_rpc_h=src/internal/standalone_c6link_rpc_h.zig"
     ],
+    "src/ra8_c6link_hci_abi.zig": [
+      "--dep",
+      "c6link_h",
+      "-Mroot=src/ra8_c6link_hci_abi.zig",
+      "-Mc6link_h=src/internal/standalone_c6link_h.zig"
+    ],
     "src/ra8_c6link_lib.zig": [
       "--dep",
       "c6link_h",
@@ -360,5 +369,5 @@
       "-Mc6link_rpc_h=src/internal/standalone_c6link_rpc_h.zig"
     ]
   },
-  "minimum_tests": 273
+  "minimum_tests": 284
 }

@@ -6,7 +6,8 @@
 //!
 //! Control-plane frames go to the RPC decoder (`priv_c6link_rpc_consume`,
 //! still C), station and access-point frames to the Ethernet receive callback,
-//! and everything else is counted and dropped.
+//! HCI frames to the BLE receive callback, and everything else is counted and
+//! dropped.
 
 const rx_route = @import("internal/rx_route.zig");
 const frame = @import("internal/frame.zig");
@@ -34,6 +35,9 @@ pub fn dispatch(link: *c.ra8_c6link_t, view: header.RxView) bool {
         .ethernet => {
             bump(link, "eth_in");
             if (link.rx_cb) |deliver| deliver(link.cb_ctx, payload.ptr, view.len);
+        },
+        .hci => {
+            if (link.hci_rx_cb) |deliver| deliver(link.hci_ctx, payload.ptr, view.len);
         },
         .counted => bump(link, "unrouted"),
     }

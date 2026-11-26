@@ -114,8 +114,10 @@ pub fn filler(tx: []u8) void {
 
 /// Seal a transaction whose payload is already staged at `Frame.header_bytes`.
 ///
-/// Returns false, leaving `tx` untouched, when the payload could not fit.
-pub fn seal(tx: []u8, if_type: u8, if_num: u8, len: u16) bool {
+/// Sets `pkt_type` in byte 11 before computing the checksum (`hci_pkt_type`
+/// rides here for `ESP_HCI_IF` frames). Returns false, leaving `tx`
+/// untouched, when the payload could not fit.
+pub fn sealPkt(tx: []u8, if_type: u8, if_num: u8, pkt_type: u8, len: u16) bool {
     if (len > Frame.max_payload) return false;
     const span = Frame.header_bytes + len;
 
@@ -125,10 +127,18 @@ pub fn seal(tx: []u8, if_type: u8, if_num: u8, len: u16) bool {
     std.mem.writeInt(u16, tx[Hdr.len..][0..2], len, .little);
     std.mem.writeInt(u16, tx[Hdr.offset..][0..2], Frame.header_bytes, .little);
     std.mem.writeInt(u16, tx[Hdr.seq_num..][0..2], Hdr.seq, .little);
+    tx[Hdr.pkt_type] = pkt_type;
 
     const checksum = sum(tx[0..span]);
     std.mem.writeInt(u16, tx[Hdr.checksum..][0..2], checksum, .little);
     return true;
+}
+
+/// Seal a transaction whose payload is already staged at `Frame.header_bytes`.
+///
+/// Returns false, leaving `tx` untouched, when the payload could not fit.
+pub fn seal(tx: []u8, if_type: u8, if_num: u8, len: u16) bool {
+    return sealPkt(tx, if_type, if_num, 0, len);
 }
 
 /// Decide what a received transaction is, without modifying it.

@@ -107,3 +107,36 @@ test "dispatch stops after 64 packets" {
     try std.testing.expectEqual(ble.Status.ok, s.dispatch(&r));
     try std.testing.expectEqual(@as(usize, 64), r.events);
 }
+
+test "pushRx validates H4 inbound packets, compacts consumed bytes and flags full queue" {
+    var s = ble.State{};
+    var r = Rec{};
+
+    try std.testing.expect(!ble.validRxPacket(&.{}));
+    try std.testing.expect(!ble.validRxPacket(&.{ 0x01, 0x03, 0x0C, 0x00 }));
+    try std.testing.expect(!ble.validRxPacket(&.{ 0x04, 0x0E }));
+    try std.testing.expect(!ble.validRxPacket(&.{ 0x04, 0x0E, 0x02, 0x11 }));
+    try std.testing.expect(!ble.validRxPacket(&.{ 0x02, 0x01, 0x00, 0xFC, 0x00 }));
+    try std.testing.expect(ble.validRxPacket(&.{ 0x04, 0x0F, 0x00 }));
+    try std.testing.expect(ble.validRxPacket(&.{ 0x02, 0x01, 0x00, 0x01, 0x00, 0x99 }));
+
+    try std.testing.expectEqual(ble.PushStatus.invalid_arg, s.pushRx(&.{ 0x01, 0x03, 0x0C, 0x00 }));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&.{ 0x04, 0x0E, 0x02, 0x11, 0x22 }));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&.{ 0x02, 0x01, 0x00, 0x01, 0x00, 0x99 }));
+    try std.testing.expectEqual(ble.Status.ok, s.dispatch(&r));
+    try std.testing.expectEqual(@as(usize, 1), r.events);
+    try std.testing.expectEqual(@as(usize, 1), r.acls);
+
+    // Fill queue cleanly across multiple push/dispatch cycles via compaction.
+    var big_evt: [3 + 253]u8 = @splat(0x3C);
+    big_evt[0] = ble.pkt_event;
+    big_evt[1] = 0x3E;
+    big_evt[2] = 253;
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&big_evt));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&big_evt));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&big_evt));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&big_evt));
+    try std.testing.expectEqual(ble.PushStatus.no_mem, s.pushRx(&.{ 0x04, 0x0F, 0x00 }));
+    try std.testing.expectEqual(ble.Status.ok, s.dispatch(&r));
+    try std.testing.expectEqual(ble.PushStatus.ok, s.pushRx(&.{ 0x04, 0x0F, 0x00 }));
+}

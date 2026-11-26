@@ -6,9 +6,16 @@
 //! LE_Set_Scan_Parameters packet and the RX dispatch loop. Packet layout is
 //! Bluetooth Core v5.4 Vol 4 Part A section 2 (UART transport indicators).
 
+const std = @import("std");
+
 pub const capture_bytes: u16 = 1024;
+pub const max_cmd_params: u16 = 255;
+pub const cmd_hdr_bytes: u16 = 4;
+pub const acl_hdr_bytes: u16 = 5;
 pub const max_evt_params: u16 = 255;
 pub const max_acl_payload: u16 = 251;
+pub const max_cmd_packet: u16 = cmd_hdr_bytes + max_cmd_params;
+pub const max_acl_packet: u16 = acl_hdr_bytes + max_acl_payload;
 pub const addr_bytes: u8 = 6;
 pub const adv_data_max: u8 = 31;
 pub const scan_min: u16 = 0x0004;
@@ -27,6 +34,13 @@ pub const op_scan_params: u16 = 0x200B;
 pub const op_scan_enable: u16 = 0x200C;
 
 pub const Status = enum { ok, invalid_arg, not_supported };
+pub const PushStatus = enum { ok, invalid_arg, no_mem };
+
+pub const Transport = extern struct {
+    send: ?*const fn (ctx: ?*anyopaque, h4_pkt: [*c]const u8, len: u16) callconv(.c) u16 = null,
+    poll: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    ctx: ?*anyopaque = null,
+};
 
 /// ra8_ble_config_t: two 0/1 flags, both must be 0 (the C6 owns them).
 pub const Config = extern struct {
@@ -63,6 +77,40 @@ pub fn scanParams(active: u8, interval: u16, window: u16) [7]u8 {
     };
 }
 
+pub fn frameCommand(out: *[max_cmd_packet]u8, opcode: u16, params: []const u8) u16 {
+    const plen: u8 = @intCast(params.len);
+    out[0] = pkt_cmd;
+    out[1] = @truncate(opcode);
+    out[2] = @truncate(opcode >> 8);
+    out[3] = plen;
+    @memcpy(out[cmd_hdr_bytes .. cmd_hdr_bytes + params.len], params);
+    return cmd_hdr_bytes + @as(u16, plen);
+}
+
+pub fn frameAcl(out: *[max_acl_packet]u8, handle: u16, payload: []const u8) u16 {
+    const plen: u16 = @intCast(payload.len);
+    out[0] = pkt_acl;
+    out[1] = @truncate(handle);
+    out[2] = @truncate(handle >> 8);
+    out[3] = @truncate(plen);
+    out[4] = @truncate(plen >> 8);
+    @memcpy(out[acl_hdr_bytes .. acl_hdr_bytes + payload.len], payload);
+    return acl_hdr_bytes + plen;
+}
+
+pub fn validRxPacket(pkt: []const u8) bool {
+    if (pkt.len == 0) return false;
+    return switch (pkt[0]) {
+        pkt_event => pkt.len >= 3 and pkt.len == 3 + @as(usize, pkt[2]),
+        pkt_acl => blk: {
+            if (pkt.len < acl_hdr_bytes) break :blk false;
+            const plen: u16 = (@as(u16, pkt[4]) << 8) | pkt[3];
+            break :blk plen <= max_acl_payload and pkt.len == acl_hdr_bytes + @as(usize, plen);
+        },
+        else => false,
+    };
+}
+
 pub const State = struct {
     open: bool = false,
     tx: [capture_bytes]u8 = @splat(0),
@@ -77,6 +125,30 @@ pub const State = struct {
         self.tx_len = 0;
         self.rx_len = 0;
         self.rx_pos = 0;
+    }
+
+    pub fn compactRx(self: *State) void {
+        if (self.rx_pos == 0) return;
+        if (self.rx_pos >= self.rx_len) {
+            self.rx_len = 0;
+            self.rx_pos = 0;
+            return;
+        }
+        const rem = self.rx_len - self.rx_pos;
+        std.mem.copyForwards(u8, self.rx[0..rem], self.rx[self.rx_pos..self.rx_len]);
+        self.rx_len = rem;
+        self.rx_pos = 0;
+    }
+
+    pub fn pushRx(self: *State, pkt: []const u8) PushStatus {
+        if (!validRxPacket(pkt)) return .invalid_arg;
+        self.compactRx();
+        const avail: usize = capture_bytes - self.rx_len;
+        if (pkt.len > avail) return .no_mem;
+        const n: u16 = @intCast(pkt.len);
+        @memcpy(self.rx[self.rx_len .. self.rx_len + n], pkt);
+        self.rx_len += n;
+        return .ok;
     }
 
     /// Past the capture size the byte is dropped, as in the C.
@@ -103,22 +175,15 @@ pub const State = struct {
     }
 
     pub fn sendCommand(self: *State, opcode: u16, params: []const u8) void {
-        self.txByte(pkt_cmd);
-        self.txLe16(opcode);
-        self.txByte(@intCast(params.len));
-        for (params) |b| self.txByte(b);
+        var frame: [max_cmd_packet]u8 = @splat(0);
+        const total = frameCommand(&frame, opcode, params);
+        for (frame[0..total]) |b| self.txByte(b);
     }
 
     pub fn sendAcl(self: *State, handle: u16, payload: []const u8) void {
-        self.txByte(pkt_acl);
-        self.txLe16(handle);
-        self.txLe16(@intCast(payload.len));
-        for (payload) |b| self.txByte(b);
-    }
-
-    fn txLe16(self: *State, v: u16) void {
-        self.txByte(@truncate(v));
-        self.txByte(@truncate(v >> 8));
+        var frame: [max_acl_packet]u8 = @splat(0);
+        const total = frameAcl(&frame, handle, payload);
+        for (frame[0..total]) |b| self.txByte(b);
     }
 
     fn rxLe16(self: *State) ?u16 {

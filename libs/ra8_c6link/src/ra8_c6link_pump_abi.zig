@@ -58,8 +58,13 @@ const LinkPort = struct {
 
     pub fn takeStaged(self: LinkPort) ?pump.Staged {
         if (self.link.tx_len == 0) return null;
-        const staged: pump.Staged = .{ .if_type = self.link.tx_if, .len = self.link.tx_len };
+        const staged: pump.Staged = .{
+            .if_type = self.link.tx_if,
+            .len = self.link.tx_len,
+            .pkt_type = self.link.tx_pkt_type,
+        };
         self.link.tx_len = 0;
+        self.link.tx_pkt_type = 0;
         return staged;
     }
 

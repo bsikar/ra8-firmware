@@ -18,6 +18,9 @@ const Seen = struct {
     eth_len: u16 = 0,
     eth_first: u8 = 0,
     eth_ctx: ?*anyopaque = null,
+    hci_len: u16 = 0,
+    hci_first: u8 = 0,
+    hci_ctx: ?*anyopaque = null,
 };
 
 var seen: Seen = .{};
@@ -33,6 +36,12 @@ fn receive(ctx: ?*anyopaque, payload: [*c]const u8, len: u16) callconv(.c) void 
     seen.eth_ctx = ctx;
     seen.eth_len = len;
     seen.eth_first = payload[0];
+}
+
+fn receiveHci(ctx: ?*anyopaque, payload: [*c]const u8, len: u16) callconv(.c) void {
+    seen.hci_ctx = ctx;
+    seen.hci_len = len;
+    seen.hci_first = payload[0];
 }
 
 fn newLink() c.ra8_c6link_t {
@@ -72,16 +81,48 @@ test "an Ethernet frame with no callback or counters is dropped quietly" {
     try std.testing.expect(!dispatch_abi.priv_c6link_dispatch(&link, &view));
 }
 
-test "an unrouted interface counts unrouted and reaches nobody" {
+test "an HCI frame reaches the HCI callback with its H4 type intact" {
+    seen = .{};
+    var link = newLink();
+    var stats = std.mem.zeroes(c.ra8_c6link_stats_t);
+    var marker: u8 = 0;
+    link.rx[12] = 0x04;
+    link.hci_rx_cb = receiveHci;
+    link.hci_ctx = &marker;
+    link.stats = &stats;
+    const view: RxView = .{ .offset = 12, .len = 8, .if_type = 4, .if_num = 0 };
+    try std.testing.expect(!dispatch_abi.priv_c6link_dispatch(&link, &view));
+    try std.testing.expectEqual(@as(u16, 8), seen.hci_len);
+    try std.testing.expectEqual(@as(u8, 0x04), seen.hci_first);
+    try std.testing.expectEqual(@as(?*anyopaque, &marker), seen.hci_ctx);
+    try std.testing.expectEqual(@as(u16, 0), stats.unrouted);
+    try std.testing.expectEqual(@as(u16, 0), stats.eth_in);
+}
+
+test "an HCI frame with no HCI callback is dropped without counting unrouted" {
     seen = .{};
     var link = newLink();
     var stats = std.mem.zeroes(c.ra8_c6link_stats_t);
     link.rx_cb = receive;
     link.stats = &stats;
-    const view: RxView = .{ .offset = 12, .len = 4, .if_type = 4, .if_num = 0 };
+    const view: RxView = .{ .offset = 12, .len = 6, .if_type = 4, .if_num = 0 };
+    try std.testing.expect(!dispatch_abi.priv_c6link_dispatch(&link, &view));
+    try std.testing.expectEqual(@as(u16, 0), stats.unrouted);
+    try std.testing.expectEqual(@as(u16, 0), seen.eth_len);
+}
+
+test "an unrouted interface counts unrouted and reaches nobody" {
+    seen = .{};
+    var link = newLink();
+    var stats = std.mem.zeroes(c.ra8_c6link_stats_t);
+    link.rx_cb = receive;
+    link.hci_rx_cb = receiveHci;
+    link.stats = &stats;
+    const view: RxView = .{ .offset = 12, .len = 4, .if_type = 6, .if_num = 0 };
     try std.testing.expect(!dispatch_abi.priv_c6link_dispatch(&link, &view));
     try std.testing.expectEqual(@as(u16, 1), stats.unrouted);
     try std.testing.expectEqual(@as(u16, 0), seen.eth_len);
+    try std.testing.expectEqual(@as(u16, 0), seen.hci_len);
     try std.testing.expectEqual(@as(u16, 0), seen.rpc_len);
 }
 
