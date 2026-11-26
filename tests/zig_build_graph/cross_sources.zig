@@ -577,13 +577,25 @@ pub fn hasCMain(app: CrossApp) bool {
     return app.zig_main == null;
 }
 
+/// True when `app` compiles `<dir>/src/main.c` under `include_c_main`.
+pub fn includesCMain(app: CrossApp, include_c_main: bool) bool {
+    return include_c_main and hasCMain(app);
+}
+
 /// Every C translation unit in the app's link, in ra8_add_app()'s own order:
 /// the app's main.c, the resolved boot files, the globbed universal set, then
 /// whatever the app's `LIBS` add on top.
 pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
+    return crossSourcesWithMain(b, app, hasCMain(app));
+}
+
+/// Same as `crossSources`, allowing archive-supplied `main` clients (such as
+/// Rust firmware crates) to omit `<dir>/src/main.c` while keeping every
+/// universal, boot, board, and Zig library TU.
+pub fn crossSourcesWithMain(b: *std.Build, app: CrossApp, include_c_main: bool) []const []const u8 {
     var sources: std.ArrayList([]const u8) = .empty;
 
-    if (hasCMain(app)) sources.append(b.allocator, b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
+    if (includesCMain(app, include_c_main)) sources.append(b.allocator, b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
 
     for (cross_boot_sources) |boot| {
         switch (resolveBoot(b, app, boot)) {

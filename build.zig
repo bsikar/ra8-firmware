@@ -38,6 +38,7 @@
 //!   test-soup             Compile vendored third-party C (xz-embedded) and run its C suite
 //!   netxduo-host          Compile vendored ThreadX Linux port and NetX Duo and run ra8_ipif
 //!   arm                   Cross-build every app in tests/zig_build_graph/app_table.zig
+//!   rust-arm              Cross-build paired Rust firmware apps (examples/ek_ra8d2)
 //!   threadx-m33           Build the ThreadX kernel for CPU1 (Cortex-M33) as libthreadx_m33.a
 //!   threadx-m33-modules   Build the ThreadX Module Manager for CPU1 as libthreadx_m33_modules.a
 //!   txm-m33               Build the ThreadX module library for CPU1 as libtxm_m33.a
@@ -85,6 +86,7 @@ pub const app_shapes = @import("tests/zig_build_graph/app_shapes.zig");
 pub const host_flags = @import("tests/zig_build_graph/host_flags.zig");
 pub const vendored_soup = @import("tests/zig_build_graph/vendored_soup.zig");
 pub const netxduo_host = @import("tests/zig_build_graph/netxduo_host.zig");
+pub const rust_apps = @import("tests/zig_build_graph/rust_apps.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -485,6 +487,14 @@ pub fn build(b: *std.Build) void {
         .{cross_apps.len},
     ));
     cross_image.addCrossBuild(b, arm_step, arm);
+
+    const rust_lib_dir = b.option(
+        []const u8,
+        "rust-lib-dir",
+        "Directory containing prebuilt Rust static archives for rust-arm (defaults to invoking cargo)",
+    );
+    const rust_arm_step = b.step("rust-arm", rust_apps.step_description);
+    rust_apps.addRustCrossBuild(b, rust_arm_step, arm, rust_lib_dir);
 
     const threadx_m33_step = b.step("threadx-m33", cpu1_threadx.step_description);
     cross_image.addThreadxM33(b, threadx_m33_step, arm);

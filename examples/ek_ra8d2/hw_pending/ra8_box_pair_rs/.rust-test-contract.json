@@ -1,0 +1,13 @@
+{
+  "covered_sources": [
+    "build.rs",
+    "src/lib.rs",
+    "src/ffi.rs",
+    "src/vectors.rs",
+    "src/firmware.rs",
+    "tests/vectors.rs"
+  ],
+  "minimum_tests": 6,
+  "package_license": "MIT",
+  "allowed_dependencies": []
+}

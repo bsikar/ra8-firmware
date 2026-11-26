@@ -31,6 +31,7 @@ default:
     @echo "  just zig::test_zig          Run the Zig-native suites only"
     @echo "  just zig::test_soup         Run the vendored xz-embedded suite"
     @echo "  just zig::arm               Cross-build every app in app_table.zig"
+    @echo "  just zig::rust-arm          Cross-build paired Rust firmware apps (examples/ek_ra8d2)"
     @echo "  just zig::compile_commands  Emit the graph's compile_commands.json"
     @echo "  just zig::analysis          Prove every compile command still compiles"
     @echo "  just zig::shapes            Check the app-shape ledger against the tree"
@@ -88,6 +89,10 @@ test_soup: _zig
 # Cross-build every example application in tests/zig_build_graph/app_table.zig
 arm: _zig
     "${RA8_ZIG}" build arm
+
+# Cross-build paired Rust firmware apps in tests/zig_build_graph/rust_apps.zig
+rust-arm: _zig
+    "${RA8_ZIG}" build rust-arm
 
 # Emit zig-out/analysis/compile_commands.json for the TUs this graph compiles
 compile_commands: _zig
