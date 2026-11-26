@@ -1,15 +1,14 @@
+---
 name: regen-drift gate
 
-# Dispatch-only for now, deliberately. The gate is byte-identity: it fails on
-# any host whose toolchain differs from the one that produced the committed
-# outputs. Four entries are still environment-dependent in exactly that way
-# (display_atlases, literata_atlas, rabook_gray8_fixture, unarch_xz_fixture;
-# probe matrix on RA8FW-1001), so a push or PR trigger would be permanently
-# red until that set is dispositioned. Flip the trigger to push/PR on dev in
-# the same change that dispositions them.
-
+# Runs the byte-identical regeneration gate on Ubuntu 24.04 using the locked
+# Python environment (.venv via uv.lock), zig 0.17.0, and clang-format-22.
 on:
   workflow_dispatch:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
 
 permissions:
   contents: read
@@ -30,7 +29,7 @@ jobs:
           echo "$HOME/.local/zig" >> "$GITHUB_PATH"
 
       - name: Locked Python environment
-        run: bash scripts/dev/setup_python.sh
+        run: /bin/bash -p scripts/dev/setup_python.sh
 
       - name: Install clang-format 22 (parity byte-identity)
         run: |

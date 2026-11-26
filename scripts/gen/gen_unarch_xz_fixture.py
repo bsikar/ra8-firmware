@@ -66,14 +66,45 @@ def xz(payload: bytes, check: int, dict_size: int) -> bytes:
     return lzma.compress(payload, format=lzma.FORMAT_XZ, check=check, filters=filters)
 
 
+def _hex_rows(data: bytes, indent: str, per_line: int) -> list[str]:
+    """Format byte chunks as uppercase ``0xNNU,`` C initializer lines."""
+    return [
+        indent + ", ".join(f"0x{b:02X}U" for b in data[i : i + per_line]) + ","
+        for i in range(0, len(data), per_line)
+    ]
+
+
 def c_array(name: str, data: bytes) -> str:
-    """Emit one static C byte array (12 bytes per line, pure ASCII)."""
-    lines = [f"/** @brief {name}: {len(data)} fixture bytes (see file header). */"]
-    lines.append(f"static const uint8_t {name}[{len(data)}U] = {{")
-    for i in range(0, len(data), 12):
-        chunk = ", ".join(f"0x{b:02X}U" for b in data[i : i + 12])
-        lines.append(f"  {chunk},")
-    lines.append("};")
+    """Emit one static C byte array (14 bytes per line, pure ASCII)."""
+    lines = [
+        f"/** @brief {name}: {len(data)} fixture bytes (see file header). */",
+        f"static const uint8_t {name}[{len(data)}U] = {{",
+        *_hex_rows(data, "  ", 14),
+        "};",
+    ]
+    return "\n".join(lines)
+
+
+def special_struct(members: list[tuple[str, str, bytes]]) -> str:
+    """Emit ``xz_special_fixtures_t`` and ``k_fx_xz_special`` matching test callers."""
+    fields = [
+        f"  uint8_t {field}[{len(data)}U]; /**< {doc} */" for field, doc, data in members
+    ]
+    inits = []
+    for field, _doc, data in members:
+        rows = "\n".join(_hex_rows(data, "      ", 13))
+        inits.append(f"  .{field} =\n    {{\n{rows}\n    }},")
+    lines = [
+        "/** @brief Single-use hostile fixtures grouped under one shared fixture object. */",
+        "typedef struct {",
+        *fields,
+        "} xz_special_fixtures_t;",
+        "",
+        "/** @brief Hostile streams shared across the rejection and policy tests. */",
+        "static const xz_special_fixtures_t k_fx_xz_special = {",
+        "\n\n".join(inits),
+        "};",
+    ]
     return "\n".join(lines)
 
 
@@ -104,16 +135,31 @@ def main() -> int:
     dict_64k = 1 << 16
     dict_8m = 1 << 23
 
-    arrays = [
-        ("k_fx_xz_crc64_4k", xz(lcg_bytes(4096), lzma.CHECK_CRC64, dict_64k)),
-        ("k_fx_xz_crc32", xz(small, lzma.CHECK_CRC32, dict_64k)),
-        ("k_fx_xz_sha256", xz(small, lzma.CHECK_SHA256, dict_64k)),
-        ("k_fx_xz_bigdict", xz(small, lzma.CHECK_CRC64, dict_8m)),
-        ("k_fx_xz_bomb_1m", xz(b"\x00" * (1 << 20), lzma.CHECK_CRC64, dict_64k)),
-        ("k_fx_xz_cbt", xz(cbt_tar(), lzma.CHECK_CRC64, dict_64k)),
+    specials = [
+        (
+            "sha256",
+            "Unsupported SHA-256 integrity stream.",
+            xz(small, lzma.CHECK_SHA256, dict_64k),
+        ),
+        (
+            "bigdict",
+            "Stream declaring an oversized dictionary.",
+            xz(small, lzma.CHECK_CRC64, dict_8m),
+        ),
+        (
+            "bomb_1m",
+            "Highly compressible one-megabyte stream.",
+            xz(b"\x00" * (1 << 20), lzma.CHECK_CRC64, dict_64k),
+        ),
+    ]
+    sections = [
+        c_array("k_fx_xz_crc64_4k", xz(lcg_bytes(4096), lzma.CHECK_CRC64, dict_64k)),
+        c_array("k_fx_xz_crc32", xz(small, lzma.CHECK_CRC32, dict_64k)),
+        special_struct(specials),
+        c_array("k_fx_xz_cbt", xz(cbt_tar(), lzma.CHECK_CRC64, dict_64k)),
     ]
 
-    body = "\n\n".join(c_array(n, d) for n, d in arrays)
+    body = "\n\n".join(sections)
     header = f"""/**
  * @file unarch_xz_fixture.h
  * @brief Committed .xz byte fixtures for the XZ decoder tests.
