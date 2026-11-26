@@ -20,8 +20,8 @@ test "the access-point interface carries ethernet data" {
     try std.testing.expectEqual(rx_route.Route.ethernet, rx_route.routeFor(rx_route.If.ap));
 }
 
-test "the privileged interface is counted, not decoded" {
-    try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(rx_route.If.privileged));
+test "the privileged interface routes to the privileged INIT handler" {
+    try std.testing.expectEqual(rx_route.Route.priv, rx_route.routeFor(rx_route.If.privileged));
 }
 
 test "the invalid interface is counted" {
@@ -52,14 +52,14 @@ test "every byte past the declared interfaces is counted" {
     try std.testing.expectEqual(rx_route.Route.counted, rx_route.routeFor(255));
 }
 
-test "exactly four interfaces route anywhere but the counter" {
+test "exactly five interfaces route anywhere but the counter" {
     var routed: usize = 0;
     var if_type: u8 = 0;
     while (true) : (if_type += 1) {
         if (rx_route.routeFor(if_type) != .counted) routed += 1;
         if (if_type == 255) break;
     }
-    try std.testing.expectEqual(@as(usize, 4), routed);
+    try std.testing.expectEqual(@as(usize, 5), routed);
 }
 
 test "the route ordinals are the ABI the C side reads back" {
@@ -67,6 +67,7 @@ test "the route ordinals are the ABI the C side reads back" {
     try std.testing.expectEqual(@as(u8, 1), @backingInt(rx_route.Route.ethernet));
     try std.testing.expectEqual(@as(u8, 2), @backingInt(rx_route.Route.counted));
     try std.testing.expectEqual(@as(u8, 3), @backingInt(rx_route.Route.hci));
+    try std.testing.expectEqual(@as(u8, 4), @backingInt(rx_route.Route.priv));
 }
 
 test "the interface numbers mirror the vendored header order" {

@@ -23,25 +23,22 @@ The co-processor's IDF target string is printed but never asserted, through a
 formatter that truncates and strips non-printable bytes: it is a string the far
 side chose, and a protocol field that can reprogram a terminal is not evidence.
 
-## The ESP_PRIV_IF INIT event is unusable on this co-processor build (RA8FW-276)
+## The ESP_PRIV_IF INIT event carries a narrow tolerance (RA8FW-276)
 
 The C6's bootup INIT frame -- the one carrying its capabilities, chip id and
 firmware version as TLVs -- is checksummed with `if_num` taken as zero and then
 transmitted with a non-zero `if_num`. The shortfall is exactly `if_num << 4`.
 Every other frame it sends carries `if_num = 0` and verifies, so this is not a
-receive-path fault on the RA8 side. Any conformant host drops the frame,
-including upstream's own `process_spi_rx_buf()`.
+receive-path fault on the RA8 side.
 
-This app diagnoses the condition by name and counts it, but does not accept the
-frame: decoding bytes that fail the integrity check shipped with them would mean
-trusting an unverified header. Nothing above this layer may therefore be built
-on the INIT event's TLVs. Nothing is lost either -- the boot announcement also
-arrives as an RPC event that does verify, and the version request returns the
-same three facts on demand.
-
-The TLV decoder for that event is consequently correct and unexercised on this
-bench. It is kept rather than deleted because it is a real implementation of a
-real protocol path that runs the moment the co-processor firmware is fixed.
+This app counts `ifnum_defect` and accepts the frame only when every narrow
+condition holds (`ESP_PRIV_IF`, `if_num != 0`, `calc - stated == (if_num << 4)`,
+`ESP_PRIV_EVENT_INIT`, and bounded `event_len`), while still rejecting every
+other checksum mismatch. When the bootup INIT frame was still pending on the
+C6 (i.e. after a C6 power cycle), `c6_fwver_priv_consume()` decodes its
+`ESP_PRIV_FIRMWARE_VERSION` TLV as an independent cross-check against the RPC
+version query. The boot announcement also arrives on RPC `Event_ESPInit`, and
+nothing in readiness depends on the one-shot INIT frame.
 
 ## Why parts of the vendored driver are restated rather than compiled
 

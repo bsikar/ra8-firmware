@@ -326,14 +326,15 @@ RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_nu
  * @brief Decide what a received transaction is, and where its payload lies.
  *
  * @details
- * Applies upstream's ordering, and verifies the checksum by zeroing the field
- * in place and restoring it, so the value a caller later reports is the one the
- * co-processor actually sent.
+ * Applies upstream's ordering, verifies the checksum by summing without
+ * modifying the caller's buffer, and applies the narrow RA8FW-276 tolerance
+ * for the bootup `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` frame (recomputing with
+ * `if_num` zeroed only when `if_type == ESP_PRIV_IF`, `if_num != 0`, and the
+ * payload opens with `ESP_PRIV_EVENT_INIT` with valid bounded TLV framing).
  *
- * @param[in,out] rx Received transaction; must be non-null. Momentarily
- *                   modified and restored.
- * @param[out] view Payload location and interface, filled only for a data
- *                  frame; must be non-null.
+ * @param[in,out] rx Received transaction; must be non-null. Left unmodified.
+ * @param[out] view Payload location and interface, filled only for an accepted
+ *                  data or tolerated bootup INIT frame; must be non-null.
  *
  * @return ra8_c6link_frame_class_t The verdict.
  * @retval k_ra8_c6link_frame_data The payload is real and @p view describes it.
@@ -873,10 +874,9 @@ RA8_PRIV void priv_c6link_rpc_event(ra8_c6link_t* link, const void* msg_v);
  *
  * @details
  * Control-plane frames go to the RPC decoder, station and access-point frames
- * to the Ethernet receive callback, and everything else is counted. `ESP_PRIV_IF`
- * frames are counted rather than decoded: this co-processor build transmits its
- * only privileged frame with a checksum that does not match its own header
- * (RA8FW-276), so a conformant host never sees a valid one.
+ * to the Ethernet receive callback, validated `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT`
+ * frames emit ::k_ra8_c6link_event_boot (RA8FW-276), and everything else is
+ * counted as unrouted.
  *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] view Payload location from the classifier; must be non-null.
@@ -1083,16 +1083,18 @@ RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBin
  * @since 0.1.0
  */
 typedef enum {
-  k_priv_c6link_route_rpc      = 0, /**< Control plane; hand the payload to the RPC decoder. */
-  k_priv_c6link_route_ethernet = 1, /**< Station or access point; count it and call the receive callback. */
-  k_priv_c6link_route_counted  = 2  /**< Everything else; count it as unrouted and drop it. */
+  k_priv_c6link_route_rpc      = 0, /**< Control plane; hand payload to RPC decoder. */
+  k_priv_c6link_route_ethernet = 1, /**< STA/AP; count and invoke receive callback.  */
+  k_priv_c6link_route_counted  = 2, /**< Everything else; count unrouted and drop.   */
+  k_priv_c6link_route_hci      = 3, /**< HCI; hand payload to the HCI sink.          */
+  k_priv_c6link_route_priv     = 4  /**< Privileged; emit boot on INIT, else count.  */
 } priv_c6link_route_t;
 
 /**
  * @brief Decide which consumer an interface number belongs to.
  *
  * @details
- * The co-processor multiplexes three unrelated conversations onto one SPI
+ * The co-processor multiplexes unrelated conversations onto one SPI
  * link and tells them apart by the interface number in the frame header.
  * Implemented in Zig; see `src/internal/rx_route.zig`.
  *
@@ -1101,14 +1103,16 @@ typedef enum {
  * @retval k_priv_c6link_route_rpc The serial interface, which carries RPC.
  * @retval k_priv_c6link_route_ethernet The station or access-point interface.
  * @retval k_priv_c6link_route_counted No consumer; the frame is counted and dropped.
+ * @retval k_priv_c6link_route_hci The HCI interface.
+ * @retval k_priv_c6link_route_priv Privileged interface; decodes valid INIT boot event (RA8FW-276).
  *
  * @pre None; every byte value has an answer.
  * @post No state is modified.
  *
- * @note `ESP_PRIV_IF` answers ::k_priv_c6link_route_counted on purpose. This
- *       co-processor build seals its only privileged frame with a checksum
- *       computed as if `if_num` were zero (RA8FW-276), so a conformant host never
- *       sees a valid one and nothing here depends on it.
+ * @note `ESP_PRIV_IF` answers ::k_priv_c6link_route_priv so a validated
+ *       `ESP_PRIV_EVENT_INIT` frame (including the narrow `if_num=0` checksum
+ *       tolerance in RA8FW-276) surfaces ::k_ra8_c6link_event_boot while any
+ *       other privileged payload is counted as `unrouted`.
  *
  * @par Example:
  * @code

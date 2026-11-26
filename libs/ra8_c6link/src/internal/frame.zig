@@ -58,6 +58,27 @@ pub const Hdr = struct {
 pub const Iface = struct {
     /// `ESP_MAX_IF`, the out-of-range value the idle filler frame carries.
     pub const max: u8 = 8;
+    /// `ESP_PRIV_IF`, the privileged control interface.
+    pub const priv: u8 = 5;
+};
+
+/// The one privileged event whose checksum defect is tolerated (RA8FW-276).
+///
+/// The ESP32-C6 running esp-hosted-mcu 2.12.11 queues an `ESP_PRIV_EVENT_INIT`
+/// frame at every boot, stamps a non-zero `if_num` into the header's first
+/// octet and only then finishes the frame, but it computed the checksum while
+/// that nibble was still zero. The transmitted checksum is therefore short of
+/// the received span's sum by exactly `if_num << 4`. `classify` accepts that
+/// one shape and nothing else.
+pub const PrivInit = struct {
+    /// `ESP_PRIV_EVENT_INIT`, the event-type octet that opens the payload.
+    pub const event: u8 = 0x22;
+    /// Octets before the first TLV: the event type, then the TLV byte count.
+    pub const hdr: u16 = 2;
+    /// Octets opening each TLV: tag identifier, then value length.
+    pub const tlv_hdr: usize = 2;
+    /// Bit position of `if_num` inside the header's first octet.
+    pub const ifnum_shift: u4 = 4;
 };
 
 /// What a received transaction turned out to be.
@@ -71,6 +92,11 @@ pub const Class = union(enum) {
     malformed,
     /// The recomputed checksum disagreed with the transmitted one.
     bad_checksum,
+    /// The co-processor's bootup `ESP_PRIV_EVENT_INIT` frame, whose checksum
+    /// was computed with `if_num` zero and which verified under exactly that
+    /// reading (RA8FW-276). The payload is real; the `if_num` nibble alone is
+    /// not covered by the integrity check.
+    priv_init: View,
 };
 
 /// Where the payload of a classified frame is, and what it claims to be.
@@ -141,6 +167,59 @@ pub fn seal(tx: []u8, if_type: u8, if_num: u8, len: u16) bool {
     return sealPkt(tx, if_type, if_num, 0, len);
 }
 
+/// Describe where a verified frame's payload is.
+fn viewOf(rx: []const u8, offset: u16, len: u16) View {
+    return .{
+        .offset = offset,
+        .len = len,
+        .if_type = rx[Hdr.iface] & Hdr.nibble,
+        .if_num = rx[Hdr.iface] >> 4,
+    };
+}
+
+/// True when `payload` opens with `ESP_PRIV_EVENT_INIT` and its declared TLV
+/// span fits inside `payload` without truncation.
+pub fn isPrivInitPayload(payload: []const u8) bool {
+    if (payload.len < PrivInit.hdr) return false;
+    if (payload[0] != PrivInit.event) return false;
+    const end: usize = @as(usize, payload[1]) + PrivInit.hdr;
+    if (end > payload.len) return false;
+
+    var at: usize = PrivInit.hdr;
+    while (at < end) {
+        if (at + PrivInit.tlv_hdr > end) return false;
+        const tlv_len: usize = payload[at + 1];
+        if (at + PrivInit.tlv_hdr + tlv_len > end) return false;
+        at += PrivInit.tlv_hdr + tlv_len;
+    }
+    return true;
+}
+
+/// True when a checksum mismatch is exactly the bootup INIT event's known
+/// `if_num` defect (RA8FW-276), and nothing else.
+///
+/// Every condition has to hold, so no other privileged frame, no other event
+/// and no other corruption is excused:
+///
+/// - the frame is on `ESP_PRIV_IF` and carries a non-zero `if_num`;
+/// - `isPrivInitPayload` accepts the payload (`ESP_PRIV_EVENT_INIT` with a
+///   bounded, non-truncated TLV list);
+/// - the transmitted checksum equals the received span's sum taken with the
+///   `if_num` nibble zero, which is `actual - (if_num << 4)`.
+///
+/// Every payload octet and the `if_type` nibble stay under the integrity check
+/// on this path. Only the `if_num` nibble is taken on trust, and nothing
+/// consumes it for a privileged frame.
+fn privInitDefect(rx: []const u8, offset: u16, len: u16, actual: u16, claimed: u16) bool {
+    const if_type = rx[Hdr.iface] & Hdr.nibble;
+    const if_num = rx[Hdr.iface] >> PrivInit.ifnum_shift;
+    if (if_type != Iface.priv or if_num == 0) return false;
+    if (!isPrivInitPayload(rx[offset..][0..len])) return false;
+
+    const shortfall = @as(u16, if_num) << PrivInit.ifnum_shift;
+    return actual -% shortfall == claimed;
+}
+
 /// Decide what a received transaction is, without modifying it.
 pub fn classify(rx: []const u8) Class {
     const len = std.mem.readInt(u16, rx[Hdr.len..][0..2], .little);
@@ -150,12 +229,10 @@ pub fn classify(rx: []const u8) Class {
     if (offset != Frame.header_bytes or len > Frame.max_payload) return .malformed;
 
     const claimed = std.mem.readInt(u16, rx[Hdr.checksum..][0..2], .little);
-    if (sumAsZeroed(rx, offset + len) != claimed) return .bad_checksum;
-
-    return .{ .data = .{
-        .offset = offset,
-        .len = len,
-        .if_type = rx[Hdr.iface] & Hdr.nibble,
-        .if_num = rx[Hdr.iface] >> 4,
-    } };
+    const actual = sumAsZeroed(rx, offset + len);
+    if (actual == claimed) return .{ .data = viewOf(rx, offset, len) };
+    if (privInitDefect(rx, offset, len, actual, claimed)) {
+        return .{ .priv_init = viewOf(rx, offset, len) };
+    }
+    return .bad_checksum;
 }

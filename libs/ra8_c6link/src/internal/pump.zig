@@ -79,14 +79,15 @@ fn stage(port: anytype) void {
 /// Count one classified frame and route it if it is real.
 ///
 /// Classifies first and routes second, so a frame that failed its integrity
-/// check reaches no consumer. Returns true when the outstanding wait was
-/// satisfied and the pump should stop.
+/// check reaches no consumer. `.priv_init` is accepted alongside `.data` via
+/// the narrow RA8FW-276 `ESP_PRIV_EVENT_INIT` `if_num=0` checksum tolerance.
+/// Returns true when the outstanding wait was satisfied and the pump should stop.
 fn receive(port: anytype, stats: *Stats) bool {
     switch (frame.classify(port.rx())) {
         .idle => stats.idle +%= 1,
         .malformed => stats.malformed +%= 1,
         .bad_checksum => stats.bad_checksum +%= 1,
-        .data => |view| {
+        .data, .priv_init => |view| {
             stats.data +%= 1;
             return port.dispatch(view);
         },

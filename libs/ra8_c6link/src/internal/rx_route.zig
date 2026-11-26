@@ -29,15 +29,15 @@ pub const If = struct {
 
 /// The one consumer a frame is offered to.
 ///
-/// `counted` is the real answer for everything unrouted, not an error: the
-/// privileged interface lands here because this co-processor build seals its
-/// only privileged frame with a checksum computed as if `if_num` were zero
-/// (RA8FW-276), so a conformant host never sees a valid one.
+/// `priv` handles `ESP_PRIV_IF` frames: validated `ESP_PRIV_EVENT_INIT`
+/// boot announcements are emitted as `k_ra8_c6link_event_boot` (RA8FW-276),
+/// while any non-INIT payload falls back to `unrouted` counting.
 pub const Route = enum(u8) {
     rpc = 0,
     ethernet = 1,
     counted = 2,
     hci = 3,
+    priv = 4,
 };
 
 /// Which consumer this interface number belongs to.
@@ -46,6 +46,7 @@ pub fn routeFor(if_type: u8) Route {
         If.serial => .rpc,
         If.sta, If.ap => .ethernet,
         If.hci => .hci,
+        If.privileged => .priv,
         else => .counted,
     };
 }

@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "esp_hosted_transport_init.h"
 #include "idf_compat/esp_err.h"
 #include "ra8_attributes.h"
 #include "ra8_c6_model.h"
@@ -523,6 +524,76 @@ RA8_INTERNAL static void internal_test_hci_data_plane(void)
 }
 
 /**
+ * @brief Verify end-to-end pump acceptance of the bootup PRIV INIT event (RA8FW-276).
+ * @details Drives a C6 bootup `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` frame stamped
+ * with `if_num = 1` after an `if_num = 0` checksum through `ra8_c6link_poll()`,
+ * confirming `stats.bad_checksum == 0`, `boot_seen == true`, and delivery of
+ * `k_ra8_c6link_event_boot`, while a non-INIT frame with the same checksum
+ * defect is rejected as `bad_checksum`.
+ * @pre Bounded C6 model fixture is linked.
+ * @post Accepted INIT emits one boot event; near-miss increments `bad_checksum`.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_priv_init_tolerance(void)
+{
+  TEST_BEGIN("c6link RA8FW-276 bootup PRIV INIT tolerance");
+  static const uint8_t k_boot_init[] = {
+    (uint8_t)ESP_PRIV_EVENT_INIT,
+    12U,
+    (uint8_t)ESP_PRIV_FIRMWARE_CHIP_ID,
+    1U,
+    0x0DU,
+    (uint8_t)ESP_PRIV_CAPABILITY,
+    1U,
+    0x60U,
+    (uint8_t)ESP_PRIV_FIRMWARE_VERSION,
+    4U,
+    11U,
+    12U,
+    2U,
+    0U,
+  };
+
+  priv_c6link_test_reset();
+  uint8_t* slot = ra8_c6_model_slot();
+  TEST_ASSERT_NOT_NULL(slot);
+  (void)memcpy(&slot[(uint16_t)k_ra8_c6link_header_bytes], k_boot_init, sizeof k_boot_init);
+  priv_c6link_frame_seal(slot, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)sizeof k_boot_init);
+  /* Simulate esp-hosted-mcu 2.12.11 stamping if_num = 1 after checksum. */
+  slot[0] = (uint8_t)(((uint8_t)ESP_PRIV_IF & 0x0FU) | (1U << 4U));
+
+  ra8_c6link_stats_t stats = {};
+  ra8_c6link_t*      link  = priv_c6link_test_link();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_poll(link, 2U, &stats));
+  TEST_ASSERT_EQ(1U, stats.data);
+  TEST_ASSERT_EQ(0U, stats.bad_checksum);
+  TEST_ASSERT_EQ(0U, stats.unrouted);
+  TEST_ASSERT_EQ(1U, stats.events);
+  TEST_ASSERT(link->boot_seen);
+  TEST_ASSERT_EQ(1U, priv_c6link_test_event_count());
+  TEST_ASSERT_EQ(k_ra8_c6link_event_boot, priv_c6link_test_event(0U)->kind);
+
+  /* A corrupted-opcode ESP_PRIV_IF frame with the same if_num=0 sum must still fail. */
+  priv_c6link_test_reset();
+  slot = ra8_c6_model_slot();
+  TEST_ASSERT_NOT_NULL(slot);
+  static const uint8_t k_non_init[] = {0x23U, 0U};
+  (void)memcpy(&slot[(uint16_t)k_ra8_c6link_header_bytes], k_non_init, sizeof k_non_init);
+  priv_c6link_frame_seal(slot, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)sizeof k_non_init);
+  slot[0] = (uint8_t)(((uint8_t)ESP_PRIV_IF & 0x0FU) | (1U << 4U));
+
+  stats = (ra8_c6link_stats_t){};
+  link  = priv_c6link_test_link();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_poll(link, 1U, &stats));
+  TEST_ASSERT_EQ(0U, stats.data);
+  TEST_ASSERT_EQ(1U, stats.bad_checksum);
+  TEST_ASSERT_EQ(0U, stats.events);
+  TEST_ASSERT(!link->boot_seen);
+  TEST_ASSERT_EQ(0U, priv_c6link_test_event_count());
+  TEST_END("c6link RA8FW-276 bootup PRIV INIT tolerance");
+}
+
+/**
  * @brief Run the transport, framing, and RPC failure scenarios.
  * @return Nothing.
  * @pre The bounded C6 model fixture is linked into this test executable.
@@ -539,4 +610,5 @@ void ra8_test_c6link_transport(void)
   internal_test_rpc_call_guards();
   internal_test_mcdc_facade_guards();
   internal_test_remote_error_mapping();
+  internal_test_priv_init_tolerance();
 }

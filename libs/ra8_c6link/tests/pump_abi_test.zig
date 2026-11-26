@@ -46,6 +46,11 @@ export fn priv_c6link_rpc_consume(link: *c.ra8_c6link_t, payload: [*]const u8, l
     return len == 8;
 }
 
+export fn priv_c6link_emit(link: *c.ra8_c6link_t, ev: *const c.ra8_c6link_event_t) callconv(.c) void {
+    _ = link;
+    _ = ev;
+}
+
 fn openLink() c.ra8_c6link_t {
     var link = std.mem.zeroes(c.ra8_c6link_t);
     link.transport.transfer = transfer;
