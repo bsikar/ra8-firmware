@@ -77,6 +77,7 @@ const weak_refresh = @extern(?*const fn () callconv(.c) void, .{
 const tx = struct {
     const success: c_uint = 0;
     const no_inherit: c_uint = 0;
+    const no_wait: c_ulong = 0;
     const wait_forever: c_ulong = 0xFFFFFFFF;
     const auto_start: c_uint = 1;
     const no_time_slice: c_ulong = 0;
@@ -150,7 +151,15 @@ const tx = struct {
     extern fn _txe_thread_terminate(thread: *anyopaque) c_uint;
     extern fn _txe_thread_delete(thread: *anyopaque) c_uint;
     extern fn _tx_thread_sleep(timer_ticks: c_ulong) c_uint;
+    extern fn _tx_thread_identify() ?*anyopaque;
     extern fn _tx_time_get() c_ulong;
+
+    /// Before tx_kernel_enter(), _tx_thread_identify() is NULL and ThreadX's
+    /// TX_THREAD_GET_SYSTEM_STATE() is TX_INITIALIZE_IN_PROGRESS (!= 0), so
+    /// _txe_mutex_get rejects any wait option other than TX_NO_WAIT.
+    pub fn mutexWaitOption(has_current_thread: bool) c_ulong {
+        return if (has_current_thread) wait_forever else no_wait;
+    }
 
     pub fn mutexCreate(mutex: *MutexBlock) c_uint {
         if (off_target) {
@@ -164,7 +173,7 @@ const tx = struct {
 
     pub fn mutexGet(mutex: *MutexBlock) c_uint {
         if (off_target) return forcedStatus(.mutex_get);
-        return _txe_mutex_get(@ptrCast(mutex), wait_forever);
+        return _txe_mutex_get(@ptrCast(mutex), mutexWaitOption(_tx_thread_identify() != null));
     }
 
     pub fn mutexPut(mutex: *MutexBlock) c_uint {
@@ -416,6 +425,10 @@ pub export fn ra8_wdt_supervisor_set_now_hook(now: ?NowFn) callconv(.c) u16 {
 pub export fn ra8_wdt_supervisor_set_refresh_hook(refresh: ?RefreshFn) callconv(.c) u16 {
     state.refresh = refresh orelse defaultRefresh;
     return Err.ok;
+}
+
+pub fn mutexWaitOptionForThread(has_current_thread: bool) c_ulong {
+    return tx.mutexWaitOption(has_current_thread);
 }
 
 pub export fn ra8_wdt_supervisor_thread_count() callconv(.c) u8 {
