@@ -43,10 +43,10 @@ typedef enum : uintptr_t {
 } usbhs_sec_reg_addr_t;
 
 typedef enum : uint32_t {
-  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
-  k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
-  k_demo_echo_buf_bytes  = 512U,   /**< HS bulk MPS.                        */
-  k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
+  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).             */
+  k_demo_usbx_pool_bytes = 32768U, /**< USBX pool: 32 KiB; enum exhausts 16 KiB. */
+  k_demo_echo_buf_bytes  = 512U,   /**< HS bulk MPS.                             */
+  k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active.      */
 } demo_config_t;
 
 #ifndef RA8_OFF_TARGET
