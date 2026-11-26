@@ -23,10 +23,17 @@ Usage:
     python3 libs/ra8_c6link/scripts/c6cap_to_bin.py --first 12 --last 19 console.log scan.bin
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
+from collections.abc import Iterable
+from pathlib import Path
+from typing import TextIO
 
 FRAME_BYTES = 1600
+FRAME_FIELDS_SHORT = 3
+FRAME_FIELDS_WITH_PAYLOAD = 4
 MARK = "c6cap "
 
 
@@ -34,57 +41,82 @@ class CaptureError(ValueError):
     """The log is not a clean capture."""
 
 
-def records(lines):
+def records(lines: Iterable[str]) -> Iterable[tuple[int, int, str, str]]:
     """Yield (line number, seq, kind, payload) for every c6cap line."""
     for number, raw in enumerate(lines, 1):
         at = raw.find(MARK)
         if at < 0:
             continue
         fields = raw[at:].split()
-        if len(fields) not in (3, 4) or not fields[1].isdigit():
-            raise CaptureError(f"line {number}: malformed c6cap record")
-        yield number, int(fields[1]), fields[2], fields[3] if len(fields) == 4 else ""
+        if (
+            len(fields) not in (FRAME_FIELDS_SHORT, FRAME_FIELDS_WITH_PAYLOAD)
+            or not fields[1].isdigit()
+        ):
+            msg = f"line {number}: malformed c6cap record"
+            raise CaptureError(msg)
+        yield (
+            number,
+            int(fields[1]),
+            fields[2],
+            fields[3] if len(fields) == FRAME_FIELDS_WITH_PAYLOAD else "",
+        )
 
 
-def frame(number, payload):
+def frame(number: int, payload: str) -> bytes:
     """The 1600-byte frame a hex payload stands for."""
     try:
         data = bytes.fromhex(payload)
     except ValueError as err:
-        raise CaptureError(f"line {number}: bad hex ({err})") from err
+        msg = f"line {number}: bad hex ({err})"
+        raise CaptureError(msg) from err
     if len(data) > FRAME_BYTES:
-        raise CaptureError(f"line {number}: frame is {len(data)} bytes, over {FRAME_BYTES}")
+        msg = f"line {number}: frame is {len(data)} bytes, over {FRAME_BYTES}"
+        raise CaptureError(msg)
     return data.ljust(FRAME_BYTES, b"\0")
 
 
-def transactions(lines):
+def transactions(lines: Iterable[str]) -> dict[int, dict[str, bytes]]:
     """Map seq to {"tx": frame, "rx": frame} for every frame line."""
-    seen = {}
+    seen: dict[int, dict[str, bytes]] = {}
     for number, seq, kind, payload in records(lines):
         if kind == "hs":
             continue
         if kind not in ("tx", "rx"):
-            raise CaptureError(f"line {number}: unknown record kind {kind!r}")
+            msg = f"line {number}: unknown record kind {kind!r}"
+            raise CaptureError(msg)
         entry = seen.setdefault(seq, {})
         if kind in entry:
-            raise CaptureError(f"line {number}: second {kind} for transaction {seq}")
+            msg = f"line {number}: second {kind} for transaction {seq}"
+            raise CaptureError(msg)
         entry[kind] = frame(number, payload)
     return seen
 
 
-def fixture(lines, first=None, last=None, warn=sys.stderr):
+def fixture(
+    lines: Iterable[str],
+    first: int | None = None,
+    last: int | None = None,
+    warn: TextIO = sys.stderr,
+) -> bytes:
     """The fixture bytes for transactions first..last (inclusive) of a log."""
     seen = transactions(lines)
-    chosen = [seq for seq in sorted(seen) if (first is None or seq >= first) and (last is None or seq <= last)]
+    chosen = [
+        seq
+        for seq in sorted(seen)
+        if (first is None or seq >= first) and (last is None or seq <= last)
+    ]
     if not chosen:
-        raise CaptureError("no transactions in range")
+        msg = "no transactions in range"
+        raise CaptureError(msg)
     out = bytearray()
-    for previous, seq in zip([chosen[0] - 1] + chosen, chosen):
+    for previous, seq in zip([chosen[0] - 1, *chosen[:-1]], chosen, strict=True):
         if seq != previous + 1:
-            raise CaptureError(f"transactions {previous + 1}..{seq - 1} are missing")
+            msg = f"transactions {previous + 1}..{seq - 1} are missing"
+            raise CaptureError(msg)
         entry = seen[seq]
         if "tx" not in entry:
-            raise CaptureError(f"transaction {seq} has rx but no tx")
+            msg = f"transaction {seq} has rx but no tx"
+            raise CaptureError(msg)
         if "rx" not in entry:
             print(f"c6cap_to_bin: transaction {seq} failed (no rx), skipped", file=warn)
             continue
@@ -92,20 +124,22 @@ def fixture(lines, first=None, last=None, warn=sys.stderr):
     return bytes(out)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def main(argv: list[str] | None = None) -> int:
+    """Parse CLI arguments and write the packed C6 capture fixture."""
+    doc_line = (__doc__ or "").splitlines()[0]
+    parser = argparse.ArgumentParser(description=doc_line)
     parser.add_argument("log", help="console log holding c6cap lines")
     parser.add_argument("out", help="fixture to write")
     parser.add_argument("--first", type=int, help="first transaction to keep")
     parser.add_argument("--last", type=int, help="last transaction to keep")
     args = parser.parse_args(argv)
-    with open(args.log, encoding="utf-8", errors="replace") as log:
+    with Path(args.log).open(encoding="utf-8", errors="replace") as log:
         try:
             data = fixture(log, args.first, args.last)
         except CaptureError as err:
             print(f"c6cap_to_bin: {err}", file=sys.stderr)
             return 1
-    with open(args.out, "wb") as out:
+    with Path(args.out).open("wb") as out:
         out.write(data)
     print(f"c6cap_to_bin: {len(data) // (2 * FRAME_BYTES)} transactions, {len(data)} bytes")
     return 0

@@ -87,7 +87,7 @@ target; the "status" column flags the known skews.
 | GitHub Actions runner | n/a (no runner pool) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | SINGLE PATH -- only the HIL listener runs it |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.8 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | CONVERGED -- see 3.2 |
 | `clang-tidy` | **18.1.8** (`clang-tidy-18`, from `clang-tools-18`) | 22.1.8 (Homebrew LLVM) | 18.1.8 (`clang-tidy-18`) | Mac is on a DIFFERENT MAJOR -- not the same LLVM as clang-format; see 3.2 |
-| `ruff` | **0.15.19** (`pyproject.toml` / `uv.lock`) | 0.15.19 (`.venv`) | 0.15.19 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.4 |
+| `ruff` | **0.16.10** (`pyproject.toml` / `uv.lock`) | 0.16.10 (`.venv`) | 0.16.10 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.4 |
 | `shfmt` | **3.13.1** | 3.13.1 | 3.13.1 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `shellcheck` | **0.11.0** | 0.11.0 | 0.11.0 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `go` (host CLI toolchain) | **1.27.1** (`GO_VERSION`, devcontainer `/usr/local/go`) | 1.27.0 (Homebrew) | 1.27.1 (`/usr/local/go`, provisioned) | Mac patch drift is not gated; CI and the dev box resolve the exact pin -- see 3.4 |
@@ -178,7 +178,7 @@ code -- run cppcheck 2.13 (dev box, built from source) first.**
 
 ### 3.4 ruff / shfmt / shellcheck on the dev box
 
-CI pins ruff==**0.15.19**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The dev box
+CI pins ruff==**0.16.10**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The dev box
 ships ruff from `/opt/ra8-python-tools` and the native shell tools from
 `/usr/local/bin`, all at the Dockerfile versions, so
 the lint-py-shell gate on dev is CI-faithful. Local

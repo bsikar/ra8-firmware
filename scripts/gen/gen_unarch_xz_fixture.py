@@ -87,9 +87,7 @@ def c_array(name: str, data: bytes) -> str:
 
 def special_struct(members: list[tuple[str, str, bytes]]) -> str:
     """Emit ``xz_special_fixtures_t`` and ``k_fx_xz_special`` matching test callers."""
-    fields = [
-        f"  uint8_t {field}[{len(data)}U]; /**< {doc} */" for field, doc, data in members
-    ]
+    fields = [f"  uint8_t {field}[{len(data)}U]; /**< {doc} */" for field, doc, data in members]
     inits = []
     for field, _doc, data in members:
         rows = "\n".join(_hex_rows(data, "      ", 13))

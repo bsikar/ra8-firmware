@@ -47,6 +47,7 @@ import re
 import sys
 import tempfile
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_FRAME_LIMIT = 2048
@@ -166,6 +167,7 @@ _SU_LINE = re.compile(
 )
 
 
+@dataclass(slots=True)
 class StackEntry:
     """One function's stack frame, as reported by a single line of a .su file.
 
@@ -174,24 +176,12 @@ class StackEntry:
     precisely so that a critical-path frame is caught wherever it was built.
     """
 
-    __slots__ = ("app", "bytes_", "func", "qualifier", "su_file", "tu")
-
-    def __init__(  # noqa: PLR0913  # data class init, all fields are required
-        self,
-        app: str,
-        tu: str,
-        func: str,
-        bytes_: int,
-        qualifier: str,
-        su_file: Path,
-    ) -> None:
-        """Record one parsed .su line; every field is required and none is derived."""
-        self.app = app
-        self.tu = tu
-        self.func = func
-        self.bytes_ = bytes_
-        self.qualifier = qualifier
-        self.su_file = su_file
+    app: str
+    tu: str
+    func: str
+    bytes_: int
+    qualifier: str
+    su_file: Path
 
     @property
     def is_dynamic(self) -> bool:

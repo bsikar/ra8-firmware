@@ -33,7 +33,6 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ROT_C = _REPO_ROOT / "libs" / "ra8_dfu" / "src" / "ra8_rot.c"
 _ROT_SIGN = _REPO_ROOT / "tools" / "rot" / "src" / "rot_sign.py"
@@ -250,7 +249,7 @@ def cmd_get(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_history(args: argparse.Namespace) -> int:
+def cmd_history(_args: argparse.Namespace) -> int:
     """List every version in the active backend with its tags, oldest first.
 
     Reports only the backend actually selected -- it does not merge the local
@@ -262,7 +261,7 @@ def cmd_history(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_status(args: argparse.Namespace) -> int:
+def cmd_status(_args: argparse.Namespace) -> int:
     """Print which backend auto-selection resolved to, and its newest version.
 
     The quickest way to answer "would a rekey right now write to the vault or

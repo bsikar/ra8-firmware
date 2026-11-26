@@ -99,11 +99,12 @@ def _quantization(
     return schema.QuantizationParameters.End(builder)
 
 
-def _tensor(  # noqa: PLR0913
+def _tensor(  # noqa: PLR0913 -- FlatBuffers Tensor builder takes each schema field
     builder,  # noqa: ANN001  (flatbuffers.Builder; the package ships no stubs)
     schema,  # noqa: ANN001  (the SimpleNamespace built by _schema)
     shape: Sequence[int],
     ttype: int,
+    *,
     buffer_index: int,
     name: str,
     quant: int,
@@ -175,20 +176,34 @@ def _tensors(builder, schema) -> int:  # noqa: ANN001  (unstubbed flatbuffers ob
     )
     q_out = _quantization(builder, schema, [OUTPUT_SCALE], [0])
     t_in = _tensor(
-        builder, schema, [1, SPATIAL, SPATIAL, IN_CHANNELS], TYPE_INT8, 1, "input", q_in
+        builder,
+        schema,
+        [1, SPATIAL, SPATIAL, IN_CHANNELS],
+        TYPE_INT8,
+        buffer_index=1,
+        name="input",
+        quant=q_in,
     )
     t_w = _tensor(
         builder,
         schema,
         [OUT_CHANNELS, KERNEL_H, KERNEL_W, IN_CHANNELS],
         TYPE_INT8,
-        2,
-        "conv_w",
-        q_w,
+        buffer_index=2,
+        name="conv_w",
+        quant=q_w,
     )
-    t_b = _tensor(builder, schema, [OUT_CHANNELS], TYPE_INT32, 3, "conv_b", q_b)
+    t_b = _tensor(
+        builder, schema, [OUT_CHANNELS], TYPE_INT32, buffer_index=3, name="conv_b", quant=q_b
+    )
     t_out = _tensor(
-        builder, schema, [1, SPATIAL, SPATIAL, OUT_CHANNELS], TYPE_INT8, 4, "output", q_out
+        builder,
+        schema,
+        [1, SPATIAL, SPATIAL, OUT_CHANNELS],
+        TYPE_INT8,
+        buffer_index=4,
+        name="output",
+        quant=q_out,
     )
     return _offsets(builder, [t_in, t_w, t_b, t_out])
 

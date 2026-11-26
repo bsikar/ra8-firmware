@@ -60,6 +60,7 @@ PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); versi
 UPSTREAM_GIT = "git"
 UPSTREAM_ARCHIVE = "archive"
 
+
 @dataclass(frozen=True)
 class Component:
     """One SOUP or bundled-asset record.
@@ -770,11 +771,15 @@ REGISTRY: tuple[Component, ...] = (
         upstream_ref="version_2_37",
         spdx="Bitstream-Vera",
         license_file="libs/ra8_fonts/DejaVu-LICENSE.txt",
-        copyright="Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. DejaVu changes are in public domain.",
+        copyright=(
+            "Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. "
+            "DejaVu changes are in public domain."
+        ),
         extra_notes=(
             "The regular and bold DejaVu Sans TTF sources are renamed "
-            "RA8UISans-Regular.ttf and RA8UISans-Bold.ttf. The Bitstream Vera notice allows redistribution and "
-            "requires modified fonts to use names that do not contain Bitstream or Vera.",
+            "RA8UISans-Regular.ttf and RA8UISans-Bold.ttf. The Bitstream Vera "
+            "notice allows redistribution and requires modified fonts to use "
+            "names that do not contain Bitstream or Vera.",
             "The 38 px and 68 px Latin-1 and the 120 px clock glyph atlases are "
             "deterministically generated from these sources plus Literata using "
             "scripts/gen/display_atlases.py; the generated tables are in "

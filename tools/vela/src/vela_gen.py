@@ -371,8 +371,9 @@ def _place_lines(places: dict[str, tuple[int, int]]) -> list[str]:
         if role not in places:
             continue
         slot, offset = places[role]
+        io_verb = "reads" if role == "input" else "writes"
         lines += [
-            f"/// BASEP slot and byte offset the command stream {'reads' if role == 'input' else 'writes'} the {role} at.",
+            f"/// BASEP slot and byte offset the command stream {io_verb} the {role} at.",
             f"pub const {role}_region: usize = {slot};",
             f"pub const {role}_offset: usize = {offset};",
         ]
@@ -593,6 +594,10 @@ def _ethos_operator(  # noqa: ANN202  (returns Vela's vendored Operator, unstubb
     return found[0]
 
 
+_DRIVER_HEADER_BYTES = 8
+_OFFLINE_ALLOC_HEADER_WORDS = 3
+
+
 def unwrap_command_stream(payload: bytes) -> bytes:
     """Return the register command stream inside a Vela COP1 driver payload.
 
@@ -607,7 +612,7 @@ def unwrap_command_stream(payload: bytes) -> bytes:
             unknown driver action, a section running past the payload, or not
             exactly one COMMAND_STREAM section.
     """
-    if len(payload) % 4 != 0 or len(payload) < 8:
+    if len(payload) % 4 != 0 or len(payload) < _DRIVER_HEADER_BYTES:
         msg = f"driver payload is {len(payload)} B, not a whole number of words past the fourcc"
         raise ValueError(msg)
     words = struct.unpack(f"<{len(payload) // 4}I", payload)
@@ -697,7 +702,11 @@ def _offline_offsets(model, tensor_count: int) -> list[int]:  # noqa: ANN001
             continue
         raw = _buffer_bytes(model, meta.Buffer())
         words = struct.unpack(f"<{len(raw) // 4}i", raw[: len(raw) // 4 * 4])
-        if len(words) < 3 or words[2] != tensor_count or len(words) != 3 + tensor_count:
+        if (
+            len(words) < _OFFLINE_ALLOC_HEADER_WORDS
+            or words[2] != tensor_count
+            or len(words) != _OFFLINE_ALLOC_HEADER_WORDS + tensor_count
+        ):
             msg = f"OfflineMemoryAllocation does not cover {tensor_count} tensors"
             raise ValueError(msg)
         return list(words[3:])
@@ -770,7 +779,9 @@ def distill_blob(path: Path, accel: int = ACCEL_ETHOS_U55_256) -> tuple[bytes, d
             report.append({"slot": index, "name": name, "role": role, "runtime": size})
 
     offsets = _offline_offsets(model, subgraph.TensorsLength())
-    places = place_io([(region["role"], offsets[tindex]) for region, tindex in zip(regions, slots)])
+    places = place_io(
+        [(region["role"], offsets[tindex]) for region, tindex in zip(regions, slots, strict=False)]
+    )
     blob = pack_blob(regions, cmd, accel)
     return blob, {"regions": report, "cmd_bytes": len(cmd), "total": len(blob), "places": places}
 

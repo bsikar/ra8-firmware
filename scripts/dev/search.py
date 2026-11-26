@@ -60,8 +60,6 @@ class TestRecord(TypedDict):
     desc: str
 
 
-
-
 class ToolRecord(TypedDict):
     """Metadata for one discovered developer host tool."""
 
@@ -247,8 +245,6 @@ def get_tests() -> list[TestRecord]:
     return tests
 
 
-
-
 def get_tools() -> list[ToolRecord]:
     """Discover developer host tools under tools/."""
     tools: list[ToolRecord] = []
@@ -358,8 +354,6 @@ def _print_tests(tests: list[TestRecord]) -> None:
         print(f"  {t['name']} ({t['path']}){suffix}")
         print(f"    just tests::local {t['category']}")
     print()
-
-
 
 
 def _print_tools(tools: list[ToolRecord]) -> None:
