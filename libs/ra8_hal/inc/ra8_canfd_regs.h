@@ -622,7 +622,7 @@ typedef enum : uint32_t {
  * GAFLIDEM (bit 31) makes the IDE flag part of the match so a standard
  * rule does not accidentally accept an extended frame whose low ID bits
  * coincide. Both are 1 = compare, 0 = don't-care (HUM Ch 41.2.20
- * "CFDGAFLM : Acceptance Filter List ID Mask Register" p 2736).
+ * "CFDGAFLMr : Global Acceptance Filter List Mask Registers" p 2736).
  */
 typedef enum : uint32_t {
   k_ra8_gaflm_bit_gafllb   = 1UL << 29U, /**< Loopback Configuration bit. */

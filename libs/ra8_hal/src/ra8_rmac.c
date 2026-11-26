@@ -242,7 +242,7 @@ static inline uint32_t internal_make_mpic(ra8_rmac_pis_t    iface,
                                           ra8_rmac_duplex_t duplex,
                                           uint32_t          psmcs)
 {
-  /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1709 */
+  /* HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register" p 1709 */
   const uint32_t pis         = ((uint32_t)iface & k_ra8_rmac_mask_mpic_pis)
                                << (uint32_t)k_ra8_rmac_shift_mpic_pis;
   const uint32_t lsc         = ((uint32_t)speed & k_ra8_rmac_mask_mpic_lsc)
@@ -414,7 +414,7 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
  * @brief Reset every per-MAC config register to its post-init baseline.
  *
  * @details
- * HUM Ch 33.4 "MIOC ... MEEEC" p 1707. Splits ``ra8_rmac_init`` so it
+ * HUM Ch 33.4.1.4 "MIOC" .. Ch 33.4.1.22 "MEEEC" p 1711-1726. Splits ``ra8_rmac_init`` so it
  * stays under the function-size threshold.
  *
  * @param[in,out] reg RMAC register window.
@@ -521,23 +521,23 @@ ra8_err_t ra8_rmac_deinit(ra8_rmac_port_t port)
 
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
 
-  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
+  /* HUM Ch 33.4.1.12 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
   reg->MRAFC = 0U;
-  /* HUM Ch 33.4 "MRGC : MAC Reception General Configuration Register" p 1715 */
+  /* HUM Ch 33.4.1.9 "MRGC : MAC Reception General Configuration Register" p 1715 */
   reg->MRGC = 0U;
-  /* HUM Ch 33.4 "MTFFC : MAC Transmission Frame Format Configuration Register" p 1711 */
+  /* HUM Ch 33.4.1.5 "MTFFC : MAC Transmission Frame Format Configuration Register" p 1711 */
   reg->MTFFC = 0U;
-  /* HUM Ch 33.4 "MLBC : MAC Loopback Configuration Register" p 1726 */
+  /* HUM Ch 33.4.1.23 "MLBC : MAC Loopback Configuration Register" p 1726 */
   reg->MLBC = 0U;
-  /* HUM Ch 33.4 "MEEEC : MAC Energy Efficient Ethernet Configuration Register" p 1726 */
+  /* HUM Ch 33.4.1.22 "MEEEC : MAC Energy Efficient Ethernet Configuration Register" p 1726 */
   reg->MEEEC = 0U;
-  /* HUM Ch 33.4 "MEIE : MAC Error Interrupt Enable Register" p 1751 */
+  /* HUM Ch 33.4.3.2 "MEIE : MAC Error Interrupt Enable Register" p 1751 */
   reg->MEIE = 0U;
-  /* HUM Ch 33.4 "MMIE0 : MAC Monitoring Interrupt Enable Register 0" p 1757 */
+  /* HUM Ch 33.4.3.5 "MMIE0 : MAC Monitoring Interrupt Enable Register 0" p 1757 */
   reg->MMIE0 = 0U;
-  /* HUM Ch 33.4 "MMIE1 : MAC Monitoring Interrupt Enable Register 1" p 1759 */
+  /* HUM Ch 33.4.3.8 "MMIE1 : MAC Monitoring Interrupt Enable Register 1" p 1759 */
   reg->MMIE1 = 0U;
-  /* HUM Ch 33.4 "MMIE2 : MAC Monitoring Interrupt Enable Register 2" p 1762 */
+  /* HUM Ch 33.4.3.11 "MMIE2 : MAC Monitoring Interrupt Enable Register 2" p 1762 */
   reg->MMIE2 = 0U;
 
   s_slots[(uint8_t)port].cb     = nullptr;
@@ -554,7 +554,7 @@ ra8_err_t ra8_rmac_enter_stop(ra8_rmac_port_t port)
     ra8_log_error(s_tag, "rmac_enter_stop: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
+  /* HUM Ch 33.4.1.12 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
   ra8_rmac(port)->MRAFC = 0U;
   return k_ra8_ok;
 }
@@ -565,7 +565,7 @@ ra8_err_t ra8_rmac_exit_stop(ra8_rmac_port_t port)
     ra8_log_error(s_tag, "rmac_exit_stop: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
+  /* HUM Ch 33.4.1.12 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
   ra8_rmac(port)->MRAFC = (uint32_t)s_slots[(uint8_t)port].cached_filter;
   return k_ra8_ok;
 }
@@ -581,8 +581,8 @@ ra8_err_t ra8_rmac_set_mac_address(ra8_rmac_port_t port,
 
   /* MRMAC0.MAU holds the upper 16 bits (bytes 0..1, MSB at bit 15);
    * MRMAC1.MAL holds the lower 32 bits (bytes 2..5, mac[2] in [31:24]).
-   * Source: HUM Ch 33.4 "MRMAC0/MRMAC1 : MAC Reception MAC Address
-   * Configuration Registers" p 1707, cross-checked against FSP
+   * Source: HUM Ch 33.4.1.10 "MRMAC0" / 33.4.1.11 "MRMAC1 : MAC Reception MAC
+   * Address Configuration Registers" p 1716-1717, cross-checked against FSP
    * R_RMAC0_Type.MRMAC0_b.MAU and .MRMAC1_b.MAL. */
   const uint32_t b0 = (uint32_t)mac[k_ra8_rmac_mac_byte_0] & k_ra8_rmac_mask_byte;
   const uint32_t b1 = (uint32_t)mac[k_ra8_rmac_mac_byte_1] & k_ra8_rmac_mask_byte;
@@ -599,9 +599,9 @@ ra8_err_t ra8_rmac_set_mac_address(ra8_rmac_port_t port,
     (b4 << (uint32_t)k_ra8_rmac_shift_byte1) | (b5 << (uint32_t)k_ra8_rmac_shift_byte0);
 
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
-  /* HUM Ch 33.4 "MRMAC0 : MAC Reception MAC Address Configuration Register 0" p 1716 */
+  /* HUM Ch 33.4.1.10 "MRMAC0 : MAC Reception MAC Address Configuration Register 0" p 1716 */
   reg->MRMAC0 = mrmac0;
-  /* HUM Ch 33.4 "MRMAC1 : MAC Reception MAC Address Configuration Register 1" p 1717 */
+  /* HUM Ch 33.4.1.11 "MRMAC1 : MAC Reception MAC Address Configuration Register 1" p 1717 */
   reg->MRMAC1 = mrmac1;
   return k_ra8_ok;
 }
@@ -612,7 +612,7 @@ ra8_err_t ra8_rmac_set_rx_filter(ra8_rmac_port_t port, ra8_rmac_mrafc_t filter)
     ra8_log_error(s_tag, "set_rx_filter: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
+  /* HUM Ch 33.4.1.12 "MRAFC : MAC Reception Address Filter Configuration Register" p 1717 */
   ra8_rmac(port)->MRAFC                = (uint32_t)filter;
   s_slots[(uint8_t)port].cached_filter = filter;
   return k_ra8_ok;
@@ -633,7 +633,7 @@ ra8_err_t ra8_rmac_set_ptp_filter(ra8_rmac_port_t port,
     ra8_log_error(s_tag, "set_ptp_filter: index out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MPFCt : MAC PTP Filtering Register Configuration t" p 1724 */
+  /* HUM Ch 33.4.1.20 "MPFCt : MAC PTP Filtering Register Configuration t" p 1724 */
   const uint32_t pfbn = (uint32_t)byte_offset & k_ra8_rmac_mask_byte;
   const uint32_t pfbv = ((uint32_t)value & k_ra8_rmac_mask_byte)
                         << (uint32_t)k_ra8_rmac_shift_mpfc_val;
@@ -659,7 +659,8 @@ ra8_rmac_set_frame_size(ra8_rmac_port_t port, bool is_pframe, uint16_t min_size,
     ra8_log_error(s_tag, "set_frame_size: min > max");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MRFSCE / MRFSCP : MAC Reception Frame Size Configuration" p 1707 */
+  /* HUM Ch 33.4.1.16 "MRFSCE" p 1722 / 33.4.1.17 "MRFSCP : MAC Reception
+   * Frame Size Configuration" p 1722-1723 */
   const uint32_t v =
     (((uint32_t)max_size & k_ra8_rmac_mask_mrfsc) << (uint32_t)k_ra8_rmac_shift_mrfsce_max) |
     (((uint32_t)min_size & k_ra8_rmac_mask_mrfsc) << (uint32_t)k_ra8_rmac_shift_mrfsce_min);
@@ -677,7 +678,7 @@ ra8_err_t ra8_rmac_set_vlan_framing(ra8_rmac_port_t port, bool disable_pad, bool
     ra8_log_error(s_tag, "set_vlan_framing: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MTFFC : MAC Transmission Frame Format Configuration" p 1711 */
+  /* HUM Ch 33.4.1.5 "MTFFC : MAC Transmission Frame Format Configuration" p 1711 */
   uint32_t v = 0UL;
   if (disable_pad) {
     v |= k_ra8_rmac_mtffc_dpad;
@@ -699,14 +700,14 @@ ra8_err_t ra8_rmac_set_pause_frame(ra8_rmac_port_t       port,
     ra8_log_error(s_tag, "set_pause_frame: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MTPFC : MAC Transmission Pause or PFC Frame Configuration" p 1712 */
+  /* HUM Ch 33.4.1.6 "MTPFC : MAC Transmission Pause or PFC Frame Configuration" p 1712 */
   const uint32_t pt    = ((uint32_t)pause_time & k_ra8_rmac_mask_mtpfc_pt)
                          << (uint32_t)k_ra8_rmac_shift_mtpfc_pt;
   const uint32_t pfrt  = ((uint32_t)retry_time & k_ra8_rmac_mask_mtpfc_pfrt)
                          << (uint32_t)k_ra8_rmac_shift_mtpfc_pfrt;
   const uint32_t pfrlv = ((uint32_t)retry_level & k_rmac_pfrlv_mask)
                          << (uint32_t)k_ra8_rmac_shift_mtpfc_pfrlv;
-  /* HUM Ch 33.4 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1713 */
+  /* HUM Ch 33.4.1.7 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1713 */
   uint32_t pfm = 0UL;
   if (mode == k_ra8_rmac_pause_mode_pfc) {
     pfm = (1UL << (uint32_t)k_ra8_rmac_shift_mtpfc2_pfm);
@@ -726,7 +727,7 @@ ra8_err_t ra8_rmac_set_pfc_group(ra8_rmac_port_t port, ra8_rmac_pfc_group_t grou
     ra8_log_error(s_tag, "set_pfc_group: group out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MTPFC3t : MAC Transmission PFC Frame Configuration 3" p 1715 */
+  /* HUM Ch 33.4.1.8 "MTPFC3t : MAC Transmission PFC Frame Configuration 3" p 1715 */
   ra8_rmac(port)->MTPFC3[(uint8_t)group] = (uint32_t)pcp_mask & k_ra8_rmac_mask_pfc_priority;
   return k_ra8_ok;
 }
@@ -737,7 +738,7 @@ ra8_err_t ra8_rmac_set_lpi(ra8_rmac_port_t port, bool enable)
     ra8_log_error(s_tag, "set_lpi: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MEEEC : MAC Energy Efficient Ethernet Configuration" p 1726 */
+  /* HUM Ch 33.4.1.22 "MEEEC : MAC Energy Efficient Ethernet Configuration" p 1726 */
   uint32_t meeec = 0UL;
   if (enable) {
     meeec = k_ra8_rmac_meeec_lpitr;
@@ -752,7 +753,7 @@ ra8_err_t ra8_rmac_set_magic_packet(ra8_rmac_port_t port, bool enable)
     ra8_log_error(s_tag, "set_magic_packet: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MRGC : MAC Reception General Configuration" p 1715 */
+  /* HUM Ch 33.4.1.9 "MRGC : MAC Reception General Configuration" p 1715 */
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
   uint32_t                v   = reg->MRGC;
   if (enable) {
@@ -770,7 +771,7 @@ ra8_err_t ra8_rmac_set_loopback(ra8_rmac_port_t port, bool enable)
     ra8_log_error(s_tag, "set_loopback: port out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MLBC : MAC Loopback Configuration Register" p 1726 */
+  /* HUM Ch 33.4.1.23 "MLBC : MAC Loopback Configuration Register" p 1726 */
   uint32_t mlbc = 0UL;
   if (enable) {
     mlbc = k_ra8_rmac_mlbc_lbme;
@@ -796,7 +797,7 @@ ra8_err_t ra8_rmac_set_link(ra8_rmac_port_t   port,
     ra8_log_error(s_tag, "set_link: speed out of range");
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1709
+  /* HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register" p 1709
    * Preserve the existing PSMCS (MDC divider) field -- ra8_rmac_init
    * programmed it from cfg->eswclk_hz / mdc_hz; a runtime ra8_rmac_set_link
    * call must NOT clobber the MDC clock the PHY is already using to ack
@@ -949,14 +950,14 @@ void ra8_rmac_dispatch(ra8_rmac_port_t port)
     return;
   }
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
-  /* HUM Ch 33.4 "MEIS / MMIS0 / MMIS1 / MMIS2" p 1706 */
+  /* HUM Ch 33.4.3.1 "MEIS" p 1745 / 33.4.3.4, 33.4.3.7, 33.4.3.10 "MMIS0..2" p 1756-1762 */
   const uint32_t            err = reg->MEIS;
   const uint32_t            m0  = reg->MMIS0;
   const uint32_t            m1  = reg->MMIS1;
   const uint32_t            m2  = reg->MMIS2;
   const ra8_rmac_event_fn_t fn  = s_slots[(uint8_t)port].cb;
   void* const               ctx = s_slots[(uint8_t)port].ctx;
-  /* HUM Ch 33.4 "MEID / MMID0 / MMID1 / MMID2" p 1706 */
+  /* HUM Ch 33.4.3.3 "MEID" p 1754 / 33.4.3.6, 33.4.3.9, 33.4.3.12 "MMID0..2" p 1758-1763 */
   reg->MEID  = err;
   reg->MMID0 = m0;
   reg->MMID1 = m1;

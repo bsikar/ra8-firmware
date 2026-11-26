@@ -116,16 +116,16 @@ static uint32_t internal_ra8_ipc_event_to_clr(uint32_t event_mask)
    * with IRQ7..IRQ0 in STA. */
   clr |= (event_mask & k_ra8_ipc_clr_mask_irq_all);
   if ((event_mask & k_ra8_ipc_event_msg_ready) != 0U) {
-    /* HUM Ch 3.2.14 "RST bit (FIFO Reset)" p 217 -- only way to
+    /* HUM Ch 3.2.14 "IPC0CLR0" (RST bit) p 216-217 -- only way to
      * drop STA.RDY without consuming a word. */
     clr |= k_ra8_ipc_clr_mask_rst;
   }
   if ((event_mask & k_ra8_ipc_event_err_empty) != 0U) {
-    /* HUM Ch 3.2.14 "RCLR bit" p 217 */
+    /* HUM Ch 3.2.14 "IPC0CLR0" (RCLR bit) p 216-217 */
     clr |= k_ra8_ipc_clr_mask_rclr;
   }
   if ((event_mask & k_ra8_ipc_event_err_full) != 0U) {
-    /* HUM Ch 3.2.14 "FCLR bit" p 217 */
+    /* HUM Ch 3.2.14 "IPC0CLR0" (FCLR bit) p 216-217 */
     clr |= k_ra8_ipc_clr_mask_fclr;
   }
   return clr;
@@ -294,7 +294,7 @@ static void internal_ra8_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.14 "RST bit (FIFO Reset)" p 217 -- bit 16 drains the
+  /* HUM Ch 3.2.14 "IPC0CLR0" (RST bit) p 216-217 -- bit 16 drains the
    * FIFO and clears RDY/FULL. */
   reg->CLR = k_ra8_ipc_clr_mask_rst;
   return k_ra8_ok;
@@ -391,7 +391,7 @@ ra8_ipc_channel_for_recv(ra8_ipc_core_id_t core, uint8_t pair, uint8_t* out_chan
   volatile r_ipc_channel_regs_t* reg = internal_ra8_ipc_get_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  /* HUM Ch 3.2.14 "CLRn bits" p 217 -- write 1 to CLRn to drop the
+  /* HUM Ch 3.2.14 "IPC0CLR0" (CLRn bits) p 216-217 -- write 1 to CLRn to drop the
    * matching IRQn status bit. */
   reg->CLR = (uint32_t)1U << (uint32_t)event_id;
   return k_ra8_ok;
@@ -439,13 +439,13 @@ ra8_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retri
   /* NASA Rule 2: bounded loop with the +1 covering the immediate-try
    * case where retries==0 still gets a single attempt. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214 */
+    /* HUM Ch 3.2.10 "IPC0STA0" (FULL bit) p 214 */
     if ((reg->STA & k_ra8_ipc_sta_mask_full) == 0U) {
       /* HUM Ch 3.2.12 "IPC0TXD0" p 215 */
       reg->TXD = message;
       return k_ra8_ok;
     }
-    /* HUM Ch 3.2.14 "FCLR bit" p 217 -- knock down a possible FERR
+    /* HUM Ch 3.2.14 "IPC0CLR0" (FCLR bit) p 216-217 -- knock down a possible FERR
      * left over from a previous overflow so the dispatcher does not
      * spin forever on a stuck error flag. */
     reg->CLR = k_ra8_ipc_clr_mask_fclr;
@@ -475,7 +475,7 @@ ra8_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32
    * STA.FULL check breaks early when the 4-stage FIFO fills (HUM
    * Ch 3.1 p 204). */
   for (uint32_t i = 0U; i < count; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214 */
+    /* HUM Ch 3.2.10 "IPC0STA0" (FULL bit) p 214 */
     if ((reg->STA & k_ra8_ipc_sta_mask_full) != 0U) {
       break;
     }
@@ -496,7 +496,7 @@ ra8_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32
   volatile r_ipc_channel_regs_t* reg = internal_ra8_ipc_get_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  /* HUM Ch 3.2.10 "RDY bit" p 214 -- a read of RXD while RDY=0
+  /* HUM Ch 3.2.10 "IPC0STA0" (RDY bit) p 214 -- a read of RXD while RDY=0
    * returns 0 and sets RERR. */
   if ((reg->STA & k_ra8_ipc_sta_mask_rdy) == 0U) {
     return k_ra8_err_no_data;
@@ -521,13 +521,13 @@ ra8_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retr
 
   /* NASA Rule 2: bounded loop, max_retries clamped above. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214 */
+    /* HUM Ch 3.2.10 "IPC0STA0" (RDY bit) p 214 */
     if ((reg->STA & k_ra8_ipc_sta_mask_rdy) != 0U) {
       /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
       *out_msg = reg->RXD;
       return k_ra8_ok;
     }
-    /* HUM Ch 3.2.14 "RCLR bit" p 217 -- proactively wipe a stale
+    /* HUM Ch 3.2.14 "IPC0CLR0" (RCLR bit) p 216-217 -- proactively wipe a stale
      * RERR so the next dispatch loop is not perpetually firing on
      * an old error. */
     reg->CLR = k_ra8_ipc_clr_mask_rclr;
@@ -553,7 +553,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   /* NASA Rule 2: bound is the caller-supplied ``capacity`` plus an
    * inner break when STA.RDY drops. */
   for (uint32_t i = 0U; i < capacity; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214 */
+    /* HUM Ch 3.2.10 "IPC0STA0" (RDY bit) p 214 */
     if ((reg->STA & k_ra8_ipc_sta_mask_rdy) == 0U) {
       break;
     }
@@ -606,7 +606,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.14 "RCLR bit / FCLR bit" p 217 -- ack both error
+  /* HUM Ch 3.2.14 "IPC0CLR0" (RCLR / FCLR bits) p 216-217 -- ack both error
    * flags in one CLR write. */
   reg->CLR = k_ra8_ipc_clr_mask_rclr | k_ra8_ipc_clr_mask_fclr;
   return k_ra8_ok;
@@ -619,7 +619,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "FULL bit" p 214 */
+  /* HUM Ch 3.2.10 "IPC0STA0" (FULL bit) p 214 */
   *out_can_send = ((reg->STA & k_ra8_ipc_sta_mask_full) == 0U);
   return k_ra8_ok;
 }
@@ -631,7 +631,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "RDY bit" p 214 */
+  /* HUM Ch 3.2.10 "IPC0STA0" (RDY bit) p 214 */
   *out_has_data = ((reg->STA & k_ra8_ipc_sta_mask_rdy) != 0U);
   return k_ra8_ok;
 }
@@ -667,7 +667,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   if ((uint16_t)unit >= (uint16_t)k_ra8_ipc_nmi_unit_count) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.1 "IPCSAR.SAIPCNMIu bits" p 205-207 -- SAIPCNMI0 at bit 8,
+  /* HUM Ch 3.2.1 "IPCSAR" (SAIPCNMIu bits) p 205-207 -- SAIPCNMI0 at bit 8,
    * SAIPCNMI1 at bit 9; PAIPCNMI mirrors the same positions. */
   const uint32_t sar   = *ra8_ipc_ipcsar();
   const uint32_t par   = *ra8_ipc_ipcpar();
@@ -685,7 +685,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   if ((uint8_t)group > k_ra8_ipc_sem_group_high) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 3.2.1 "IPCSAR.SAIPCSEMg" p 205 */
+  /* HUM Ch 3.2.1 "IPCSAR" (SAIPCSEMg) p 205 */
   const uint32_t sar   = *ra8_ipc_ipcsar();
   const uint32_t par   = *ra8_ipc_ipcpar();
   const uint32_t bit   = (uint32_t)1U << (uint32_t)group;

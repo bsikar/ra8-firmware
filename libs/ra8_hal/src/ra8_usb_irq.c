@@ -112,7 +112,7 @@ void ra8_usb_dispatch(ra8_usb_speed_t speed)
   if (reg == nullptr) {
     return;
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
+  /* HUM Ch 36.2.16 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
    * INTSTS0 is W0C: writing 0 to a bit clears it, writing 1 has no
    * effect. The previous mask-and-back pattern
@@ -293,17 +293,17 @@ static uint16_t internal_host_syscfg_word(ra8_usb_speed_t speed)
 RA8_INTERNAL
 static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
 {
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  /* HUM Ch 36.2.6 "CFIFOSEL : CFIFO Port Select Register", p 1974 */
   reg->CFIFOSEL  = k_ra8_fifosel_mbw_16;
   reg->D0FIFOSEL = k_ra8_fifosel_mbw_16;
   reg->D1FIFOSEL = k_ra8_fifosel_mbw_16;
 
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1999 */
+  /* HUM Ch 36.2.29 "DCPMAXP : DCP Maximum Packet Size Register", p 1999 */
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra8_usb_dcp_max_packet;
   reg->DCPCTR  = 0U;
 
-  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1994 -- target
+  /* HUM Ch 36.2.23 "USBADDR : USB Address Register", p 1994 -- target
    * device address for the host's outgoing tokens. Default to 0
    * (newly-attached devices respond at address 0). */
   reg->USBADDR = 0U;
@@ -393,7 +393,7 @@ ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
     reg->SYSCFG = internal_host_syscfg_word(speed);
   }
 
-  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  /* HUM Ch 36.2.3 "DVSTCTR0 : Device State Control Register 0", p 1969 */
   reg->DVSTCTR0 = 0U;
   if (speed == k_ra8_usb_speed_hs) {
     /* HUM Ch 37.2.5 DVSTCTR0.VBUSEN: the USBHS jack's external VBUS
@@ -427,7 +427,7 @@ ra8_err_t ra8_usb_host_deinit(ra8_usb_speed_t speed)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  /* HUM Ch 36.2.3 "DVSTCTR0 : Device State Control Register 0", p 1969 */
   reg->DVSTCTR0 = 0U;
   reg->INTENB0  = 0U;
   reg->INTENB1  = 0U;
@@ -458,7 +458,7 @@ ra8_err_t ra8_usb_host_bus_reset(ra8_usb_speed_t speed, bool assert_reset)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  /* HUM Ch 36.2.3 "DVSTCTR0 : Device State Control Register 0", p 1969 */
   const uint16_t rst_bit  = (uint16_t)(1U << k_ra8_dvstctr_bit_usbrst);
   const uint16_t uact_bit = (uint16_t)(1U << k_ra8_dvstctr_bit_uact);
   if (assert_reset) {
@@ -490,7 +490,7 @@ ra8_err_t ra8_usb_host_set_uact(ra8_usb_speed_t speed, bool enable)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  /* HUM Ch 36.2.3 "DVSTCTR0 : Device State Control Register 0", p 1969 */
   const uint16_t uact_bit = (uint16_t)(1U << k_ra8_dvstctr_bit_uact);
   if (enable) {
     priv_rmw16(&reg->DVSTCTR0, uact_bit, 0U);
@@ -521,14 +521,14 @@ ra8_err_t ra8_usb_host_setup_request(ra8_usb_speed_t speed, const ra8_usb_setup_
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 -- guard
+  /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 -- guard
    * against a still-pending request. */
   const uint16_t sureq_bit = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
   if ((reg->DCPCTR & sureq_bit) != 0U) {
     return k_ra8_err_busy;
   }
 
-  /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1995 */
+  /* HUM Ch 36.2.24 "USBREQ : USB Request Type Register", p 1995 */
   const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
                                   (uint16_t)((uint16_t)setup->b_request << k_ra8_usb_byte_bits));
   reg->USBREQ        = req;

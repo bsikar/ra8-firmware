@@ -234,8 +234,8 @@ ra8_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint
  * AFL page (page 0). The CFDGAFLECTR.AFLPN page selector is 4 bits and
  * each page exposes ::k_ra8_canfd_afl_page_size entries; one page is the
  * working set the list-config API supports, so the rule count is capped
- * here. HUM Ch 41.2.18 "CFDGAFLCFG0 : Global AFL Configuration
- * Register 0" p 2735 (RNC field) and Ch 41.2.17 "CFDGAFLECTR" p 2734.
+ * here. HUM Ch 41.2.18 "CFDGAFLCFG : Global Acceptance Filter List
+ * Configuration Register" p 2735 (RNC field) and Ch 41.2.17 "CFDGAFLECTR" p 2734.
  */
 typedef enum : uint8_t {
   k_ra8_canfd_afl_rule_capacity = 16U, /**< One 16-entry AFL page (page 0). */

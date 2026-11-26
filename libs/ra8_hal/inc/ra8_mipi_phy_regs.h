@@ -232,7 +232,7 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6"
- * p 3830: TLPX[7:0] -- only one byte-wide field, upper 24 bits
+ * p 3831-3836: TLPX[7:0] -- only one byte-wide field, upper 24 bits
  * are reserved.
  */
 typedef enum : uint32_t {

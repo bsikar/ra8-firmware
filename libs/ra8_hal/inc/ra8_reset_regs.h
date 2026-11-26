@@ -47,11 +47,11 @@
  * ## Bit layout reference
  *
  * Verified against:
- *   - HUM Ch 6.2.2 "RSTSR0", p 257-258
- *   - HUM Ch 6.2.3 "RSTSR1", p 258-260
- *   - HUM Ch 6.2.4 "RSTSR2", p 261
- *   - HUM Ch 6.2.5 "RSTSR3", p 261-262
- *   - HUM Ch 6.2.1 "RSTSAR", p 256
+ *   - HUM Ch 6.2.2 "RSTSR0", p 256-258
+ *   - HUM Ch 6.2.3 "RSTSR1", p 258-261
+ *   - HUM Ch 6.2.4 "RSTSR2", p 261-262
+ *   - HUM Ch 6.2.5 "RSTSR3", p 262-263
+ *   - HUM Ch 6.2.1 "RSTSAR", p 255-256
  *   - FSP CMSIS R7KA8D2KF_core0.h ``R_SYSTEM_Type`` (lines 15205,
  *     15731, 16645, 16664, 16677) for bit-position cross-check.
  *

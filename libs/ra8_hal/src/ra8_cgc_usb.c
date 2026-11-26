@@ -202,7 +202,7 @@ RA8_INTERNAL static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, 
       ra8_log_error(s_tag, "pll2: stop wait timeout");
       break;
     }
-    /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
+    /* HUM Ch 9.2.9 "PLL2CCR : PLL2 Clock Control Register" p 334 */
     *ra8_sys_pll2ccr() = pll2ccr;
     /* HUM Ch 9.2.10 "PLL2CCR2 : PLL2 Clock Control Register 2" p 335 */
     *ra8_sys_pll2ccr2() = pll2ccr2;

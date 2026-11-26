@@ -150,7 +150,7 @@ static bool internal_format_decode(ra8_ssie_format_t format,
       return true;
     case k_ra8_ssie_format_right_just:
       /* Right-justified maps to OMOD=I2S with PDTA=1 (right-justify
-       * placement) per HUM Ch 46.2.1 "PDTA" p 3056. */
+       * placement) per HUM Ch 46.2.1 "SSICR" (PDTA) p 3056. */
       *out_pdta = 1U;
       return true;
     case k_ra8_ssie_format_monaural:

@@ -139,7 +139,7 @@ typedef enum : uint32_t {
  * @enum ra8_eswm_miirr_bit_t
  * @brief Bit positions in ESWM.MIIRR (Media Interface Reset Register).
  *
- * @details HUM Ch 29.2.1.2 "MIIRR" p 1289 -- each RGRSTn / RMRSTn bit
+ * @details HUM Ch 29.2.1.1 "MIIRR" p 1289 -- each RGRSTn / RMRSTn bit
  * is an ENABLE, not an active-high reset: 0 = Reset (block held in
  * reset), 1 = Enable (block operational). Set the bit to bring the
  * media-interface block out of reset.
@@ -283,7 +283,7 @@ static inline volatile r_gwca_regs_t* ra8_gwca(void)
 
 /**
  * @enum ra8_gwmc_opc_t
- * @brief GWMC.OPC operation-mode values (HUM Ch 34.3.1 "GWMC" p 1797).
+ * @brief GWMC.OPC operation-mode values (HUM Ch 34.3.1.1 "GWMC" p 1792).
  *
  * @details The ESWM state machine accepts mode transitions written
  * here. The FSP-named LAYER3_SWITCH_AGENT_MODE_xxx enum maps 1:1.

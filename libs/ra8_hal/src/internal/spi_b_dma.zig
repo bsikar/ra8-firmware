@@ -8,7 +8,7 @@
 pub const spi0_base: usize = 0x4035C000;
 pub const channel_stride: usize = 0x100;
 pub const channel_count: u8 = 2;
-/// HUM Ch 43.2.2 "SPDR : SPI Data Register" p 2881, offset +0x00.
+/// HUM Ch 43.2.1 "SPDR : SPI Data Register" p 2881, offset +0x00.
 pub const off_spdr: usize = 0x00;
 
 /// k_ra8_dmac_width_byte (DMTMD.SZ = 00b).

@@ -79,7 +79,7 @@ RA8_PRIV void priv_ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg);
  * @brief Minimum destination stride in bytes implied by the descriptor.
  *
  * @details
- * HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654.
+ * HUM Ch 60.2.12 "CDWDR_x : Capture Destination Width Register" p 3654.
  * The bytes the engine writes per captured line are the scaled output
  * width (``scale.h_output_clip``, else ``x_capture_px``, else
  * ``width_px``) times ``bytes_per_pixel``. Data-enable fetch (JPEG and

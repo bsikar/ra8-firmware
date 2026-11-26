@@ -3,7 +3,7 @@
 //!
 //! C ABI for the SPI_B polled transfers: ra8_spi_xfer8, ra8_spi_write,
 //! ra8_spi_read and ra8_spi_write_read (RA8FW-899, was ra8_spi_b.c).
-//! HUM Ch 43.2.2 "SPDR" p 2881, 43.2.9 "SPSR" p 2898, 43.2.13 "SPSRC" p 2905,
+//! HUM Ch 43.2.1 "SPDR" p 2881, 43.2.9 "SPSR" p 2898, 43.2.13 "SPSRC" p 2905,
 //! Ch 43.3.13 controller-mode operation p 2911.
 
 const builtin = @import("builtin");

@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Event Link Controller (inc/ra8_elc.h, RA8FW-547). HUM Ch 19.2
-//! "ELCR" p 819, "ELSEGRn" p 819, "ELSRn" p 820.
+//! Event Link Controller (inc/ra8_elc.h, RA8FW-547). HUM Ch 19.2.1
+//! "ELCR" p 819, 19.2.2 "ELSEGRn" p 819, 19.2.3 "ELSRn" p 820.
 
 pub const base: usize = 0x40201000;
 

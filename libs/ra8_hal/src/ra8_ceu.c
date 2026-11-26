@@ -263,17 +263,17 @@ static ra8_err_t internal_validate_buffers(const ra8_ceu_buffers_t* bufs)
 RA8_INTERNAL
 static void internal_program_addresses(const ra8_ceu_buffers_t* bufs)
 {
-  /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656 */
+  /* HUM Ch 60.2.13 "CDAYR_x : Capture Data Address Y Register" p 3655 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cdayr) = (uint32_t)(uintptr_t)bufs->y_top;
-  /* HUM Ch 60.2.14 "CDACR : Capture Data C Address Register" p 3657 */
+  /* HUM Ch 60.2.14 "CDACR_x : Capture Data Address C Register" p 3656 */
   if (bufs->c_top != nullptr) {
     *ra8_ceu_reg32(k_ra8_ceu_off_cdacr) = (uint32_t)(uintptr_t)bufs->c_top;
   }
-  /* HUM Ch 60.2.15 "CDBYR : Capture Data Y Bottom-Field Register" p 3658 */
+  /* HUM Ch 60.2.15 "CDBYR_x : Capture Data Bottom-Field Address Y Register" p 3658 */
   if (bufs->y_bottom != nullptr) {
     *ra8_ceu_reg32(k_ra8_ceu_off_cdbyr) = (uint32_t)(uintptr_t)bufs->y_bottom;
   }
-  /* HUM Ch 60.2.16 "CDBCR : Capture Data C Bottom-Field Register" p 3659 */
+  /* HUM Ch 60.2.16 "CDBCR_x : Capture Data Bottom-Field Address C Register" p 3659 */
   if (bufs->c_bottom != nullptr) {
     *ra8_ceu_reg32(k_ra8_ceu_off_cdbcr) = (uint32_t)(uintptr_t)bufs->c_bottom;
   }
@@ -292,7 +292,7 @@ static void internal_program_addresses(const ra8_ceu_buffers_t* bufs)
     *ra8_ceu_reg32(k_ra8_ceu_off_cdbcr2) = (uint32_t)(uintptr_t)bufs->c_bottom_2;
   }
   if (bufs->bundle_size_bytes != 0U) {
-    /* HUM Ch 60.2.17 "CBDSR : Capture Bundle Destination Size" p 3660 */
+    /* HUM Ch 60.2.17 "CBDSR_x : Capture Bundle Destination Size Register" p 3660 */
     *ra8_ceu_reg32(k_ra8_ceu_off_cbdsr) = bufs->bundle_size_bytes & ~k_ra8_ceu_bundle_align_mask;
   }
 }
@@ -512,7 +512,7 @@ static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
     *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;
   }
 
-  /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656.
+  /* HUM Ch 60.2.13 "CDAYR_x : Capture Data Address Y Register" p 3655.
    * Program the destination after the data-enable firewall, matching the
    * hardware sequence used by Renesas FSP R_CEU_CaptureStart. */
   internal_program_addresses(bufs);
@@ -530,7 +530,7 @@ ra8_err_t ra8_ceu_capture_arm(uint8_t* buffer)
 {
   RA8_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
 
-  /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656 --
+  /* HUM Ch 60.2.13 "CDAYR_x : Capture Data Address Y Register" p 3655 --
    * lower 3 bits must be zero (8-byte alignment). */
   if (((uintptr_t)buffer & k_ra8_ceu_buffer_align_mask) != 0U) {
     return k_ra8_err_invalid_arg;
@@ -729,7 +729,7 @@ ra8_err_t ra8_ceu_firewall_set(bool enable, uint32_t upper_bound)
 ra8_err_t ra8_ceu_byte_swap_set(const ra8_ceu_byte_swap_t* swap)
 {
   RA8_CHECK_NULL_PTR(swap, s_tag, "swap must not be nullptr");
-  /* HUM Ch 60.2.20 "CDOCR : Capture Data Output Control Register" p 3662 */
+  /* HUM Ch 60.2.20 "CDOCR_x : Capture Data Output Control Register" p 3662 */
   volatile uint32_t* reg     = ra8_ceu_reg32(k_ra8_ceu_off_cdocr);
   uint32_t           current = *reg;
   current &= ~(k_ra8_ceu_cdocr_mask_cobs | k_ra8_ceu_cdocr_mask_cows | k_ra8_ceu_cdocr_mask_cols);
@@ -748,14 +748,14 @@ ra8_err_t ra8_ceu_byte_swap_set(const ra8_ceu_byte_swap_t* swap)
 
 ra8_err_t ra8_ceu_bundle_size_set(uint32_t size_bytes)
 {
-  /* HUM Ch 60.2.17 "CBDSR : Capture Bundle Destination Size" p 3660 */
+  /* HUM Ch 60.2.17 "CBDSR_x : Capture Bundle Destination Size Register" p 3660 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cbdsr) = size_bytes & ~k_ra8_ceu_bundle_align_mask;
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_ceu_low_pass_set(bool enable)
 {
-  /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3662 */
+  /* HUM Ch 60.2.19 "CLFCR_x : Capture Low-Pass Filter Control Register" p 3662 */
   uint32_t value = 0U;
   if (enable) {
     value = k_ra8_ceu_clfcr_mask_lpf;

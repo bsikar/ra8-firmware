@@ -72,7 +72,7 @@ typedef enum : uint8_t {
  * @details
  * Mirrors the subset of FSP ``spi_bit_width_t`` that this driver
  * supports. The enum value is the raw SPCMDn.SPB encoding written
- * into the SPI_B command register (HUM Ch 43.2.7 "SPCMDm" p 2893):
+ * into the SPI_B command register (HUM Ch 43.2.6 "SPCMDm" p 2893):
  * SPB[4:0] = N - 1 where N is the frame width in bits, so 8-bit
  * frames program SPB = 0b00111, 16-bit frames program SPB = 0b01111,
  * and 32-bit frames program SPB = 0b11111. Matching the FSP enum
@@ -385,7 +385,7 @@ ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void*
  * and receives on COPI. Implementation lives in
  * ``libs/ra8_hal/src/ra8_spi_b_target.c``.
  *
- * Register-level effect (HUM Ch 43.2.4 "SPCR" p 2884):
+ * Register-level effect (HUM Ch 43.2.3 "SPCR" p 2884):
  *  - SPCR is written with MSTR=0 (peripheral/target), MODFEN=1, SPE=1.
  *  - SCKASE is NOT set -- it is valid only in controller mode.
  *  - SPBR (SPCR3) is set to zero because the clock is external.
@@ -562,8 +562,8 @@ ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void*
  * @details
  * Invoked from the SPTIn IRQ trampoline when the transmit FIFO/holding
  * register is ready for the next word. Loads the next byte from the
- * caller-supplied TX buffer into ``SPDR`` (HUM Ch 36.2.7 "SPDR : SPI
- * Data Register", p 1532) and decrements the remaining count. Silently
+ * caller-supplied TX buffer into ``SPDR`` (HUM Ch 43.2.1 "SPDR : SPI
+ * Data Register", p 2881) and decrements the remaining count. Silently
  * returns if the channel is out of range or no transfer is in progress.
  *
  * @param[in] channel SPI channel index (0..1).
@@ -583,7 +583,7 @@ void ra8_spi_dispatch_spti(uint8_t channel);
  *
  * @details
  * Invoked from the SPRIn IRQ trampoline when the receive FIFO/holding
- * register has new data. Reads ``SPDR`` (HUM Ch 36.2.7, p 1532) into
+ * register has new data. Reads ``SPDR`` (HUM Ch 43.2.1, p 2881) into
  * the caller-supplied RX buffer and, when the byte count reaches zero,
  * invokes the registered completion callback.
  *
@@ -604,8 +604,8 @@ void ra8_spi_dispatch_spri(uint8_t channel);
  *
  * @details
  * Invoked from the SPEIn IRQ trampoline. Reads and clears the error
- * status bits in ``SPSR`` (HUM Ch 36.2.5 "SPSR : SPI Status Register",
- * p 1530) -- mode-fault (MODF), overrun (OVRF), parity (PERF) -- then
+ * status bits in ``SPSR`` (HUM Ch 43.2.9 "SPSR : SPI Status Register",
+ * p 2898) -- mode-fault (MODF), overrun (OVRF), parity (PERF) -- then
  * invokes the registered error callback with the collected mask.
  *
  * @param[in] channel SPI channel index (0..1).

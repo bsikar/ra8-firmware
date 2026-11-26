@@ -55,7 +55,7 @@ pub fn hardware() Window {
 /// MIICR is written before MIIRR.RGRSTm is set so the pin mux is in the
 /// right mode the instant the data pins go live.
 /// HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287;
-/// HUM Ch 29.2.1.2 "MIIRR : Media-independent Interface Reset Register" p 1289.
+/// HUM Ch 29.2.1.1 "MIIRR : Media-independent Interface Reset Register" p 1289.
 pub fn rgmiiSelect(window: Window, port: u8) Error!void {
     if (port > port_max) return error.InvalidPort;
     const miicr = if (port == 0) window.miicr0 else window.miicr1;

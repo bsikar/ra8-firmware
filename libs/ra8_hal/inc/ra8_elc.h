@@ -137,7 +137,7 @@ typedef enum : uint8_t {
  *
  * @details
  * Per HUM Ch 19.2.2 "ELSEGRn : Event Link Software Event Generation
- * Register n" (p 817) and FSP `R_ELC_SoftwareEventGenerate`, the
+ * Register n" (p 819-820) and FSP `R_ELC_SoftwareEventGenerate`, the
  * SEG bit is write-protected by WI/WE and must be set with a
  * three-step sequence:
  *

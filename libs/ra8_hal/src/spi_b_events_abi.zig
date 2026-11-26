@@ -3,7 +3,7 @@
 //!
 //! C ABI for the SPI_B transfer handler, Stop-mode and ISR dispatch calls,
 //! plus the per-channel state table (RA8FW-894, was part of ra8_spi_b.c).
-//! HUM Ch 43.2.4 "SPCR" p 2884, Ch 11.2.7 "MSTPCRB" p 444.
+//! HUM Ch 43.2.3 "SPCR" p 2884, Ch 11.2.7 "MSTPCRB" p 444.
 
 const std = @import("std");
 const common = @import("abi_common.zig");

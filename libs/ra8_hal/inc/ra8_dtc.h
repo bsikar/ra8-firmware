@@ -114,8 +114,8 @@ typedef void (*ra8_dtc_event_fn_t)(void* ctx, uint16_t status);
  * @brief Fire the attached activation callback with current DTCSTS.
  *
  * @details
- * Reads ``DTC.DTCSTS`` (HUM Ch 17.2.10 "DTCSTS : DTC Status Register",
- * p 654) which captures the most recent DTC activation source and ACT
+ * Reads ``DTC.DTCSTS`` (HUM Ch 18.2.14 "DTCSTS : DTC Status Register",
+ * p 794) which captures the most recent DTC activation source and ACT
  * flag, and invokes the handler registered through
  * ``ra8_dtc_attach_handler()`` with that status word and the stored
  * context pointer. Silently returns when no handler is installed.

@@ -116,7 +116,7 @@ ra8_pcntr_set_output(ra8_port_t port, ra8_pin_t pin, ra8_level_t level)
   const uint32_t pdr_mask  = (uint32_t)(1UL << (uint32_t)pin);
   const uint32_t podr_mask = pdr_mask << (uint32_t)k_ra8_pcntr_high_half_shift;
 
-  /* HUM Ch 20.2 "PCNTR1/PODR/PDR : Port Control Register 1" p 840 -- read {PODR, PDR}
+  /* HUM Ch 20.2.1 "PCNTR1/PODR/PDR : Port Control Register 1" p 840 -- read {PODR, PDR}
    * so the sibling pins on this port are preserved across the update. */
   uint32_t pcntr1 = port_regs->PCNTR1;
   pcntr1 |= pdr_mask; /* PDR[pin] = 1 -> this pin is an output. */
@@ -125,7 +125,7 @@ ra8_pcntr_set_output(ra8_port_t port, ra8_pin_t pin, ra8_level_t level)
   } else {
     pcntr1 &= ~podr_mask; /* PODR[pin] = 0 -> drive low. */
   }
-  /* HUM Ch 20.2 "PCNTR1/PODR/PDR : Port Control Register 1" p 840 -- write {PODR, PDR}:
+  /* HUM Ch 20.2.1 "PCNTR1/PODR/PDR : Port Control Register 1" p 840 -- write {PODR, PDR}:
    * commit the pin as an output at the requested level. */
   port_regs->PCNTR1 = pcntr1;
   return k_ra8_ok;
@@ -179,7 +179,7 @@ ra8_pcntr_read(ra8_port_t port, ra8_pin_t pin, ra8_level_t* out_level)
     return k_ra8_err_hw_unmapped;
   }
 
-  /* HUM Ch 20.2 "PCNTR2/EIDR/PIDR : Port Control Register 2" p 841 -- read PIDR: the live
+  /* HUM Ch 20.2.2 "PCNTR2/EIDR/PIDR : Port Control Register 2" p 841 -- read PIDR: the live
    * pin state in the low half of the register. */
   const uint32_t pidr     = port_regs->PCNTR2;
   const uint32_t pin_mask = (uint32_t)(1UL << (uint32_t)pin);

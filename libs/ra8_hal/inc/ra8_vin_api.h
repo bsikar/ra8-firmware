@@ -883,10 +883,10 @@ void ra8_vin_dispatch(void);
  * @details
  * High-level wrapper around `ra8_vin_capture_arm(k_ra8_vin_capture_single)`
  * that:
- *  1. Programmes MB1 with `(uint32_t)(uintptr_t)buf` (HUM Ch 67.2.10
+ *  1. Programmes MB1 with `(uint32_t)(uintptr_t)buf` (HUM Ch 67.2.11
  *     "MB1: Memory Base 1 Register" p 3985).
- *  2. Sets the IS register (HUM Ch 67.2.13 "IS: Image Stride Register"
- *     p 3984) and pre-clip end coordinates to define the capture window.
+ *  2. Sets the IS register (HUM Ch 67.2.10 "IS: Image Stride Register"
+ *     p 3983) and pre-clip end coordinates to define the capture window.
  *  3. Updates MC.INF (HUM Ch 67.2.1 "MC: Main Control Register" p 3975)
  *     so the input format matches.
  *  4. Caches `buf`/`w`/`h` so the frame-end handler (registered via

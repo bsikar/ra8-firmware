@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! SPI_B init-time register packing (RA8FW-898, was part of ra8_spi_b.c).
-//! HUM Ch 43.2.4 "SPCR" p 2884, 43.2.5 "SPCR2" p 2889, 43.2.7 "SPCMDm" p 2893.
+//! HUM Ch 43.2.3 "SPCR" p 2884, 43.2.4 "SPCR2" p 2889, 43.2.6 "SPCMDm" p 2893.
 //! Exports live in src/spi_b_setup_abi.zig.
 
 /// Mirrors `ra8_spi_cfg_t` in ra8_spi.h field for field.

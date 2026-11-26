@@ -76,7 +76,7 @@ typedef enum : uint8_t {
  * @brief Action taken when ECC error is detected (mirrors SRAMCRn.OAD).
  *
  * @details
- * Per HUM Ch 58.2.7 "OAD bit" p 3533: 0=NMI, 1=Reset.
+ * Per HUM Ch 58.2.7 "SRAMCRn" (OAD bit) p 3533: 0=NMI, 1=Reset.
  */
 typedef enum : uint8_t {
   k_ra8_sram_on_error_interrupt = 0U, /**< Raise NMI on ECC error.     */

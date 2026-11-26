@@ -443,7 +443,7 @@ void ra8_ceu_dispatch(void);
  * @brief Force an immediate plane swap (CRCMPR.RA).
  *
  * @details
- * HUM Ch 60.2.9 "CRCMPR" p 3649. Bypasses the VD-edge sync the
+ * HUM Ch 60.2.9 "CRCMPR" p 3650. Bypasses the VD-edge sync the
  * normal Plane-B path uses; use only when a frame must be dropped.
  *
  * @return `ra8_err_t` error code.

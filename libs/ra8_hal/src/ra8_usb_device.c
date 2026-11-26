@@ -345,7 +345,7 @@ ra8_err_t ra8_usb_get_status(ra8_usb_speed_t speed, uint16_t* out_mask)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986 */
+  /* HUM Ch 36.2.16 "INTSTS0 : Interrupt Status Register 0", p 1986 */
   *out_mask = reg->INTSTS0;
   return k_ra8_ok;
 }
@@ -370,7 +370,7 @@ ra8_err_t ra8_usb_clear_status(ra8_usb_speed_t speed, uint16_t mask)
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986 */
+  /* HUM Ch 36.2.16 "INTSTS0 : Interrupt Status Register 0", p 1986 */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~mask);
   return k_ra8_ok;
 }
@@ -396,7 +396,7 @@ ra8_err_t ra8_usb_get_device_state(ra8_usb_speed_t speed, ra8_usb_dev_state_t* o
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986 */
+  /* HUM Ch 36.2.16 "INTSTS0 : Interrupt Status Register 0", p 1986 */
   *out_state = internal_decode_dvsq(reg->INTSTS0);
   return k_ra8_ok;
 }
@@ -424,8 +424,8 @@ ra8_err_t ra8_usb_set_address(ra8_usb_speed_t speed, uint8_t address)
   if (address > k_ra8_usb_max_address) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1994 */
-  /* HUM Ch 37.2.16 "USBADDR : USB Address Register", p 2089 */
+  /* HUM Ch 36.2.23 "USBADDR : USB Address Register", p 1994 */
+  /* HUM Ch 37.2.25 "USBADDR : USB Address Register", p 2089 */
   reg->USBADDR = (uint16_t)((uint16_t)address & k_ra8_usbaddr_addr_mask);
   return k_ra8_ok;
 }
@@ -482,7 +482,7 @@ ra8_err_t ra8_usb_device_busreset_rearm(ra8_usb_speed_t speed)
     return k_ra8_err_invalid_arg;
   }
 
-  /* HUM Ch 36.2.27 "PIPECTR : Pipe n Control Register", p 2007.
+  /* HUM Ch 36.2.35 "PIPEnCTR : PIPEn Control Registers", p 2007.
    * Clear PID for every non-control pipe so any half-completed pre-
    * reset transfer is forgotten. The class driver re-issues queue_in /
    * queue_out which will set PID=BUF when ready. */
@@ -676,9 +676,9 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
 
   priv_pipe_quiesce(reg, pipe_num);
 
-  /* HUM Ch 36.2.23 "PIPESEL : Pipe Window Select Register", p 2002 */
+  /* HUM Ch 36.2.31 "PIPESEL : Pipe Window Select Register", p 2002 */
   reg->PIPESEL = pipe_num;
-  /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 2003 */
+  /* HUM Ch 36.2.32 "PIPECFG : Pipe Configuration Register", p 2003 */
   reg->PIPECFG = priv_pipecfg_word(ep_addr, dir, type, false);
   /* HUM Ch 37.2.35 "PIPEBUF : Pipe Buffer Register", p 2100. PIPEBUF is a
    * USBHS-only register; the USBFS instance (Ch 36) has no equivalent.
@@ -687,7 +687,7 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
   if (type == k_ra8_usb_ep_type_bulk) {
     reg->PIPEBUF = priv_pipebuf_word(pipe_num, max_packet);
   }
-  /* HUM Ch 36.2.26 "PIPEMAXP : Pipe Maximum Packet Size Register", p 2005 */
+  /* HUM Ch 36.2.33 "PIPEMAXP : Pipe Maximum Packet Size Register", p 2005 */
   reg->PIPEMAXP = max_packet;
   reg->PIPEPERI = 0U;
   /* Deselect window (FIT step 4) so a later stray PIPECFG write does
@@ -723,10 +723,10 @@ ra8_err_t ra8_usb_stall_endpoint(ra8_usb_speed_t speed, uint8_t pipe_num)
     return k_ra8_err_invalid_arg;
   }
   if (pipe_num == 0U) {
-    /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
+    /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 */
     priv_dcp_pid(reg, k_ra8_pid_stall);
   } else {
-    /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005 */
+    /* HUM Ch 36.2.35 "PIPEnCTR : PIPEn Control Registers", p 2007 */
     priv_pipe_pid(reg, pipe_num, k_ra8_pid_stall);
   }
   return k_ra8_ok;

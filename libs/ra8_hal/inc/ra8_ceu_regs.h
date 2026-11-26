@@ -290,7 +290,7 @@ typedef enum : uint32_t {
  * @brief CAPWR (offset 0x0014) field shifts.
  *
  * @details
- * HUM Ch 60.2.6 "CAPWR : Camera Interface Width Register" p 3646
+ * HUM Ch 60.2.6 "CAPWR : Camera Interface Width Register" p 3643
  * splits the register into:
  *  - bits 12:0  HWDTH[12:0]: horizontal capture width (cycles).
  *  - bits 27:16 VWDTH[11:0]: vertical capture lines.
@@ -360,7 +360,7 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 60.2.9 "CRCMPR : CEU Register Forcible Control Register"
- * p 3649. Bit 0 (RA) forces an immediate plane swap regardless of
+ * p 3650. Bit 0 (RA) forces an immediate plane swap regardless of
  * VD timing.
  */
 typedef enum : uint32_t {
@@ -372,7 +372,7 @@ typedef enum : uint32_t {
  * @brief CFLCR (offset 0x0030) field shifts.
  *
  * @details
- * HUM Ch 60.2.10 "CFLCR : Capture Filter Control Register" p 3650.
+ * HUM Ch 60.2.10 "CFLCR : Capture Filter Control Register" p 3651.
  * Scale-down factor encoded as fixed-point fraction.fmant:
  *  - bits 11:0  HFRAC[11:0]: horizontal scale fractional bits.
  *  - bits 15:12 HMANT[3:0]: horizontal scale mantissa bits.
@@ -402,7 +402,7 @@ typedef enum : uint32_t {
  * @brief CFSZR (offset 0x0034) field shifts.
  *
  * @details
- * HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3651:
+ * HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3653:
  *  - bits 11:0  HFCLP[11:0]: horizontal clip in 4-pixel units.
  *  - bits 27:16 VFCLP[11:0]: vertical clip in 4-pixel units.
  */
@@ -523,7 +523,7 @@ typedef enum : uint32_t {
  * @brief CSTSR (offset 0x007C) status bit masks.
  *
  * @details
- * HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672. CSTSR
+ * HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3673. CSTSR
  * is read-only:
  *  - bit 0  CPTON: 1 -> capture currently running.
  *  - bit 16 CPFLD: current field (0 = top, 1 = bottom) when in
@@ -542,7 +542,7 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register"
- * p 3664-3667. CEIER uses identical bit positions to gate which
+ * p 3669-3673. CEIER uses identical bit positions to gate which
  * events raise the CEU IRQ. Writing 0 to any CETCR bit clears it
  * (write-0-to-clear); writing 1 leaves it asserted.
  *
