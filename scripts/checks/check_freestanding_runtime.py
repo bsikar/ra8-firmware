@@ -30,6 +30,7 @@ import freestanding_static_checks as static_checks
 
 _nm_min_fields = 2
 _map_input_section_fields = 4
+_map_wrapped_section_fields = 3
 _map_symbol_fields = 2
 
 
@@ -257,6 +258,36 @@ def _migrated_zig_archive(
     return f"lib{library}.a"
 
 
+def _extract_map_input_section(lines: list[str], index: int) -> tuple[int, str] | None:
+    """Extract (size, obj_path) from a single-line or wrapped GNU ld map entry."""
+    parts = lines[index].split()
+    size_hex: str | None = None
+    obj_path: str | None = None
+    if (
+        len(parts) >= _map_input_section_fields
+        and parts[0].startswith(".")
+        and parts[1].startswith("0x")
+        and parts[2].startswith("0x")
+    ):
+        size_hex, obj_path = parts[2], parts[3]
+    elif (
+        len(parts) >= _map_wrapped_section_fields
+        and parts[0].startswith("0x")
+        and parts[1].startswith("0x")
+        and index > 0
+    ):
+        # GNU ld wraps input section names >= 14 chars onto the preceding line.
+        prev_parts = lines[index - 1].split()
+        if len(prev_parts) == 1 and prev_parts[0].startswith("."):
+            size_hex, obj_path = parts[1], parts[2]
+    if size_hex is None or obj_path is None:
+        return None
+    try:
+        return int(size_hex, 16), obj_path
+    except ValueError:
+        return None
+
+
 def _parse_map_memory_map(
     memory_map_text: str,
     arch_member_re: re.Pattern[str],
@@ -272,24 +303,17 @@ def _parse_map_memory_map(
 
     for i, line in enumerate(lines):
         parts = line.split()
-        if (
-            len(parts) >= _map_input_section_fields
-            and parts[0].startswith(".")
-            and parts[1].startswith("0x")
-            and parts[2].startswith("0x")
-        ):
-            try:
-                size = int(parts[2], 16)
-            except ValueError:
-                size = 0
+        section = _extract_map_input_section(lines, i)
+        if section is not None:
+            size, obj_path = section
             if size > 0:
-                res = _parse_map_archive_member(parts[3], arch_member_re)
+                res = _parse_map_archive_member(obj_path, arch_member_re)
                 if res:
                     arch_name, member, is_system = res
                     live_members.setdefault(arch_name, set()).add(member)
                     if is_system:
                         system_archives.add(arch_name)
-                    migrated = _migrated_zig_archive(parts[3], arch_member_re, map_dir, repo_root)
+                    migrated = _migrated_zig_archive(obj_path, arch_member_re, map_dir, repo_root)
                     project_archive_paths[arch_name] = (
                         project_archive_paths.get(arch_name, True) and migrated == arch_name
                     )

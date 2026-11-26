@@ -288,14 +288,56 @@ def _selftest_migrated_zig_archive_provenance() -> list[str]:
                 f"zig/ra8_power_profile/{fpu_cpu}/lib/libra8_power_profile.a(ra8_power_profile.a.o)"
             )
             fpu_map = f"Memory Map\n .text.zig 0x02000000 0x10 {fpu_member}\n"
-            if core.parse_map_file(fpu_map, map_dir=build, repo_root=root)[
-                "project_zig_archives"
-            ] != expected:
+            if (
+                core.parse_map_file(fpu_map, map_dir=build, repo_root=root)["project_zig_archives"]
+                != expected
+            ):
                 failures.append(f"FPU-suffixed Zig archive provenance not recognized ({fpu_cpu})")
+
+        failures.extend(_selftest_wrapped_zig_map_sections(build, root, outside, expected))
 
         recipe.unlink()
         if core.parse_map_file(map_content, map_dir=build, repo_root=root)["project_zig_archives"]:
             failures.append("Zig archive without a first-party recipe gained approval")
+    return failures
+
+
+def _selftest_wrapped_zig_map_sections(
+    build: pathlib.Path,
+    root: pathlib.Path,
+    outside: pathlib.Path,
+    expected: set[str],
+) -> list[str]:
+    """Verify wrapped two-line GNU ld sections participate in provenance checks."""
+    failures: list[str] = []
+    # GNU ld wraps section names >= 14 chars onto their own line ahead of
+    # addr/size/archive(member); wrapped Zig runtime-primitive sections must
+    # still populate both live_archive_members and project_zig_archives.
+    wrapped_map = (
+        "Memory Map\n"
+        " .text..Lfreestanding_abi.memset\n"
+        "                0x321021dc       0x10 "
+        "zig/ra8_power_profile/cortex_m85+fp_armv8d16sp/lib/"
+        "libra8_power_profile.a(ra8_power_profile_zcu.o)\n"
+        "                0x321021dc                memset\n"
+    )
+    wrapped_parsed = core.parse_map_file(wrapped_map, map_dir=build, repo_root=root)
+    if wrapped_parsed["project_zig_archives"] != expected:
+        failures.append("wrapped two-line Zig archive section missed for provenance")
+    if "ra8_power_profile_zcu.o" not in wrapped_parsed["live_archive_members"].get(
+        "libra8_power_profile.a", set()
+    ):
+        failures.append("wrapped two-line archive member missed in live_archive_members")
+
+    # Negative direction: wrapped section for an outside archive gets no approval.
+    wrapped_outside = (
+        wrapped_map
+        + " .text..Lfreestanding_abi.memmove\n"
+        + f"                0x321021fc       0x20 {outside}(other.o)\n"
+    )
+    outside_parsed = core.parse_map_file(wrapped_outside, map_dir=build, repo_root=root)
+    if outside_parsed["project_zig_archives"]:
+        failures.append("wrapped outside archive incorrectly gained project approval")
     return failures
 
 
