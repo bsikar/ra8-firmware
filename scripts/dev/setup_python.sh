@@ -141,7 +141,7 @@ if [[ "$-" == *p* ]]; then
     "$target_python" -c \
       'import PIL, clang.cindex, dotenv, hvac, kasa, kubernetes, serial, usb.core, yaml' || return 1
     PATH="$VENV_DIR/bin:$PATH" "$target_python" scripts/checks/check_tool_versions.py \
-      ruff cmake-format cmake-lint yamllint gcovr || return 1
+      ruff cmake-format cmake-lint yamllint || return 1
     PATH="$VENV_DIR/bin:$PATH" command -v vela >/dev/null ||
       die "locked Vela executable is missing from $VENV_DIR"
   }

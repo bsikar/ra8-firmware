@@ -74,43 +74,65 @@ declare -a GEN_NAMES=(
   display_atlases
 )
 case "${1:-}" in
-  --only) shift; GEN_NAMES=("$@") ;;
-  ""|--) ;;
+  --only)
+    shift
+    GEN_NAMES=("$@")
+    ;;
+  "" | --) ;;
   *) die "usage: check_regen_drift.sh [--only NAME ...]" ;;
 esac
 
+resolve_clang_format() {
+  if command -v clang-format-22 >/dev/null 2>&1; then
+    command -v clang-format-22
+  elif command -v clang-format >/dev/null 2>&1; then
+    command -v clang-format
+  else
+    die "$1 needs clang-format-22 or clang-format for byte-identity (the just recipe formats every generated fixture)"
+  fi
+}
+
+format_c_headers() {
+  local caller="$1"
+  shift
+  local formatter
+  formatter="$(resolve_clang_format "$caller")"
+  "$formatter" -i "$@"
+  "$python_bin" scripts/checks/check_comment_format.py --fix "$@" >/dev/null
+}
+
 gen_cmd() {
   case "$1" in
-    pinouts)             "$python_bin" scripts/gen/gen_pinouts.py ;;
-    widget_icons)        "$python_bin" scripts/gen/widget_icons.py ;;
-    literata_atlas)      "$python_bin" scripts/gen/literata_atlas.py ;;
-    bluenoise_mask)      "$python_bin" scripts/gen/gen_bluenoise_mask.py ;;
-    chapter_map)         bash scripts/gen/build_chapter_map.sh ;;
-    comic_fixture)       "$python_bin" scripts/gen/gen_comic_fixture.py ;;
+    pinouts) "$python_bin" scripts/gen/gen_pinouts.py ;;
+    widget_icons) "$python_bin" scripts/gen/widget_icons.py ;;
+    literata_atlas) "$python_bin" scripts/gen/literata_atlas.py ;;
+    bluenoise_mask) "$python_bin" scripts/gen/gen_bluenoise_mask.py ;;
+    chapter_map) bash scripts/gen/build_chapter_map.sh ;;
+    comic_fixture) "$python_bin" scripts/gen/gen_comic_fixture.py ;;
     comic_large_fixture) "$python_bin" scripts/gen/gen_comic_large_fixture.py ;;
-    manga_fixture)       "$python_bin" scripts/gen/gen_manga_page_fixture.py ;;
-    unarch_xz_fixture)   "$python_bin" scripts/gen/gen_unarch_xz_fixture.py ;;
-    rabook_gray8_fixture) "$python_bin" scripts/gen/rabook_gray8_fixture.py ;;
-    driver_status)       "$python_bin" scripts/gen/gen_driver_status.py ;;
+    manga_fixture) "$python_bin" scripts/gen/gen_manga_page_fixture.py ;;
+    unarch_xz_fixture)
+      "$python_bin" scripts/gen/gen_unarch_xz_fixture.py
+      format_c_headers unarch_xz_fixture \
+        apps/shared_libs/unarch/tests/inc/unarch_xz_fixture.h
+      ;;
+    rabook_gray8_fixture)
+      "$python_bin" scripts/gen/rabook_gray8_fixture.py
+      format_c_headers rabook_gray8_fixture \
+        examples/ek_ra8d2/hw_validated/hil/ereader_rabook/inc/rabook_gray8_fixture.h
+      ;;
+    driver_status) "$python_bin" scripts/gen/gen_driver_status.py ;;
     # Its own --check mode is the byte-identity check (RA8FW-335): refuse a
     # stale summary block in docs/ROADMAP.md.
-    roadmap_stats)       bash scripts/builders/roadmap_stats.sh --check ;;
+    roadmap_stats) bash scripts/builders/roadmap_stats.sh --check ;;
     # Same pattern (RA8FW-340): the SBOM's --check mode fails when the
     # committed SBOM is stale or the tree drifted.
-    sbom_check)          "$python_bin" scripts/gen/gen_sbom.py --check ;;
+    sbom_check) "$python_bin" scripts/gen/gen_sbom.py --check ;;
     # The four just/tools.just rabook_parity modes, generator then
-    # clang-format, exactly as the rabook_golden recipe runs them. The
+    # clang-format + comment alignment, matching rabook_golden. The
     # formatter is load-bearing for byte-identity (it re-wraps the hex
     # tables); no formatter is a FAIL, not a skip.
     rabook_parity)
-      formatter=""
-      if command -v clang-format-22 >/dev/null 2>&1; then
-        formatter="$(command -v clang-format-22)"
-      elif command -v clang-format >/dev/null 2>&1; then
-        formatter="$(command -v clang-format)"
-      else
-        die "rabook_parity needs clang-format-22 or clang-format for byte-identity (the just recipe formats every generated fixture)"
-      fi
       fixture_dir="apps/shared_libs/rabook_compile/tests/inc"
       "$python_bin" scripts/gen/rabook_parity_gen.py \
         tests/fixtures/rabook_parity \
@@ -123,23 +145,23 @@ gen_cmd() {
         "$fixture_dir/rabook_downscale_parity_fixture.h"
       "$python_bin" scripts/gen/rabook_parity_gen.py --color \
         "$fixture_dir/rabook_color_parity_fixture.h"
-      "$formatter" -i \
+      format_c_headers rabook_parity \
         "$fixture_dir/rabook_parity_fixture.h" \
         examples/ek_ra8d2/hw_pending/compile_on_m33/inc/parity_fixture.h \
         "$fixture_dir/rabook_realbook_fixture.h" \
         "$fixture_dir/rabook_downscale_parity_fixture.h" \
-        "$fixture_dir/rabook_color_parity_fixture.h" ;;
-    # Registered last and expected to be named in the findings: its
-    # rasterization is host-dependent (FreeType inside the Pillow wheel), so
-    # a byte-identity failure here is a finding for the rasterizer decision,
-    # not stale output.
-    display_atlases)     "$python_bin" scripts/gen/display_atlases.py ;;
+        "$fixture_dir/rabook_color_parity_fixture.h"
+      ;;
+    display_atlases) "$python_bin" scripts/gen/display_atlases.py ;;
     *) die "unknown generator $1" ;;
   esac
 }
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/regen-drift.XXXXXX")"
-cleanup() { git worktree remove --force "$work/wt" >/dev/null 2>&1 || true; rm -rf "$work"; }
+cleanup() {
+  git worktree remove --force "$work/wt" >/dev/null 2>&1 || true
+  rm -rf "$work"
+}
 trap cleanup EXIT
 
 git -C "$ROOT" worktree add --detach "$work/wt" HEAD >/dev/null || die "could not create the throwaway worktree"
@@ -165,5 +187,5 @@ for name in "${GEN_NAMES[@]}"; do
   fi
 done
 
-echo "regen-drift: $drift_total drifting, $fail_total failed, $(( ${#GEN_NAMES[@]} - drift_total - fail_total )) byte-identical of ${#GEN_NAMES[@]} generators"
+echo "regen-drift: $drift_total drifting, $fail_total failed, $((${#GEN_NAMES[@]} - drift_total - fail_total)) byte-identical of ${#GEN_NAMES[@]} generators"
 [[ $drift_total -eq 0 && $fail_total -eq 0 ]]

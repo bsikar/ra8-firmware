@@ -40,7 +40,7 @@ Where each column comes from:
 A driver with no sources is a contract declared but not implemented here. One
 with no tests and no apps is exactly the gap this page exists to make visible.
 
-79 drivers: 71 named by a host test, 58 named by an app, 7 by neither, 60 declared but not implemented here.
+80 drivers: 71 named by a host test, 59 named by an app, 8 by neither, 61 declared but not implemented here.
 
 | Driver | Src | Hdr | API | Tests | Apps |
 |---|---:|---:|---:|---:|---:|
@@ -54,7 +54,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_cache` | 0 | 1 | 11 | 3 | 8 |
 | `ra8_canfd` | 0 | 1 | 18 | 11 | 4 |
 | `ra8_ceu` | 1 | 3 | 27 | 4 | 0 |
-| `ra8_cgc` | 2 | 1 | 12 | 20 | 220 |
+| `ra8_cgc` | 2 | 1 | 12 | 20 | 56 |
 | `ra8_cnecc` | 0 | 1 | 25 | 4 | 0 |
 | `ra8_crc` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_dac_b` | 0 | 1 | 12 | 3 | 2 |
@@ -62,28 +62,28 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_dmac` | 0 | 1 | 12 | 5 | 3 |
 | `ra8_doc` | 0 | 1 | 5 | 3 | 1 |
 | `ra8_dotf` | 0 | 1 | 22 | 3 | 1 |
-| `ra8_drw` | 2 | 2 | 33 | 2 | 3 |
+| `ra8_drw` | 3 | 3 | 40 | 4 | 4 |
 | `ra8_dtc` | 0 | 1 | 13 | 1 | 3 |
 | `ra8_dual_core` | 0 | 2 | 1 | 1 | 0 |
 | `ra8_elc` | 0 | 1 | 6 | 2 | 4 |
 | `ra8_epaper` | 1 | 1 | 16 | 5 | 1 |
-| `ra8_eth` | 1 | 5 | 73 | 11 | 5 |
+| `ra8_eth` | 1 | 5 | 73 | 10 | 5 |
 | `ra8_etha` | 0 | 4 | 35 | 8 | 2 |
 | `ra8_ether_phy` | 0 | 1 | 6 | 2 | 0 |
 | `ra8_ethosu_kernel` | 0 | 1 | 1 | 0 | 1 |
 | `ra8_ethosu_shim` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_flash` | 1 | 4 | 43 | 6 | 3 |
 | `ra8_fpu_probe` | 0 | 1 | 0 | 0 | 0 |
-| `ra8_fuelgauge` | 0 | 1 | 3 | 1 | 0 |
+| `ra8_fuelgauge` | 0 | 1 | 3 | 1 | 2 |
 | `ra8_glcdc` | 1 | 1 | 21 | 3 | 1 |
 | `ra8_gpt` | 0 | 2 | 30 | 13 | 10 |
 | `ra8_hw_err` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_hw_intrinsics` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_i2c` | 0 | 2 | 16 | 9 | 4 |
-| `ra8_i3c` | 1 | 3 | 50 | 15 | 8 |
-| `ra8_icu` | 0 | 1 | 7 | 7 | 4 |
+| `ra8_i3c` | 1 | 3 | 50 | 15 | 7 |
+| `ra8_icu` | 0 | 1 | 7 | 7 | 3 |
 | `ra8_ipc` | 1 | 4 | 43 | 6 | 2 |
-| `ra8_isr` | 0 | 1 | 9 | 11 | 199 |
+| `ra8_isr` | 0 | 1 | 9 | 11 | 189 |
 | `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
 | `ra8_lpm` | 0 | 2 | 27 | 9 | 11 |
@@ -92,10 +92,10 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_mipi_dsi` | 0 | 3 | 40 | 5 | 0 |
 | `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
 | `ra8_mpc` | 0 | 1 | 7 | 1 | 2 |
-| `ra8_mstp` | 0 | 1 | 5 | 154 | 95 |
-| `ra8_npu` | 2 | 5 | 20 | 3 | 3 |
+| `ra8_mstp` | 0 | 1 | 5 | 157 | 6 |
+| `ra8_npu` | 2 | 5 | 23 | 3 | 3 |
 | `ra8_ofs` | 0 | 1 | 0 | 0 | 0 |
-| `ra8_pcntr` | 0 | 1 | 2 | 1 | 1 |
+| `ra8_pcntr` | 0 | 1 | 2 | 1 | 2 |
 | `ra8_pdg` | 0 | 1 | 23 | 2 | 1 |
 | `ra8_pdm` | 0 | 1 | 9 | 2 | 0 |
 | `ra8_poeg` | 0 | 1 | 9 | 2 | 1 |
@@ -104,22 +104,23 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_reset` | 0 | 1 | 9 | 3 | 3 |
 | `ra8_rmac` | 1 | 2 | 36 | 9 | 0 |
-| `ra8_rsip` | 6 | 8 | 69 | 12 | 4 |
+| `ra8_rsip` | 6 | 8 | 69 | 12 | 5 |
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |
 | `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_sci` | 1 | 3 | 42 | 15 | 28 |
 | `ra8_sdcard` | 0 | 1 | 6 | 3 | 3 |
 | `ra8_sdhi` | 1 | 1 | 16 | 5 | 0 |
 | `ra8_sdramc` | 0 | 1 | 8 | 3 | 14 |
-| `ra8_smbus` | 0 | 1 | 11 | 2 | 2 |
+| `ra8_smbus` | 0 | 1 | 11 | 2 | 1 |
 | `ra8_spi` | 0 | 2 | 20 | 10 | 2 |
 | `ra8_sram` | 0 | 1 | 20 | 5 | 2 |
 | `ra8_ssie` | 1 | 1 | 24 | 5 | 1 |
+| `ra8_target_model` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_touch` | 0 | 1 | 7 | 6 | 9 |
 | `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 0 | 1 | 10 | 3 | 3 |
-| `ra8_usb` | 12 | 16 | 149 | 46 | 31 |
+| `ra8_usb` | 12 | 16 | 149 | 47 | 31 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 0 | 1 | 17 | 1 | 0 |
-| `ra8_wdt` | 0 | 1 | 22 | 9 | 5 |
-| `ra8_xspi` | 0 | 1 | 22 | 11 | 6 |
+| `ra8_wdt` | 0 | 1 | 22 | 9 | 6 |
+| `ra8_xspi` | 0 | 1 | 22 | 11 | 5 |
