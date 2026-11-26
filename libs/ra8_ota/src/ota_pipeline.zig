@@ -209,7 +209,21 @@ fn otaWrite(ctx: ?*anyopaque, offset: u32, data: [*]const u8, len: u32) callconv
         return st.writeBundleSpan(offset, slice);
     }
 
-    if (offset < 4 and st.session.expected_bytes >= bn.header_bytes) {
+    if (offset == 0 and st.probe_len == 0 and slice.len >= 4 and st.session.expected_bytes >= bn.header_bytes) {
+        st.probe = slice[0..4].*;
+        st.probe_len = 4;
+        const magic = std.mem.readInt(u32, slice[0..4], .little);
+        if (magic == bn.magic) {
+            st.bundle_mode = true;
+            st.session.cfg.decl.payload = @backingInt(pl.PayloadKind.bundle);
+            return st.writeBundleSpan(0, slice);
+        }
+        // Raw firmware images need page-aligned writes intact (e.g. 32B MRAM);
+        // do not split [0..4) from [4..] when the full magic header is present.
+        return st.flashProgram(0, data, len);
+    }
+
+    if (offset < 4 and st.probe_len < 4 and st.session.expected_bytes >= bn.header_bytes) {
         var idx: usize = 0;
         while (idx < slice.len and st.probe_len < 4) : (idx += 1) {
             st.probe[st.probe_len] = slice[idx];

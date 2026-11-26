@@ -1025,3 +1025,26 @@ test "RA8U bundle rejects tampered payload, bad signature, missing ra8_app, and 
     try std.testing.expectEqual(impl.state.failed, abi.ra8_ota_get_state());
     try std.testing.expectEqual(@as(usize, 1), model.close_calls);
 }
+
+test "raw download >= header_bytes keeps page-aligned flash writes intact" {
+    reset();
+    const StrictMram = struct {
+        fn program(_: ?*anyopaque, addr: u32, data: [*]const u8, len: u32) callconv(.c) u16 {
+            if ((addr & 31) != 0) return impl.err.invalid_arg;
+            if ((len & 31) != 0) return impl.err.invalid_arg;
+            return flashProgram(null, addr, data, len);
+        }
+    };
+    var cfg = baseCfg();
+    cfg.flash.program = StrictMram.program;
+    try std.testing.expectEqual(ok, abi.ra8_ota_init(&cfg));
+
+    var raw: [256]u8 = undefined;
+    for (&raw, 0..) |*b, i| b.* = @truncate(i ^ 0x5A);
+    model.stream = &raw;
+    const manifest = cachedManifest(@intCast(raw.len));
+
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqual(@as(usize, raw.len), model.programmed);
+    try std.testing.expectEqualSlices(u8, &raw, model.bank[0..raw.len]);
+}
