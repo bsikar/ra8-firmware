@@ -92,62 +92,45 @@ if(NOT TARGET ra8_zig::ra8_core)
 endif()
 link_libraries(ra8_zig::ra8_core)
 
+# miniz is built by apps/shared_libs/compress/build.zig (tinfl/tdefl without
+# stdio, time, malloc, or zip archive APIs), so jof-worker links the archive
+# instead of compiling third_party/miniz/miniz.c directly. Link it after jof
+# and compress so single-pass GNU ld resolves their miniz references.
+if(NOT TARGET ra8_zig::miniz)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME miniz
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress
+    LIBRARY_NAME miniz
+  )
+endif()
+link_libraries(ra8_zig::miniz)
+
 find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 
 # ---------------------------------------------------------------------------
 # jof-worker: the per-page transcode.
 #
 # The firmware members it calls (the JOF producer with its JPEG / PNG / WebP
-# front ends, and the compression seam they sit on) are all Zig archives
-# (ra8_zig::jof, ra8_zig::ra8_jpeg, ra8_zig::compress), linked above. Only
-# ra8_error_handler.c still compiles from the firmware tree.
+# front ends, the compression seam they sit on, and miniz) are all Zig-built
+# archives (ra8_zig::jof, ra8_zig::ra8_jpeg, ra8_zig::compress,
+# ra8_zig::miniz), linked above, and the fatal-error sink arrives in the
+# ra8_zig::ra8_core archive.
 # ---------------------------------------------------------------------------
-set(CBZ2JOF_FW_SRC
-    ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
-)
-# The JPEG codec is Zig now (encoder, decoder and stripe driver),
-# so libs/ra8_jpeg/src holds no .c. The C23 public header is unchanged; the
-# archive is linked below. Kept defined and empty because the variable is
-# still expanded in the jof-worker source list.
-set(CBZ2JOF_JPEG_SRC)
-set(CBZ2JOF_MINIZ_SRC ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c)
-set(CBZ2JOF_MINIZ_DEFINITIONS MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME)
-
-# Per-source properties are DIRECTORY-scoped, so the miniz quiet flags are
-# restated here: without them the vendored decoder meets -Wall -Wextra
-# -Werror. Measured on miniz.c under gcc 14.2.0 and clang 18: only
-# -Wunused-parameter fires, so only it is silenced.
-set(_cbz2jof_wno_miniz -Wno-unused-parameter # miniz.c mz_zip_writer_add_mem_ex(last_modified)
-                       -fno-strict-aliasing
-)
-set_source_files_properties(
-  ${CBZ2JOF_MINIZ_SRC} PROPERTIES COMPILE_OPTIONS "${_cbz2jof_wno_miniz}"
-                                  COMPILE_DEFINITIONS "MINIZ_NO_MALLOC;MINIZ_NO_STDIO"
-)
-
 add_executable(
   jof-worker
   ${CMAKE_CURRENT_SOURCE_DIR}/src/jof_worker.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/jof_worker_main.c
-  ${CBZ2JOF_FW_SRC}
-  ${CBZ2JOF_JPEG_SRC}
-  ${CBZ2JOF_MINIZ_SRC}
 )
 
 target_include_directories(
   jof-worker
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
           ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/inc
-          ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src
-          ${CBZ2JOF_FW}/ra8_jpeg/inc
-          ${CBZ2JOF_FW}/ra8_jpeg/src
-          ${CBZ2JOF_FW}/ra8_io/inc
-          ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/inc
           ${CBZ2JOF_FW}/ra8_imgdec/inc
           # ra8_imgdec.h includes "ra8_arena.h", which lives in ra8_mem.
           ${CBZ2JOF_FW}/ra8_mem/inc
           ${CBZ2JOF_FW}/ra8_core/inc
-          ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/third_party/miniz
 )
 
 # WebP decode (vendored libwebp + the ra8_webp facade), so the producer's
@@ -157,7 +140,7 @@ target_include_directories(
 include(${CBZ2JOF_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_attach(jof-worker ${CBZ2JOF_REPO_ROOT})
 
-target_compile_definitions(jof-worker PRIVATE RA8_OFF_TARGET ${CBZ2JOF_MINIZ_DEFINITIONS})
+target_compile_definitions(jof-worker PRIVATE RA8_OFF_TARGET)
 target_compile_options(jof-worker PRIVATE -Wall -Wextra -Werror)
 
 # The worker target binary stays in its own lane; the copy below is the one

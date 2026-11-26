@@ -19,6 +19,7 @@ fn addMinizLibrary(
         .target = target,
         .optimize = optimize,
         .sanitize_c = .off,
+        .pic = true,
     });
     if (target.result.os.tag != .freestanding) mod.link_libc = true;
     var flags: std.ArrayList([]const u8) = .empty;
