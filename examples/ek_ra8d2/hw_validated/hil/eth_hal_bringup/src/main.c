@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/eth_hal_bringup/src/main.c
  * @brief HAL-based ESWM/COMA Ethernet media bring-up demo
  *
  * @par Tag
@@ -28,11 +28,9 @@
  * board bring-up + ``ra8_eth_open``): this app is the minimal witness that the
  * two extracted primitives compose on their own.
  *
- * @note **hw_pending.** eth is HW-blocked on silicon (the EK-RA8D2 Ethernet
- * wire is marginal), so this app is compile-gated and bench-only;
- * it makes no claim of hardware validation. The COMA/RGMII register accesses
- * are host-tested in ``tests/misc/src/test_ra8_eth_coma.c`` /
- * ``tests/misc/src/test_ra8_eth.c``.
+ * @note Validated on EK-RA8D2 silicon (``eth-hal: bringup PASS``) and
+ * ``ra8_emulator``. The COMA/RGMII register accesses are host-tested in
+ * ``tests/misc/src/test_ra8_eth_coma.c`` / ``tests/misc/src/test_ra8_eth.c``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
