@@ -204,7 +204,7 @@ pub fn txFrame(ops: anytype, chain: ?[*]volatile Desc, depth: u32, tail: ?*u32, 
     return ok;
 }
 
-/// HUM Ch 34.3 "GWDCCi" p 1811: BALR asks the GWCA to reset the AXI
+/// HUM Ch 34.3.7.8 "GWDCCi" p 1811: BALR asks the GWCA to reset the AXI
 /// address RAM current_address of queue `q` to its chain base, and
 /// self-clears once that is done. `ops.balrClear(reg, iter)` reports the
 /// poll result so the host fake-MMIO seam can inject a timeout.

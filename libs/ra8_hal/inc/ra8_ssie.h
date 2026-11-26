@@ -98,7 +98,7 @@ extern "C" {
  * @enum ra8_ssie_role_t
  * @brief Controller / peripheral selection (drives SSICR.MST).
  *
- * @details See HUM Ch 46.2.1 "MST" bit, p 3057.
+ * @details See HUM Ch 46.2.1 "SSICR" (MST bit), p 3057.
  */
 typedef enum : uint8_t {
   k_ra8_ssie_role_peripheral = 0U, /**< Bit clock + LR clock are inputs.  */
@@ -111,7 +111,7 @@ typedef enum : uint8_t {
  *
  * @details
  * The ``omod`` value goes straight to SSIOFR.OMOD[1:0] (HUM Ch 46.2.7
- * "OMOD" bits, p 3091). The driver maps the ``format_t`` enum to the
+ * "SSIOFR" (OMOD bits), p 3091). The driver maps the ``format_t`` enum to the
  * exact OMOD encoding from the chapter table:
  *
  * | Enum                          | OMOD | FRM  | Words/frame |

@@ -132,7 +132,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
     const ra8_err_t pushed = priv_dcp_push_chunk(reg, &data[offset], chunk);
     RA8_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed");
     if (!pid_raised) {
-      /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
+      /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 */
       priv_dcp_pid(reg, k_ra8_pid_buf);
       pid_raised = true;
     }
@@ -172,7 +172,7 @@ static ra8_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
   RA8_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra8_fifoctr_bval;
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
+  /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 */
   priv_dcp_pid(reg, k_ra8_pid_buf);
   return k_ra8_ok;
 }
@@ -228,7 +228,7 @@ ra8_err_t ra8_usb_dcp_in_data(ra8_usb_speed_t speed, const uint8_t* data, uint16
 
   /* Select DCP (CURPIPE = 0) on CFIFO in IN direction. Done once; the
    * selection persists across chunks.
-   * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+   * HUM Ch 36.2.6 "CFIFOSEL : CFIFO Port Select Register", p 1974 */
   priv_select_cfifo(reg, 0U, true);
   g_dcp_cfifoctr_pre = reg->CFIFOCTR;
 
@@ -324,7 +324,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
    * packet has landed in this pipe's FIFO buffer. If it's clear, no
    * data is waiting -- return k_ra8_err_no_data WITHOUT entering the
    * 10ms FRDY spin.
-   * HUM Ch 36.2.12 "BRDYSTS : BRDY Interrupt Status Register", p 1983. */
+   * HUM Ch 36.2.18 "BRDYSTS : BRDY Interrupt Status Register", p 1991. */
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
   if ((reg->BRDYSTS & pipe_bit) == 0U) {
     *inout_len = 0U;
@@ -374,7 +374,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
  *
  * @details See the public header for the documented contract; this
  * definition implements it. The hardware-required sequence per HUM
- * Ch 36.2.13 (NRDYSTS, W0C) and Ch 36.2.27 (PIPECTR.PID) is:
+ * Ch 36.2.19 (NRDYSTS, W0C) and Ch 36.2.35 (PIPEnCTR.PID) is:
  *   1. Ack NRDYSTS bit `pipe_num` by writing 0 to that bit (W0C: write
  *      `~pipe_bit` to clear only the target bit and preserve the rest).
  *   2. Force PID=BUF on the pipe so the controller ACKs the next OUT
@@ -404,12 +404,12 @@ ra8_err_t ra8_usb_rearm_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
   if ((pipe_num == 0U) || (pipe_num > k_ra8_usb_max_pipe_num)) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.13 "NRDYSTS : NRDY Interrupt Status Register", p 1992.
+  /* HUM Ch 36.2.19 "NRDYSTS : NRDY Interrupt Status Register", p 1992.
    * W0C semantics: write 0 to clear the target bit, 1 to preserve the
    * rest. */
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
   reg->NRDYSTS            = (uint16_t)(~pipe_bit);
-  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005. Force
+  /* HUM Ch 36.2.35 "PIPEnCTR : PIPEn Control Registers", p 2007. Force
    * PID=BUF so the next host OUT token is ACKed. */
   priv_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
   return k_ra8_ok;
@@ -447,7 +447,7 @@ ra8_err_t ra8_usb_park_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
   if ((pipe_num == 0U) || (pipe_num > k_ra8_usb_max_pipe_num)) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register" p 2005 */
+  /* HUM Ch 36.2.35 "PIPEnCTR : PIPEn Control Registers" p 2007 */
   priv_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
   return k_ra8_ok;
 }
@@ -483,12 +483,12 @@ ra8_err_t ra8_usb_read_setup_if_valid(ra8_usb_speed_t speed, ra8_usb_setup_t* ou
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986 */
+  /* HUM Ch 36.2.16 "INTSTS0 : Interrupt Status Register 0", p 1986 */
   if ((reg->INTSTS0 & k_ra8_intsts0_mask_valid) == 0U) {
     return k_ra8_err_no_data;
   }
 
-  /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1995 */
+  /* HUM Ch 36.2.24 "USBREQ : USB Request Type Register", p 1995 */
   const uint16_t req         = reg->USBREQ;
   out_setup->bm_request_type = (uint8_t)(req & k_ra8_usb_byte_mask);
   out_setup->b_request       = (uint8_t)((req >> k_ra8_usb_byte_bits) & k_ra8_usb_byte_mask);
@@ -571,12 +571,12 @@ ra8_err_t ra8_usb_control_response(ra8_usb_speed_t speed, bool accept)
     return k_ra8_err_invalid_arg;
   }
   if (!accept) {
-    /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
+    /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 */
     priv_dcp_pid(reg, k_ra8_pid_stall);
     return k_ra8_ok;
   }
   priv_dcp_pid(reg, k_ra8_pid_buf);
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
+  /* HUM Ch 36.2.30 "DCPCTR : DCP Control Register", p 1999 */
   priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl), 0U);
   return k_ra8_ok;
 }

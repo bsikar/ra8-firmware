@@ -165,8 +165,8 @@ typedef enum : uint32_t {
  * The ACMD6 application command negotiates the card-side data-bus
  * width. Its 32-bit argument carries the width in bits [1:0]
  * (``0b00`` = 1-bit, ``0b10`` = 4-bit); the SDHI replays the R1
- * card-status response in SD_RSP10 (HUM Ch 47.2.5 "SD_RSP10..76 :
- * SD Response Registers" p 3132). These constants name the bits the
+ * card-status response in SD_RSP10 (HUM Ch 47.2.6 "SD_RSPi" / 47.2.8
+ * "SD_RSP76 : SD Card Response Registers" p 3127-3128). These constants name the bits the
  * ACMD6 negotiation inspects so the driver carries no magic numbers:
  *
  * - ``APP_CMD`` (R1 bit 5) is set in the CMD55 response to confirm the

@@ -44,7 +44,7 @@ extern "C" {
  * @brief Stop a ULPT channel and confirm the counter has halted.
  *
  * @details
- * Toggles ULPTCR.TSTOP (HUM Ch 25.2.1 "ULPTCR", p 1190) to force the
+ * Toggles ULPTCR.TSTOP (HUM Ch 25.3.4 "ULPTCR", p 1190) to force the
  * down-counter to stop, clears ULPTCR, then polls the count-status flag
  * ULPTCR.TCSTF until it reads 0. TCSTF lags the stop request by a few
  * ULPTLCLK (32.768 kHz) cycles, so the confirm poll is bounded by

@@ -430,7 +430,7 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
    * status stage needs DIR = 0 so the host issues an IN token to collect the
    * device's status ZLP. Restore it for the write / no-data status (the
    * control-READ OUT-ZLP status keeps the default DIR and is best-effort).
-   * HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
+   * HUM Ch 36.2.28 "DCPCFG : DCP Configuration Register" p 1998. */
   if (!write_zlp) {
     priv_rmw16(&reg->DCPCFG, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir));
   }
@@ -507,7 +507,7 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
    * DIR = 1 so the controller issues OUT tokens; otherwise the device sees an
    * IN token in its write-data stage and flags CTSQ = SQER, dropping the
    * payload (CFIFOSEL.ISEL only sets the CPU FIFO-access direction, not the
-   * wire token direction). HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
+   * wire token direction). HUM Ch 36.2.28 "DCPCFG : DCP Configuration Register" p 1998. */
   priv_rmw16(&reg->DCPCFG, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir), 0U);
   priv_select_cfifo(reg, 0U, true);
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 -- discard
@@ -581,14 +581,14 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
    * DCP read window, clear the receive bank (BCLR), enable the DCP BRDY
    * interrupt, force the receive toggle to DATA1 via DCPCTR.SQSET, and set
    * PID=BUF so the SIE ACKs the OUT token.
-   * HUM Ch 36.2.21 "DCPCTR" p 1991 (SQSET) / Ch 36.2.11 "BRDYENB" p 1982 /
-   * Ch 36.2.8 "CFIFOCTR" p 1979 (BCLR). */
+   * HUM Ch 36.2.30 "DCPCTR" p 1999 (SQSET) / Ch 36.2.12 "BRDYENB" p 1982 /
+   * Ch 36.2.8 "CFIFOCTR" p 1978 (BCLR). */
   priv_dcp_pid(reg, k_ra8_pid_nak);
   /* Clear any stale CCPL left by the previous transfer's status stage. With
    * CCPL still set, arming PID=BUF makes the SIE run a status stage instead of
    * accepting the data stage -- CTSQ goes to SQER and the OUT data never lands.
    * Device-side mirror of the host guard in ::internal_host_ctrl_setup.
-   * HUM Ch 36.2.21 "DCPCTR : DCP Control Register" p 1991 (CCPL). */
+   * HUM Ch 36.2.30 "DCPCTR : DCP Control Register" p 1999 (CCPL). */
   priv_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_ccpl));
   reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   priv_select_cfifo(reg, 0U, false);
@@ -650,7 +650,7 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
   }
   /* Disable the one-shot DCP BRDY and W0C-clear the latch before draining
    * (FSP order; protects DBLB bank edges and prevents an ISR re-storm).
-   * HUM Ch 36.2.11 "BRDYENB" p 1982 / Ch 36.2.13 "BRDYSTS" p 1984. */
+   * HUM Ch 36.2.12 "BRDYENB" p 1982 / Ch 36.2.18 "BRDYSTS" p 1991. */
   reg->BRDYENB = (uint16_t)(reg->BRDYENB & (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
 

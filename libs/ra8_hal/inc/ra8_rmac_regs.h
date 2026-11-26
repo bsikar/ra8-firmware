@@ -224,8 +224,8 @@ typedef enum : uint16_t {
  * @brief MRAFC reception address filter mode bits (HUM Ch 33.4).
  *
  * @details
- * Bit layout (HUM Ch 33.4 "MRAFC : MAC Reception Address Filter
- * Configuration Register" p 1707):
+ * Bit layout (HUM Ch 33.4.1.12 "MRAFC : MAC Reception Address Filter
+ * Configuration Register" p 1717):
  *   - bits [10:0]  hash/class enables  (UCENE / MCENE / BCENE / ...)
  *   - bits [26:16] perfect-match enables (UCENP / MCENP / BCENP / ...)
  *
@@ -289,7 +289,7 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register"
- * p 1707: MPIC.PIS[2:0] has only TWO defined encodings -- 000b = MII
+ * p 1709: MPIC.PIS[2:0] has only TWO defined encodings -- 000b = MII
  * and 010b = GMII. All other values are Reserved.
  *
  * MPIC.PIS describes the *internal* xMII interface between the RMAC

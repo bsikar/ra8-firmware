@@ -540,7 +540,7 @@ static inline volatile uint8_t* ra8_sys_usb60ckdivcr(void)
 /** @brief Get pointer to the 8-bit CANFDCKCR (CANFD core clock source select).
  *
  * @details HUM Ch 9.2.46 "CANFDCKCR : CANFD Core Clock Control Register"
- * p 366. Layout matches USBCKCR: CANFDCKSEL[3:0] at [3:0], CANFDCKSREQ
+ * p 362-363. Layout matches USBCKCR: CANFDCKSEL[3:0] at [3:0], CANFDCKSREQ
  * at bit 6, CANFDCKSRDY at bit 7. Reset value 0x01 selects MOCO.
  */
 static inline volatile uint8_t* ra8_sys_canfdckcr(void)
@@ -552,7 +552,7 @@ static inline volatile uint8_t* ra8_sys_canfdckcr(void)
 /** @brief Get pointer to the 8-bit CANFDCKDIVCR (CANFD core clock divider).
  *
  * @details HUM Ch 9.2.41 "CANFDCKDIVCR : CANFD Core Clock Division Control
- * Register" p 363. CANFDCKDIV[3:0] in bits [3:0].
+ * Register" p 357-358. CANFDCKDIV[3:0] in bits [3:0].
  */
 static inline volatile uint8_t* ra8_sys_canfdckdivcr(void)
 {

@@ -230,7 +230,7 @@ typedef struct {
  * @brief CFLCR scale-down + CFSZR clip-size programming bundle.
  *
  * @details
- * HUM Ch 60.2.10 "CFLCR" p 3650 + Ch 60.2.11 "CFSZR" p 3651. The
+ * HUM Ch 60.2.10 "CFLCR" p 3651 + Ch 60.2.11 "CFSZR" p 3653. The
  * scale-down factor is encoded as a `mantissa.fraction` fixed-point
  * value (4-bit mantissa, 12-bit fraction) per axis. A value of 0
  * disables that axis; the CEU treats the size-clip register as the

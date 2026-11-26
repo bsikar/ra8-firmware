@@ -750,7 +750,7 @@ static volatile r_usb_regs_t* internal_pick_regs(ra8_usb_speed_t speed)
  * 4. 16-bit LE drain into @p out, capped at @p max_len.
  * 5. Write CFIFOCTR.BCLR to release the buffer.
  *
- * See HUM Ch 36.2.5 "CFIFO" p 1973 and Ch 36.2.8 "CFIFOCTR" p 1979.
+ * See HUM Ch 36.2.4 "CFIFO" p 1972 and Ch 36.2.7 "CFIFOCTR" p 1978.
  *
  * @param[in] reg See implementation.
  * @param[in] out See implementation.
@@ -770,7 +770,7 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
   if (max_len == 0U) {
     return 0U;
   }
-  /* HUM Ch 36.2.7 "CFIFOSEL" p 1976 */ /* pipe=0 (DCP), MBW=16, ISEL=1. */
+  /* HUM Ch 36.2.6 "CFIFOSEL" p 1974 */ /* pipe=0 (DCP), MBW=16, ISEL=1. */
   uint16_t sel  = (uint16_t)k_ra8_hhid_dcp_pipe_dcp & (uint16_t)k_ra8_fifosel_curpipe;
   sel           = (uint16_t)(sel | k_ra8_fifosel_mbw_16);
   sel           = (uint16_t)(sel | k_ra8_fifosel_isel);
@@ -791,7 +791,7 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra8_fifoctr_dtln);
   uint16_t       take      = (available < max_len) ? available : max_len;
 
-  /* HUM Ch 36.2.5 "CFIFO" p 1973 */ /* 16-bit LE drain. */
+  /* HUM Ch 36.2.4 "CFIFO" p 1972 */ /* 16-bit LE drain. */
   enum : uint8_t {
     k_byte_bits = 8U,    /**< Byte bits. */
     k_byte_mask = 0xFFU, /**< Byte mask. */

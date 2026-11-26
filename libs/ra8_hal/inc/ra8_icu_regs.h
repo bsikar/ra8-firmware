@@ -261,7 +261,7 @@ static inline volatile uint8_t* ra8_icu_irqcr(uint8_t irq_num)
  * ``R7KA8D2KF_core0.h``: ``IELS`` is a 10-bit field at [9:0],
  * ``IR`` (interrupt status flag, RW1C) at [16], ``DTCE`` at [24].
  * HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n",
- * p 524.
+ * p 547-549.
  */
 typedef enum : uint8_t {
   k_ra8_ielsr_iels_shift = 0U,  /**< IELS event-select shift, bits [9:0]. */

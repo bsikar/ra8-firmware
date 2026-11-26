@@ -917,7 +917,7 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
     return k_ra8_err_invalid_arg;
   }
 
-  /* HUM Ch 62.2.17 "TEXORIGIN: Texture Base Address Register", p 3700 */
+  /* HUM Ch 62.2.14 "TEXORIGIN: Texture Base Address Register", p 3699 */
   *ra8_drw_reg32(k_ra8_drw_off_texorigin) = (uint32_t)tex->base_addr;
 
   /* HUM Ch 62.2.15 "TEXPITCH: Texels Per Texture Line Register", p 3700 */

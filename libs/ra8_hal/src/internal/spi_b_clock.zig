@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! SPI_B bit-rate divider and error-flag mapping (RA8FW-892, was part of
-//! ra8_spi_b.c). HUM Ch 43.2.6 "SPCR3" p 2891, Ch 43.2.9 "SPSR" p 2898.
+//! ra8_spi_b.c). HUM Ch 43.2.5 "SPCR3" p 2891, Ch 43.2.9 "SPSR" p 2898.
 //! Exports live in src/spi_b_clock_abi.zig.
 
 pub const spcr3_spbr_shift: u5 = 8;

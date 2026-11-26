@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! SPI_B polled transfer framing (RA8FW-899, was part of ra8_spi_b.c).
-//! HUM Ch 43.2.7 "SPCMDm" p 2893: SPB[20:16] = frame bits - 1.
+//! HUM Ch 43.2.6 "SPCMDm" p 2893: SPB[20:16] = frame bits - 1.
 //! Exports live in src/spi_b_xfer_abi.zig.
 
 const std = @import("std");

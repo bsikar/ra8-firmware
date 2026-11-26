@@ -96,7 +96,7 @@ typedef struct {
  *
  * @details
  * Bit positions match the GTST register in HUM Ch 22.2.16
- * "GTST : General PWM Timer Status Register", p 962..964:
+ * "GTST : General PWM Timer Status Register", p 926..932:
  * TCFA = bit 0, TCFB = bit 1, TCFPO = bit 6, TCFPU = bit 7.
  */
 typedef enum : uint32_t {
@@ -140,8 +140,8 @@ typedef void (*ra8_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * ``GPT_IO_PIN_GTIOCB`` from
  * ``fsp/ra/fsp/src/r_gpt/r_gpt.c``.
  *
- * HUM Ch 22.2.13 "GTIOR : General PWM Timer I/O Control Register"
- * p 942..946 -- bit 8 is OAE (output enable A), bit 24 is OBE.
+ * HUM Ch 22.2.14 "GTIOR : General PWM Timer I/O Control Register"
+ * p 918..923 -- bit 8 is OAE (output enable A), bit 24 is OBE.
  */
 typedef enum : uint8_t {
   k_ra8_gpt_pin_a = 0U, /**< GTIOCnA -- compare register A path. */
@@ -177,7 +177,7 @@ typedef enum : uint8_t {
  * @enum ra8_gpt_pwm_disable_t
  * @brief Output-disable-on-POEG-fault behaviour (GTIOR.OADF / OBDF).
  *
- * @details HUM Ch 22.2.13 "GTIOR" Table 22.18, p 944..946.
+ * @details HUM Ch 22.2.14 "GTIOR" Table 22.4/22.5, p 918..923.
  */
 typedef enum : uint8_t {
   k_ra8_gpt_disable_none      = 0U, /**< POEG fault does not affect pin. */

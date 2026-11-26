@@ -122,7 +122,7 @@ extern "C" {
  *
  * @details
  * Convenience wrapper that drops the FIFO contents (HUM Ch 3.2.14
- * "RST bit" p 217). Useful for application-level resync without
+ * "IPC0CLR0" (RST bit) p 216-217). Useful for application-level resync without
  * having to tear down callbacks via ``ra8_ipc_deinit``.
  *
  * @param[in] channel Channel id 0..3.

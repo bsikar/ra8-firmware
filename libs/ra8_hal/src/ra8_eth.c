@@ -434,7 +434,7 @@ static ra8_err_t internal_bring_up_rmac(const ra8_eth_cfg_t* cfg)
    * RMAC-level state ``ra8_eth_open`` still has to programme is the
    * MAC address the application chose.
    *
-   * HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- the MAC address registers
+   * HUM Ch 33.4.1.10 "MRMAC0" / 33.4.1.11 "MRMAC1" p 1716-1717 -- the MAC address registers
    * are paired with MPIC under the same write-once gate: silent on
    * MAC writes while ETHA is in OPERATION. Bench-confirmed on
    * EK-RA8D2: without the DISABLE -> CONFIG -> {MAC write} -> DISABLE
@@ -466,7 +466,7 @@ static ra8_err_t internal_bring_up_rmac(const ra8_eth_cfg_t* cfg)
     return err;
   }
 
-  /* HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- writes only stick while
+  /* HUM Ch 33.4.1.10 "MRMAC0" p 1716 -- writes only stick while
    * the paired ETHA is in CONFIG. */
   const ra8_err_t mac_err = ra8_rmac_set_mac_address(rmac_port, mac_copy);
 
@@ -771,7 +771,7 @@ ra8_err_t ra8_eth_open(const ra8_eth_cfg_t* cfg)
   /* Force a fresh MPIC re-sync on the next ::ra8_eth_link_status call
    * so the on-chip RMAC's MPIC.LSC matches whatever speed the PHY
    * actually negotiated (HUM Ch 33.4.1.2 "MPIC : PHY Interfaces
-   * Configuration Register" p 1707). */
+   * Configuration Register" p 1709). */
   g_eth_mac_speed_resynced = false;
 
   internal_capture_state(cfg);
@@ -799,7 +799,7 @@ ra8_err_t ra8_eth_close(void)
 
   /* Park the GWCA state machine in DISABLE. Best-effort -- ignore
    * the err so teardown always reaches the MSTP-gate balance below.
-   * HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
+   * HUM Ch 34.3.1.1 "GWMC : Mode Configuration Register" p 1792 */
   (void)ra8_eth_gwca_set_operation_mode(k_ra8_gwmc_opc_disable);
 
   /* Tear down the local RMAC port (MSTP-gate ref-counted). */

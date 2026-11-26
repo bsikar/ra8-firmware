@@ -407,7 +407,7 @@ static ra8_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
  * 11. PHYSET |= REPSEL_16             (terminator adjust cycle)
  *
  * The HS instance has no SCKE bit (HUM Ch 37.2.1 "SYSCFG" register
- * layout, p 2060); writing bit 10 there is a no-op.
+ * layout, p 2061-2063); writing bit 10 there is a no-op.
  *
  * @param[in] reg HS register block pointer (must be ::ra8_usb_hs()).
  *
@@ -494,14 +494,14 @@ ra8_err_t priv_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
  */
 void priv_usb_init_common(volatile r_usb_regs_t* reg)
 {
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  /* HUM Ch 36.2.6 "CFIFOSEL : CFIFO Port Select Register", p 1974 */
   /* HUM Ch 37.2.8 "CFIFOSEL : CFIFO Port Select Register", p 2071 */
   reg->CFIFOSEL  = k_ra8_fifosel_mbw_16;
   reg->D0FIFOSEL = k_ra8_fifosel_mbw_16;
   reg->D1FIFOSEL = k_ra8_fifosel_mbw_16;
 
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1999 */
-  /* HUM Ch 37.2.30 "DCPMAXP : DCP Max Packet Size Register", p 2092 */
+  /* HUM Ch 36.2.29 "DCPMAXP : DCP Maximum Packet Size Register", p 1999 */
+  /* HUM Ch 37.2.31 "DCPMAXP : DCP Maximum Packet Size Register", p 2092 */
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra8_usb_dcp_max_packet;
   reg->DCPCTR  = 0U;

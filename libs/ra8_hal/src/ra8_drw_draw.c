@@ -218,7 +218,7 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
   *ra8_drw_reg32(k_ra8_drw_off_l3yadd) = internal_to_subpixel(adx);
   *ra8_drw_reg32(k_ra8_drw_off_l4yadd) = internal_to_subpixel(-adx);
 
-  /* HUM Ch 62.2.13 "L1BAND/L2BAND: Limiter Band Width Register", p 3699.
+  /* HUM Ch 62.2.13 "LmBAND : Limiter m Band Width Parameter Register", p 3699.
    * Band width = stroke width in sub-pixels for L1 and L2. */
   const uint32_t band = (uint32_t)line->width_px * (uint32_t)k_ra8_drw_subpixel_unit;
   *ra8_drw_reg32(k_ra8_drw_off_l1band) = band;

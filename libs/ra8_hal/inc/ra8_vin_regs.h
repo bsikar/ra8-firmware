@@ -415,7 +415,7 @@ typedef enum : uint32_t {
  * @brief Bit masks for the IS (Image Stride) register.
  *
  * @details
- * HUM Ch 67.2.13 "IS : Image Stride Register" p 3984. 13-bit field
+ * HUM Ch 67.2.10 "IS : Image Stride Register" p 3984. 13-bit field
  * (max 8191 pixels per line).
  */
 typedef enum : uint32_t {
@@ -439,7 +439,7 @@ typedef enum : uint32_t {
  * @brief Bit masks for the SI (Scanline Interrupt) register.
  *
  * @details
- * HUM Ch 67.2.17 "SI : Scanline Interrupt Register" p 3990. 12-bit
+ * HUM Ch 67.2.17 "SI : Scanline Interrupt Register" p 3991. 12-bit
  * compare value; 0 disables the scanline interrupt.
  */
 typedef enum : uint32_t {
@@ -476,7 +476,7 @@ typedef enum : uint32_t {
  * @brief Bit masks for the UDS_CTRL register.
  *
  * @details
- * HUM Ch 67.2.21 "UDS_CTRL : UDS Scaling Control Register" p 3996.
+ * HUM Ch 67.2.22.1 "UDS_CTRL : Scaling Control Registers" p 3997.
  * NE_BCB, NE_GY, NE_RCR pick bilinear (0) vs nearest neighbour (1)
  * per channel; BC selects multi-tap mode; BLADV / AMD enable two
  * advanced-mode tweaks for the bilinear/nearest filter.
@@ -495,7 +495,7 @@ typedef enum : uint32_t {
  * @brief Bit masks for the UDS_SCALE register.
  *
  * @details
- * HUM Ch 67.2.22 "UDS_SCALE : Scaling Factor Register" p 3997.
+ * HUM Ch 67.2.22.2 "UDS_SCALE : Scaling Factor Registers" p 3998-4001.
  * Each axis carries a 4-bit integer + 12-bit fractional multiplier
  * (Q4.12 fixed-point scaling factor).
  */
@@ -522,7 +522,7 @@ typedef enum : uint8_t {
  * @brief Bit masks for the UDS_PASS_BWIDTH register.
  *
  * @details
- * HUM Ch 67.2.23 "UDS_PASS_BWIDTH : Passband Register" p 3998.
+ * HUM Ch 67.2.22.3 "UDS_PASS_BWIDTH : Passband Registers" p 4001.
  * 7-bit V and H passband bandwidths used by the UDS filter.
  */
 typedef enum : uint32_t {
@@ -544,8 +544,8 @@ typedef enum : uint8_t {
  * @brief Bit masks for the UDS_CLIP_SIZE register.
  *
  * @details
- * HUM Ch 67.2.24 "UDS_CLIP_SIZE : UDS Output Size Clipping Register"
- * p 3999. 12-bit V and H clip sizes after scaling.
+ * HUM Ch 67.2.22.4 "UDS_CLIP_SIZE : UDS Output Size Clipping Registers"
+ * p 4002-4003. 12-bit V and H clip sizes after scaling.
  */
 typedef enum : uint32_t {
   k_ra8_vin_uds_clip_v = 0x00000FFFUL, /**< CL_VSIZE [11:0]   . */
@@ -566,7 +566,7 @@ typedef enum : uint8_t {
  * @brief Bit masks for the LUTP (LUT Pointer) register.
  *
  * @details
- * HUM Ch 67.2.25 "LUTP : Look Up Table Pointer Register" p 4000.
+ * HUM Ch 67.2.23 "LUTP : Lookup Table Pointer Register" p 4003-4004.
  * Three 10-bit pointers (Y / Cb / Cr) into the 256-entry LUT used
  * to convert 10-bit input to 8-bit output samples.
  */
@@ -591,7 +591,7 @@ typedef enum : uint8_t {
  * @brief Bit masks for the LUTD (LUT Data) register.
  *
  * @details
- * HUM Ch 67.2.26 "LUTD : Look Up Table Data Register" p 4001. Three
+ * HUM Ch 67.2.24 "LUTD : Lookup Table Data Register" p 4004. Three
  * 8-bit values written into the LUT entry pointed to by LUTP. The
  * driver writes 256 entries by stepping LTYPR / LTCBPR / LTCRPR.
  */
@@ -647,8 +647,8 @@ typedef enum : uint8_t {
  * @brief Bit masks for the CSCE1 (YC-to-RGB Y multiply) register.
  *
  * @details
- * HUM Ch 67.2.36 "CSCE1" p 3995 (numbering note: CSCE bank lives at
- * offset 0x300 even though section number is 67.2.36). YMUL2 is a
+ * HUM Ch 67.2.21.1 "CSCE1" p 3995 (CSCE bank lives at
+ * offset 0x300). YMUL2 is a
  * 14-bit unsigned multiplier (initial value 1.164 = 4767 / 4096);
  * ROUND enables rounding of the result.
  */
@@ -662,7 +662,7 @@ typedef enum : uint32_t {
  * @brief Bit masks for the CSCE2 (YC-to-RGB subtract) register.
  *
  * @details
- * HUM Ch 67.2.37 "CSCE2" p 3995. CSUB2 must remain at the reset
+ * HUM Ch 67.2.21.2 "CSCE2" p 3995-3996. CSUB2 must remain at the reset
  * value (2048 = 0x800); YSUB2 carries the Y subtraction term
  * (initial value 256 = 0x100).
  */
@@ -684,7 +684,7 @@ typedef enum : uint8_t {
  * @brief Bit masks for the CSCE3 / CSCE4 multiply-pair registers.
  *
  * @details
- * HUM Ch 67.2.38 "CSCE3" and 67.2.39 "CSCE4". Each carries two
+ * HUM Ch 67.2.21.3 "CSCE3" and 67.2.21.4 "CSCE4". Each carries two
  * unsigned 14-bit multiplier coefficients packed low/high.
  */
 typedef enum : uint32_t {
@@ -705,7 +705,7 @@ typedef enum : uint8_t {
  * @brief LUT geometry constants.
  *
  * @details
- * HUM Ch 67.2.25 "LUTP" p 4000. The LUT has 256 entries (0..255);
+ * HUM Ch 67.2.23 "LUTP" p 4003-4004. The LUT has 256 entries (0..255);
  * each LUTD write requires a matching LUTP pointer update.
  */
 typedef enum : uint16_t {
