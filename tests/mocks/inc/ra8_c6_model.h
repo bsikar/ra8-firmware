@@ -72,6 +72,7 @@ the rest descend from it.                   */
   k_c6m_scan_alt_rssi  = 62U,   /**< RSSI magnitude of the second modelled AP.     */
   k_c6m_scan_wpa2      = 3U,    /**< `WIFI_AUTH_WPA2_PSK` for the first scan AP.   */
   k_c6m_scan_alt_first = 3U,    /**< First BSSID octet of the second scan AP.      */
+  k_c6m_hci_cap        = 264U,  /**< Capacity for captured outbound HCI payloads.  */
 } ra8_c6_model_const_t;
 
 /**
@@ -120,32 +121,35 @@ typedef enum : int32_t {
  * @since 0.1.0
  */
 typedef struct ra8_c6_model {
-  bool                     handshake;        /**< What HANDSHAKE reads.                      */
-  bool                     fail_transfer;    /**< Make every transfer report a bus fault.    */
-  uint32_t                 fail_req;         /**< Request id to refuse, or zero for none.    */
-  bool                     wrong_uid;        /**< Answer with a UID the host did not send.   */
-  bool                     wrong_id;         /**< Answer with a message id nobody asked for. */
-  bool                     mute;             /**< Answer nothing at all.                     */
-  bool                     silent_boot;      /**< Do not answer the announcement.            */
-  bool                     silent_scan;      /**< Do not emit Event_StaScanDone on scan.     */
-  bool                     scan_empty;       /**< Report zero APs during modelled scan.      */
-  uint16_t                 hs_quiet_polls;   /**< HANDSHAKE samples to read inactive first.  */
-  uint16_t                 transfers;        /**< Transactions the host has clocked.         */
-  uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
-  uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
-  uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
-  uint8_t                  seen_n;           /**< Entries in `seen`.                         */
+  bool     handshake;        /**< What HANDSHAKE reads.                      */
+  bool     fail_transfer;    /**< Make every transfer report a bus fault.    */
+  uint32_t fail_req;         /**< Request id to refuse, or zero for none.    */
+  bool     wrong_uid;        /**< Answer with a UID the host did not send.   */
+  bool     wrong_id;         /**< Answer with a message id nobody asked for. */
+  bool     mute;             /**< Answer nothing at all.                     */
+  bool     silent_boot;      /**< Do not answer the announcement.            */
+  bool     silent_scan;      /**< Do not emit Event_StaScanDone on scan.     */
+  bool     scan_empty;       /**< Report zero APs during modelled scan.      */
+  uint16_t hs_quiet_polls;   /**< HANDSHAKE samples to read inactive first.  */
+  uint16_t transfers;        /**< Transactions the host has clocked.         */
+  uint32_t delays;           /**< Times the host asked the seam to wait.     */
+  uint16_t last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
+  uint32_t seen[k_c6m_seen]; /**< Request ids observed, in order.            */
+  uint8_t  seen_n;           /**< Entries in `seen`.                         */
   /** SSID the host configured. */
   char    ssid[k_ra8_c6link_ssid_max + 1U];
   uint8_t ssid_len; /**< Its length as received. */
   /** Passphrase received. */
   char     pass[k_ra8_c6link_pass_max + 1U];
-  uint8_t  pass_len;                                       /**< Received bytes. */
-  bool     caps_seen;                                      /**< Caps observed.  */
-  uint8_t  caps[k_c6m_caps_bytes];                         /**< Caps bytes.     */
-  uint8_t  caps_len;                                       /**< Caps length.    */
-  uint16_t eth_tx_len;                                     /**< Frame length.   */
-  uint8_t  eth_tx[k_c6m_eth_len];                          /**< Frame bytes.    */
+  uint8_t  pass_len;               /**< Received bytes.  */
+  bool     caps_seen;              /**< Caps observed.   */
+  uint8_t  caps[k_c6m_caps_bytes]; /**< Caps bytes.      */
+  uint8_t  caps_len;               /**< Caps length.     */
+  uint16_t eth_tx_len;             /**< Frame length.    */
+  uint8_t  eth_tx[k_c6m_eth_len];  /**< Frame bytes.     */
+  uint16_t hci_tx_len;             /**< HCI body bytes.  */
+  uint8_t  hci_tx_pkt_type;        /**< HCI header type. */
+  uint8_t  hci_tx[k_c6m_hci_cap];  /**< HCI body bytes.  */
   /** Frames to send. */
   uint8_t queue[k_c6m_queue][k_ra8_c6link_frame_bytes];
   /** Next queue slot to transmit. */
@@ -295,6 +299,20 @@ void ra8_c6_model_emit_scan_done(uint32_t count);
  * @since 0.1.0
  */
 void ra8_c6_model_emit_eth(void);
+
+/**
+ * @brief Queue an inbound `ESP_HCI_IF` H4 packet from the modelled C6.
+ * @details Copies @p h4_pkt (`[type][body...]`) to payload offset 12 and seals
+ *          with `ESP_HCI_IF`, matching esp-hosted's controller-to-host framing.
+ * @param[in] h4_pkt Full H4 packet (`0x04` event or `0x02` ACL); must be non-null.
+ * @param[in] len    H4 packet byte length (`1..k_ra8_c6link_max_payload`).
+ * @return Nothing.
+ * @pre The queue has room.
+ * @pre ::ra8_c6_model_reset has run.
+ * @post One `ESP_HCI_IF` frame is queued.
+ * @since 0.1.0
+ */
+void ra8_c6_model_emit_hci(const uint8_t* h4_pkt, uint16_t len);
 
 /**
  * @brief Queue the two association announcements with their bodies absent.

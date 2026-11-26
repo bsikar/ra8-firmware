@@ -63,3 +63,18 @@ test "no length is admitted while the slot is occupied" {
         try std.testing.expect(std.meta.isError(tx_admit.admit(true, len, 1)));
     }
 }
+
+test "hci packet admission accepts H4 host types and enforces length bounds and order" {
+    const valid_types = [_]u8{ 0x01, 0x02, 0x03, 0x05 };
+    for (valid_types) |pkt_type| {
+        try tx_admit.admitHci(true, tx_admit.HciBound.min, pkt_type, 0);
+        try tx_admit.admitHci(true, tx_admit.HciBound.max, pkt_type, 0);
+    }
+    try std.testing.expectEqual(frame.Frame.max_payload + 1, tx_admit.HciBound.max);
+    try std.testing.expectError(error.NotInitialized, tx_admit.admitHci(false, 0, 0x00, 5));
+    try std.testing.expectError(error.InvalidSize, tx_admit.admitHci(true, 1, 0x00, 5));
+    try std.testing.expectError(error.InvalidSize, tx_admit.admitHci(true, tx_admit.HciBound.max + 1, 0x01, 5));
+    try std.testing.expectError(error.InvalidArg, tx_admit.admitHci(true, 4, 0x04, 5));
+    try std.testing.expectError(error.InvalidArg, tx_admit.admitHci(true, 4, 0x00, 0));
+    try std.testing.expectError(error.Busy, tx_admit.admitHci(true, 4, 0x01, 5));
+}

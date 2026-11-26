@@ -54,8 +54,11 @@ pub export fn ra8_c6link_open(link: ?*c.ra8_c6link_t, cfg: ?*const c.ra8_c6link_
     handle.wait = std.mem.zeroes(c.ra8_c6link_wait_t);
     handle.fault = std.mem.zeroes(c.ra8_c6link_fault_t);
     handle.stats = null;
+    handle.hci_rx_cb = null;
+    handle.hci_ctx = null;
     handle.tx_len = 0;
     handle.tx_if = 0;
+    handle.tx_pkt_type = 0;
     handle.boot_seen = false;
     handle.open = true;
     return Err.ok;
@@ -75,7 +78,10 @@ pub export fn ra8_c6link_close(link: ?*c.ra8_c6link_t) callconv(.c) c.ra8_err_t 
     handle.cb_ctx = null;
     handle.arena = null;
     handle.stats = null;
+    handle.hci_rx_cb = null;
+    handle.hci_ctx = null;
     handle.tx_len = 0;
+    handle.tx_pkt_type = 0;
     handle.wait = std.mem.zeroes(c.ra8_c6link_wait_t);
     handle.open = false;
     return Err.ok;

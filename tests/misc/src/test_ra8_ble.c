@@ -578,6 +578,114 @@ static void test_open_cfg_flags(void)
   TEST_END("ble open validates its descriptor");
 }
 
+typedef struct {
+  uint8_t   last_tx[300];
+  uint16_t  last_tx_len;
+  uint32_t  tx_calls;
+  uint32_t  poll_calls;
+  bool      push_on_poll;
+  ra8_err_t send_ret;
+  ra8_err_t poll_ret;
+} ble_test_ext_t;
+
+static ra8_err_t ext_send(void* ctx, const uint8_t* h4_pkt, uint16_t len)
+{
+  ble_test_ext_t* const ext = (ble_test_ext_t*)ctx;
+  ext->tx_calls++;
+  ext->last_tx_len = len;
+  const uint16_t take =
+    (len <= (uint16_t)sizeof ext->last_tx) ? len : (uint16_t)sizeof ext->last_tx;
+  (void)memcpy(ext->last_tx, h4_pkt, (size_t)take);
+  return ext->send_ret;
+}
+
+static ra8_err_t ext_poll(void* ctx)
+{
+  ble_test_ext_t* const ext = (ble_test_ext_t*)ctx;
+  ext->poll_calls++;
+  if (ext->push_on_poll) {
+    const uint8_t cc_evt[6] = {0x04U, 0x0EU, 0x03U, 0x01U, 0x0AU, 0x20U};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_rx_push(cc_evt, (uint16_t)sizeof cc_evt));
+    ext->push_on_poll = false;
+  }
+  return ext->poll_ret;
+}
+
+/**
+ * @par MC/DC:
+ * (tests external transport bind/unbind, TX pass-through without mutating
+ * loopback capture, `ra8_ble_rx_push` H4 validation + bounds, and fallback
+ * to loopback after unbind)
+ */
+static void test_external_transport_seam(void)
+{
+  TEST_BEGIN("ble external transport bind, rx_push and unbind");
+  (void)ra8_ble_unbind_transport();
+
+  /* Validation on bind and rx_push while closed. */
+  const ra8_ble_transport_t bad_no_send = {.send = nullptr, .poll = nullptr, .ctx = nullptr};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_bind_transport(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_bind_transport(&bad_no_send));
+  (void)ra8_ble_close();
+  const uint8_t closed_evt[3] = {0x04U, 0x0FU, 0x00U};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_rx_push(nullptr, 3U));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_rx_push(closed_evt, 3U));
+
+  prep_open();
+  s_evt_count = 0;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_attach_event_handler(stub_evt_cb, nullptr));
+
+  ble_test_ext_t ext           = {.send_ret = k_ra8_ok, .poll_ret = k_ra8_ok, .push_on_poll = true};
+  const ra8_ble_transport_t tr = {.send = ext_send, .poll = ext_poll, .ctx = &ext};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_bind_transport(&tr));
+
+  /* Command + ACL route to external send without polluting loopback capture. */
+  const uint8_t param[1] = {0x01U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
+  TEST_ASSERT_EQ(1U, ext.tx_calls);
+  TEST_ASSERT_EQ(5U, ext.last_tx_len);
+  TEST_ASSERT_EQ((uint8_t)k_test_byte_pkt_cmd, ext.last_tx[0]);
+
+  const uint8_t acl_body[2] = {0xAAU, 0xBBU};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, acl_body, 2U));
+  TEST_ASSERT_EQ(2U, ext.tx_calls);
+  TEST_ASSERT_EQ(7U, ext.last_tx_len);
+  TEST_ASSERT_EQ((uint8_t)k_test_byte_pkt_acl, ext.last_tx[0]);
+
+  uint16_t loop_tx_len = 99U;
+  (void)ra8_ble_test_tx_capture(&loop_tx_len);
+  TEST_ASSERT_EQ(0U, loop_tx_len);
+
+  /* dispatch() runs poll() before draining queued H4 packets. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_dispatch());
+  TEST_ASSERT_EQ(1U, ext.poll_calls);
+  TEST_ASSERT_EQ(1, s_evt_count);
+  TEST_ASSERT_EQ(0x0EU, s_evt_last_code);
+
+  /* Malformed H4 packets are refused cleanly. */
+  const uint8_t bad_cmd[4]   = {0x01U, 0x03U, 0x0CU, 0x00U};
+  const uint8_t bad_trunc[4] = {0x04U, 0x0EU, 0x03U, 0x01U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_rx_push(bad_cmd, (uint16_t)sizeof bad_cmd));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_rx_push(bad_trunc, (uint16_t)sizeof bad_trunc));
+
+  /* TX and poll errors propagate unchanged. */
+  ext.send_ret = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
+  ext.poll_ret = k_ra8_err_hw_error;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_ble_dispatch());
+
+  /* Unbind restores loopback TX capture. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_unbind_transport());
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
+  (void)ra8_ble_test_tx_capture(&loop_tx_len);
+  TEST_ASSERT_EQ(5U, loop_tx_len);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
+  TEST_END("ble external transport bind, rx_push and unbind");
+}
+
 int main(void)
 {
   test_open_close();
@@ -596,5 +704,6 @@ int main(void)
   test_attach_handlers_idempotent();
   test_mcdc_ble();
   test_mcdc_ble_acl_inject_args();
+  test_external_transport_seam();
   return 0;
 }

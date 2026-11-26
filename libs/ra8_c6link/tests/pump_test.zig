@@ -141,3 +141,17 @@ test "a handshake that comes back resets the give-up count" {
     try std.testing.expectEqual(@as(u16, 2), stats.transfers);
     try std.testing.expectEqual(@as(u16, 4), stats.hs_timeouts);
 }
+
+test "a staged payload with pkt_type seals header octet 11 once" {
+    var model: Model = .{ .staged = .{ .if_type = 4, .len = 3, .pkt_type = 0x01 } };
+    frame.filler(&model.reply);
+    var stats: pump.Stats = .{};
+    _ = pump.run(&model, 1, &stats);
+    try std.testing.expectEqual(@as(u8, 0x01), model.tx_buf[frame.Hdr.pkt_type]);
+    try std.testing.expectEqual(@as(u16, 3), model.sent_len[0]);
+    try std.testing.expect(model.staged == null);
+
+    _ = pump.run(&model, 1, &stats);
+    try std.testing.expectEqual(@as(u8, 0), model.tx_buf[frame.Hdr.pkt_type]);
+    try std.testing.expectEqual(@as(u16, 0), model.sent_len[1]);
+}

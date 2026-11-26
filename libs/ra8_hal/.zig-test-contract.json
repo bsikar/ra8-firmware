@@ -727,5 +727,5 @@
       "-Mra8_hal_options=src/standalone_ra8_hal_options.zig"
     ]
   },
-  "minimum_tests": 1144
+  "minimum_tests": 1145
 }

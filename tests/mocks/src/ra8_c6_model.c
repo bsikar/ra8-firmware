@@ -216,6 +216,19 @@ void ra8_c6_model_emit_eth(void)
   priv_c6link_frame_seal(slot, (uint8_t)ESP_STA_IF, 0U, (uint16_t)k_c6m_eth_len);
 }
 
+void ra8_c6_model_emit_hci(const uint8_t* h4_pkt, uint16_t len)
+{
+  if ((h4_pkt == nullptr) || (len == 0U) || (len > (uint16_t)k_ra8_c6link_max_payload)) {
+    return;
+  }
+  uint8_t* slot = ra8_c6_model_slot();
+  if (slot == nullptr) {
+    return;
+  }
+  (void)memcpy(&slot[k_ra8_c6link_header_bytes], h4_pkt, (size_t)len);
+  priv_c6link_frame_seal(slot, (uint8_t)ESP_HCI_IF, 0U, len);
+}
+
 void ra8_c6_model_emit_hollow_events(void)
 {
   RpcEventStaConnected connected;
@@ -700,6 +713,13 @@ RA8_INTERNAL static void internal_c6m_observe(const uint8_t* tx)
     s_c6.eth_tx_len     = hdr.len;
     const uint16_t take = (hdr.len < (uint16_t)k_c6m_eth_len) ? hdr.len : (uint16_t)k_c6m_eth_len;
     (void)memcpy(s_c6.eth_tx, &tx[hdr.offset], (size_t)take);
+    return;
+  }
+  if (hdr.if_type == (uint8_t)ESP_HCI_IF) {
+    s_c6.hci_tx_len      = hdr.len;
+    s_c6.hci_tx_pkt_type = hdr.hci_pkt_type;
+    const uint16_t take  = (hdr.len < (uint16_t)k_c6m_hci_cap) ? hdr.len : (uint16_t)k_c6m_hci_cap;
+    (void)memcpy(s_c6.hci_tx, &tx[hdr.offset], (size_t)take);
     return;
   }
   if (hdr.if_type == (uint8_t)ESP_PRIV_IF) {

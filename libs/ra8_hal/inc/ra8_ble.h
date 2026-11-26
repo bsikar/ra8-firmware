@@ -27,11 +27,11 @@
  *     | type | handle (LE16) | data-len (LE16) | payload | ACL  (0x02)
  *
  * @note The RA8D2 has no on-chip Bluetooth radio, so there is no on-chip
- *       controller backend. The current implementation (``src/ble_abi.zig``) is an
- *       in-memory loopback used by the host-stack unit tests. The production
- *       backend is an ESP32-C6 companion IC: the C6 runs the BLE controller
- *       (below HCI) and this seam carries HCI over the companion link, with
- *       the host stack above unchanged.
+ *       controller backend. Without a bound backend, ``src/ble_abi.zig`` uses an
+ *       in-memory loopback for host unit tests. Binding a hardware transport
+ *       through ::ra8_ble_bind_transport (such as the ESP32-C6 companion link in
+ *       ``port/nimble/src/ble_hci_c6link.c``) routes TX packets and RX polling
+ *       over that link while leaving the upper HCI seam unchanged.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -102,6 +102,25 @@ typedef struct {
   uint8_t use_external_osc;  /**< Must be 0: the C6 owns the radio oscillator. */
   uint8_t deep_sleep_enable; /**< Must be 0: the C6 owns controller sleep.     */
 } ra8_ble_config_t;
+
+/**
+ * @struct ra8_ble_transport_t
+ * @brief External controller transport callbacks bound onto `ra8_ble`.
+ *
+ * @details
+ * Decouples Ring 3 (`ra8_hal`) from higher-layer companion-link transport
+ * drivers (such as Ring 4 `ra8_c6link`). `send` transmits one complete H4
+ * packet (`[type][body...]`). Optional `poll` services inbound frames from
+ * the controller before ::ra8_ble_dispatch drains queued packets.
+ */
+typedef struct {
+  ra8_err_t (*send)(void* ctx, const uint8_t* h4_pkt, uint16_t len);
+  /**< Transmit one H4 packet; required. */
+  ra8_err_t (*poll)(void* ctx);
+  /**< Poll for inbound H4 packets; optional. */
+  void* ctx;
+  /**< Caller-owned context pointer handed to callbacks. */
+} ra8_ble_transport_t;
 
 /* =============================================================================
  * Callback typedefs
@@ -181,6 +200,53 @@ typedef void (*ra8_ble_acl_fn_t)(void* ctx, uint16_t handle, const uint8_t* payl
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_ble_close(void);
+
+/**
+ * @brief Bind an external H4 controller transport onto the BLE HAL seam.
+ *
+ * @details
+ * When bound, ::ra8_ble_hci_send_command and ::ra8_ble_hci_send_acl_data
+ * serialize standard H4 packets into stack staging buffers and forward them
+ * to `transport->send`, and ::ra8_ble_dispatch invokes `transport->poll` (if
+ * non-null) before dispatching queued packets. May be called before or after
+ * ::ra8_ble_open.
+ *
+ * @param[in] transport Transport vtable with non-null `send`; must be non-null.
+ *
+ * @return ``k_ra8_ok`` Transport bound.
+ * @return ``k_ra8_err_null_ptr`` If @p transport or `transport->send` is null.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ble_bind_transport(const ra8_ble_transport_t* transport);
+
+/**
+ * @brief Detach any external BLE transport and restore loopback mode.
+ *
+ * @return ``k_ra8_ok`` Always.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ble_unbind_transport(void);
+
+/**
+ * @brief Enqueue one received H4 packet from a bound transport backend.
+ *
+ * @details
+ * Validates H4 framing for inbound HCI events (`0x04`) and ACL data (`0x02`),
+ * reclaims any already-dispatched RX prefix, and copies the packet into the
+ * internal RX queue for ::ra8_ble_dispatch to deliver.
+ *
+ * @param[in] h4_pkt Inbound H4 packet (`[type][body...]`); must be non-null.
+ * @param[in] len    Packet byte length.
+ *
+ * @return ``k_ra8_ok`` Packet queued cleanly.
+ * @return ``k_ra8_err_null_ptr`` If @p h4_pkt is null.
+ * @return ``k_ra8_err_not_initialized`` If `ra8_ble` is not open.
+ * @return ``k_ra8_err_invalid_arg`` If @p h4_pkt is malformed, truncated, or
+ *         carries an unsupported inbound H4 indicator.
+ * @return ``k_ra8_err_no_mem`` If the 1024-byte RX queue lacks room.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ble_rx_push(const uint8_t* h4_pkt, uint16_t len);
 
 /* =============================================================================
  * Raw HCI traffic

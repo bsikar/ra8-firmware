@@ -112,14 +112,17 @@ test "close forgets the session but keeps the fault, and the handle reopens" {
     const cfg = goodCfg();
     try std.testing.expectEqual(Code.ok, code(lifecycle.ra8_c6link_open(&link, &cfg)));
     link.stats = &stats;
+    link.hci_ctx = &stats;
     link.tx_len = 4;
+    link.tx_pkt_type = 1;
     link.wait.armed = true;
     link.fault.rpc_id = 11;
     try std.testing.expectEqual(Code.ok, code(lifecycle.ra8_c6link_close(&link)));
     try std.testing.expect(!lifecycle.ra8_c6link_is_open(&link));
     try std.testing.expect(link.transport.transfer == null and link.event_cb == null);
     try std.testing.expect(link.cb_ctx == null and link.arena == null and link.stats == null);
-    try std.testing.expect(link.tx_len == 0 and !link.wait.armed);
+    try std.testing.expect(link.hci_rx_cb == null and link.hci_ctx == null);
+    try std.testing.expect(link.tx_len == 0 and link.tx_pkt_type == 0 and !link.wait.armed);
     try std.testing.expectEqual(@as(u32, 11), link.fault.rpc_id);
     try std.testing.expectEqual(Code.not_initialized, code(lifecycle.ra8_c6link_close(&link)));
     try std.testing.expectEqual(Code.ok, code(lifecycle.ra8_c6link_open(&link, &cfg)));

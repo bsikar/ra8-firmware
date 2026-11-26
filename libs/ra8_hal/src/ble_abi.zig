@@ -10,11 +10,13 @@ const ble = @import("internal/ble.zig");
 
 const tag = "BLE";
 const ok = common.k_ra8_ok;
+const err_no_mem: u16 = 0x102;
 
 const EventFn = *const fn (ctx: ?*anyopaque, code: u8, params: [*]const u8, len: u8) callconv(.c) void;
 const AclFn = *const fn (ctx: ?*anyopaque, handle: u16, payload: [*]const u8, len: u16) callconv(.c) void;
 
 var state: ble.State = .{};
+var bound: ble.Transport = .{};
 var evt_fn: ?EventFn = null;
 var evt_ctx: ?*anyopaque = null;
 var acl_fn: ?AclFn = null;
@@ -65,9 +67,36 @@ export fn ra8_ble_close() u16 {
     return ok;
 }
 
+export fn ra8_ble_bind_transport(transport: ?*const ble.Transport) u16 {
+    const t = transport orelse return nullPtr("transport must not be NULL");
+    if (t.send == null) return nullPtr("transport.send must not be NULL");
+    bound = t.*;
+    return ok;
+}
+
+export fn ra8_ble_unbind_transport() u16 {
+    bound = .{};
+    return ok;
+}
+
+export fn ra8_ble_rx_push(h4_pkt: ?[*]const u8, len: u16) u16 {
+    const pkt = h4_pkt orelse return nullPtr("h4_pkt must not be NULL");
+    if (!state.open) return common.k_ra8_err_not_initialized;
+    return switch (state.pushRx(pkt[0..len])) {
+        .ok => ok,
+        .invalid_arg => common.k_ra8_err_invalid_arg,
+        .no_mem => err_no_mem,
+    };
+}
+
 export fn ra8_ble_hci_send_command(opcode: u16, params: ?[*]const u8, params_len: u8) u16 {
     if (!state.open) return common.k_ra8_err_not_initialized;
     if (params == null and params_len > 0) return common.k_ra8_err_null_ptr;
+    if (bound.send) |send_fn| {
+        var frame: [ble.max_cmd_packet]u8 = @splat(0);
+        const total = ble.frameCommand(&frame, opcode, bytes(params, params_len));
+        return send_fn(bound.ctx, &frame, total);
+    }
     state.sendCommand(opcode, bytes(params, params_len));
     return ok;
 }
@@ -76,6 +105,11 @@ export fn ra8_ble_hci_send_acl_data(handle: u16, payload: ?[*]const u8, len: u16
     if (!state.open) return common.k_ra8_err_not_initialized;
     if (payload == null and len > 0) return common.k_ra8_err_null_ptr;
     if (len > ble.max_acl_payload) return common.k_ra8_err_invalid_arg;
+    if (bound.send) |send_fn| {
+        var frame: [ble.max_acl_packet]u8 = @splat(0);
+        const total = ble.frameAcl(&frame, handle, bytes(payload, len));
+        return send_fn(bound.ctx, &frame, total);
+    }
     state.sendAcl(handle, bytes(payload, len));
     return ok;
 }
@@ -94,6 +128,10 @@ export fn ra8_ble_attach_acl_handler(f: ?AclFn, ctx: ?*anyopaque) u16 {
 
 export fn ra8_ble_dispatch() u16 {
     if (!state.open) return common.k_ra8_err_not_initialized;
+    if (bound.poll) |poll_fn| {
+        const poll_err = poll_fn(bound.ctx);
+        if (poll_err != ok) return poll_err;
+    }
     return errOf(state.dispatch(Sink{}));
 }
 

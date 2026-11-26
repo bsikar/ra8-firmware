@@ -44,6 +44,7 @@ pub const Stats = extern struct {
 pub const Staged = struct {
     if_type: u8,
     len: u16,
+    pkt_type: u8 = 0,
 };
 
 /// How a pump run ended.
@@ -69,7 +70,7 @@ fn handshake(port: anytype) bool {
 /// Seal the staged payload, or send the idle filler when nothing is staged.
 fn stage(port: anytype) void {
     if (port.takeStaged()) |staged| {
-        _ = frame.seal(port.tx(), staged.if_type, 0, staged.len);
+        _ = frame.sealPkt(port.tx(), staged.if_type, 0, staged.pkt_type, staged.len);
     } else {
         frame.filler(port.tx());
     }

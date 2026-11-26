@@ -89,11 +89,14 @@ test "a staged payload is consumed by the first transaction" {
     bench = .{};
     var link = openLink();
     link.tx_len = 24;
-    link.tx_if = 2;
+    link.tx_if = 4;
+    link.tx_pkt_type = 0x01;
     var stats = std.mem.zeroes(c.ra8_c6link_stats_t);
     _ = pump_abi.priv_c6link_pump(&link, 1, &stats);
     try std.testing.expectEqual(@as(u16, 0), link.tx_len);
+    try std.testing.expectEqual(@as(u8, 0), link.tx_pkt_type);
     try std.testing.expectEqual(@as(u16, 24), std.mem.readInt(u16, link.tx[2..4], .little));
+    try std.testing.expectEqual(@as(u8, 0x01), link.tx[11]);
 }
 
 test "a transport fault is a bus error and an absent peer a timeout" {

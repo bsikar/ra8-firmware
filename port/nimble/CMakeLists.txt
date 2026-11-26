@@ -11,6 +11,8 @@
 #                              controller HCI commands + ACL data
 #                              outbound, controller -> host events
 #                              + ACL data inbound).
+#   - `ble_hci_c6link.c`     -- optional binding routing `ra8_ble` onto
+#                              `ra8_c6link` ESP32-C6 SPI (`ESP_HCI_IF`).
 #   - `nimble_npl_threadx.c` -- ThreadX-backed implementation of the
 #                              NimBLE Native Porting Layer (mutex /
 #                              semaphore / event-queue / callout
@@ -49,4 +51,8 @@ target_link_libraries(nimble_port_threadx INTERFACE nimble threadx)
 set_property(
   GLOBAL PROPERTY RA8_NIMBLE_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_ra8_ble.c
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_npl_threadx.c
+)
+
+set_property(
+  GLOBAL PROPERTY RA8_NIMBLE_C6LINK_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_c6link.c
 )
