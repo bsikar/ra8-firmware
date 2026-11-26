@@ -21,8 +21,11 @@
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_isr.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
+#include "ra8_mstp.h"
 #include "ra8_power_profile.h"
 #include "unity_minimal.h"
 
@@ -33,6 +36,7 @@
 typedef enum : uint8_t {
   k_profiler_tick_us =
     100U, /**< Microseconds per mock-clock step, so elapsed time is a multiple of step count. */
+  k_profiler_standby_ms = 50U, /**< Standby dwell window for ULPT0 mock test. */
 } app_power_profiler_fixture_t;
 
 static uint64_t s_now_us = 0U;
@@ -40,6 +44,7 @@ static uint64_t s_now_us = 0U;
 static void reset_world(void)
 {
   ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   s_now_us = 0U;
 }
 
@@ -151,11 +156,26 @@ static void test_pp_app_cycle_modes(void)
   assert_prc1_locked();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep));
 
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_lpm_ulpt_wake_prepare(nullptr, nullptr, (uint8_t)k_ra8_lpm_ulpt_default_isr_prio));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_power_profile_mark_enter(k_ra8_power_profile_region_software_standby));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_ulpt_standby_ms((uint32_t)k_profiler_standby_ms));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_power_profile_mark_exit(k_ra8_power_profile_region_software_standby));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_ulpt_wake_disarm());
+
   ra8_power_profile_stats_t stats = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_get_stats(&stats));
   TEST_ASSERT(stats.regions[k_ra8_power_profile_region_active].entries == 1U);
   TEST_ASSERT(stats.regions[k_ra8_power_profile_region_active].exits == 1U);
   TEST_ASSERT(stats.regions[k_ra8_power_profile_region_active].total_time_us > 0U);
+  TEST_ASSERT(stats.regions[k_ra8_power_profile_region_software_standby].entries == 1U);
+  TEST_ASSERT(stats.regions[k_ra8_power_profile_region_software_standby].exits == 1U);
+  TEST_ASSERT(stats.regions[k_ra8_power_profile_region_software_standby].total_time_us > 0U);
   TEST_END("power_profiler: cycle 4 modes accumulates time");
 }
 

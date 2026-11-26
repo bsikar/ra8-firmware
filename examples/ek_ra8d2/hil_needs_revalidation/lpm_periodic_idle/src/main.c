@@ -66,14 +66,11 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "ra8_elc_regs.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
 #include "ra8_time.h"
-#include "ra8_ulpt.h"
-#include "ra8_ulpt_regs.h"
 
 /**
  * @enum lpi_const_t
@@ -97,9 +94,6 @@ typedef enum : uint32_t {
    * sub-second period keeps the bench heartbeat prompt without spinning
    * the console. */
   k_lpi_period_ticks = 0x4000U, /**< Lpi period ticks. */
-  /* Bounded spin (NASA P10 Rule 2) waiting for ULPTCR.TCSTF to confirm
-   * the count actually started before we drop into standby. */
-  k_lpi_tcstf_poll_limit = 0x100000U, /**< Lpi tcstf poll limit. */
   /* Number of wake-work-standby periods before the app reports PASS and
    * parks. Bounds the outer loop (NASA P10 Rule 2). */
   k_lpi_period_count = 8U, /**< Lpi period count. */
@@ -233,37 +227,19 @@ static void lpi_ulpt_isr(void* ctx)
  * @see ra8_ulpt_get_status
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lpi_wait_count_started(uint8_t channel)
-{
-  const uint8_t tcstf_mask = (uint8_t)(1U << (uint8_t)k_ra8_ulpt_bit_tcstf);
-  for (uint32_t i = 0U; i < (uint32_t)k_lpi_tcstf_poll_limit; ++i) {
-    uint8_t   status = 0U;
-    ra8_err_t err    = ra8_ulpt_get_status(channel, &status);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if ((status & tcstf_mask) != 0U) {
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_err_hw_timeout;
-}
-
 /**
- * @brief Bring CGC + SysTick + SCI8 + LED + ULPT + LPM block up.
+ * @brief Bring CGC + SysTick + SCI8 + LED + LPM block up.
  *
  * @details
- * Same shape as ``lpm_ulpt_standby`` but also initialises the heartbeat
- * LED. The SCI8 J-Link console (PD02 TXD / PD03 RXD) is brought up via
- * the EK-RA8D2 board-support console API. LOCO is kept running so
- * ULPTLCLK survives Software Standby.
+ * Initializes the board console, status LED, and LPM policy for ULPT0
+ * self-wake Software Standby via ``ra8_lpm_ulpt_wake_prepare``.
  *
  * @pre IRQs disabled (Reset_Handler default).
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @post On success every sub-system is armed; on failure the function
  *       panic-halts and never returns.
  * @post LPM block has LPSCR.LPMD = 0 (System Active) until
- *       ``ra8_lpm_enter_sleep`` is called.
+ *       ``ra8_lpm_ulpt_standby_ticks`` is called.
  *
  * @note Single-threaded init context; not interrupt-safe.
  * @see lpi_arm_wake
@@ -276,9 +252,6 @@ static void lpi_setup_or_halt(void)
   };
   ra8_board_bringup_out_t bringup_out = {};
   if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
-    lpi_panic_halt();
-  }
-  if (ra8_ulpt_init() != k_ra8_ok) {
     lpi_panic_halt();
   }
   const ra8_lpm_config_t lpm_cfg = {
@@ -299,35 +272,18 @@ static void lpi_setup_or_halt(void)
   if (lpm_err != k_ra8_ok) {
     lpi_panic_halt();
   }
-  /* Keep LOCO running (LCSTP = 0) so ULPTLCLK survives Software Standby:
-   * HUM Table 11.3 footnote *2 (p 433). */
-  if (ra8_lpm_set_clock_stop(k_ra8_lpm_clock_loco, false) != k_ra8_ok) {
-    lpi_panic_halt();
-  }
 }
 
 /**
- * @brief Wire the ULPT0 underflow as a Software-Standby wake source.
- *
- * @details
- * Both halves of the RA8D2 wake path are required (see file header):
- * the IELSRn/NVIC link via ``ra8_isr_register`` AND the async
- * WUPEN1.ULP0U detector via ``ra8_lpm_arm_wupen1_bits``. This mirrors
- * the bench-proven ``lpm_ulpt_standby`` arm step exactly.
- *
- * @par MC/DC:
- * Compound decision: ``ra8_isr_init != ok || ra8_isr_register != ok ||
- * ra8_lpm_arm_wupen1_bits != ok``. Three atomic conditions x N+1 = 4
- * vectors -- the all-ok runtime path plus each step's error path
- * (the underlying steps are covered in the HAL host unit tests).
+ * @brief Wire the ULPT0 underflow wake path via ``ra8_lpm_ulpt_wake_prepare``.
  *
  * @return ``k_ra8_ok`` on success, else the first failing step's error.
- * @retval k_ra8_ok  All three wake-path steps succeeded.
+ * @retval k_ra8_ok  ULPT0 wake path armed.
  *
  * @pre ``lpi_setup_or_halt`` has run; interrupts not yet enabled.
  * @pre LPM block initialised so WUPEN writes take effect.
  * @post On success ULPT0_ULPTI vectors to ``lpi_ulpt_isr`` and
- *       WUPEN1.ULP0U is asserted.
+ *       WUPEN1.ULP0U is asserted with LOCO retained.
  *
  * @note Single-threaded init context; not interrupt-safe.
  * @see lpi_ulpt_isr
@@ -335,19 +291,11 @@ static void lpi_setup_or_halt(void)
  */
 [[nodiscard]] static ra8_err_t lpi_arm_wake(void)
 {
-  ra8_err_t err = ra8_isr_init();
+  const ra8_err_t err = ra8_isr_init();
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_isr_register(k_ra8_elc_event_ulpt0_ulpti,
-                         lpi_ulpt_isr,
-                         nullptr,
-                         (uint8_t)k_ra8_isr_prio_default,
-                         nullptr);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0u);
+  return ra8_lpm_ulpt_wake_prepare(lpi_ulpt_isr, nullptr, (uint8_t)k_ra8_isr_prio_default);
 }
 
 /**
@@ -363,7 +311,7 @@ static void lpi_setup_or_halt(void)
  *
  * @pre ``lpi_setup_or_halt`` initialised the LED and console.
  * @post On ``k_ra8_ok`` the LED state is inverted and the work banner is
- *       queued for transmission.
+ *       flushed on the UART console.
  *
  * @note Runs with interrupts enabled; touches no shared ISR state.
  * @see lpi_idle_one_period
@@ -375,24 +323,20 @@ static void lpi_setup_or_halt(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_board_uart_console_write(k_lpi_work_msg, (size_t)(sizeof(k_lpi_work_msg) - 1U));
+  err = ra8_board_uart_console_write(k_lpi_work_msg, (size_t)(sizeof(k_lpi_work_msg) - 1U));
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_board_uart_console_flush();
 }
 
 /**
  * @brief Arm ULPT0, drop to Software Standby, and clean up after wake.
  *
- * @details
- * Re-arms the ULPT countdown, confirms ``ULPTCR.TCSTF = 1``, enters
- * Software Standby until the underflow cancels it, then stops ULPT0
- * (``ra8_ulpt_stop`` clears ULPTCR.TUNF) so the next period starts clean.
- * The standby entry is the bench-proven sequence from
- * ``lpm_ulpt_standby``.
- *
  * @return ``k_ra8_ok`` on a clean sleep/wake/cleanup, else the first
  *         failing step's error.
  * @retval k_ra8_ok              Slept and woke cleanly.
- * @retval k_ra8_err_hw_timeout  TCSTF never confirmed (see
- *                              ``lpi_wait_count_started``).
+ * @retval k_ra8_err_hw_timeout  TCSTF never confirmed.
  *
  * @pre ``lpi_arm_wake`` armed the ULPT0 wake path and IRQs are enabled.
  * @pre LOCO is running so ULPTLCLK survives Software Standby.
@@ -400,34 +344,11 @@ static void lpi_setup_or_halt(void)
  *       re-arm.
  *
  * @note Blocks the caller in Software Standby until the ULPT0 wake.
- * @see lpi_wait_count_started
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t lpi_idle_one_period(void)
 {
-  ra8_err_t err = ra8_ulpt_start((uint8_t)k_lpi_channel, (uint32_t)k_lpi_period_ticks);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = lpi_wait_count_started((uint8_t)k_lpi_channel);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* The LPSCR store on sleep entry is behind PRCR.PRC1, which ra8_lpm leaves
-   * to the caller. */
-  err = ra8_lpm_prcr_unlock();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const ra8_err_t sleep_err = ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std);
-  err                       = ra8_lpm_prcr_relock();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (sleep_err != k_ra8_ok) {
-    return sleep_err;
-  }
-  return ra8_ulpt_stop((uint8_t)k_lpi_channel);
+  return ra8_lpm_ulpt_standby_ticks((uint32_t)k_lpi_period_ticks);
 }
 
 void main(void)
@@ -443,6 +364,7 @@ void main(void)
       k_ra8_ok) {
     lpi_panic_halt();
   }
+  (void)ra8_board_uart_console_flush();
 
   /* Bounded periodic loop (NASA P10 Rule 2): k_lpi_period_count periods
    * of work-then-standby, each woken by the ULPT0 underflow. */
@@ -455,10 +377,13 @@ void main(void)
     }
   }
 
+  (void)ra8_lpm_ulpt_wake_disarm();
+
   if (ra8_board_uart_console_write(k_lpi_pass_msg, (size_t)(sizeof(k_lpi_pass_msg) - 1U)) !=
       k_ra8_ok) {
     lpi_panic_halt();
   }
+  (void)ra8_board_uart_console_flush();
 
   lpi_panic_halt();
 }

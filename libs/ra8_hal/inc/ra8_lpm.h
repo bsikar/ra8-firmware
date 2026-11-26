@@ -72,6 +72,7 @@ extern "C" {
 
 #include "ra8_err.h"
 #include "ra8_lpm_regs.h"
+#include "ra8_lpm_ulpt.h"
 
 /**
  * @struct ra8_lpm_config_t
