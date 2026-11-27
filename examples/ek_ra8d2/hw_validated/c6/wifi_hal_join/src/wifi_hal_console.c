@@ -26,6 +26,12 @@
 #include "ra8_wifi.h"
 #include "wifi_hal_join.h"
 
+typedef enum : uint8_t {
+  k_wifi_hal_ascii_low  = 0x20U, /**< Lowest printable ASCII code point.  */
+  k_wifi_hal_ascii_high = 0x7EU, /**< Highest printable ASCII code point. */
+  k_wifi_hal_ascii_sub  = '.',   /**< Replacement for control/non-ASCII.  */
+} wifi_hal_ascii_t;
+
 void wifi_hal_puts(const char* text)
 {
   if (text == nullptr) {
@@ -55,6 +61,32 @@ void wifi_hal_put_u32(uint32_t value)
     out[i] = digits[count - 1U - i];
   }
   (void)ra8_board_uart_console_write(out, (size_t)count);
+}
+
+void wifi_hal_put_i32(int32_t value)
+{
+  uint32_t magnitude = (uint32_t)value;
+  if (value < 0) {
+    wifi_hal_puts("-");
+    magnitude = ~(uint32_t)value + 1U;
+  }
+  wifi_hal_put_u32(magnitude);
+}
+
+void wifi_hal_put_text(const char* text, size_t len)
+{
+  if ((text == nullptr) || (len == 0U)) {
+    return;
+  }
+  uint8_t      out[k_wifi_hal_str_max] = {};
+  const size_t capped = (len < (size_t)k_wifi_hal_str_max) ? len : (size_t)k_wifi_hal_str_max;
+  for (size_t i = 0U; i < capped; i++) {
+    const uint8_t ch = (uint8_t)text[i];
+    out[i] = ((ch >= (uint8_t)k_wifi_hal_ascii_low) && (ch <= (uint8_t)k_wifi_hal_ascii_high))
+               ? ch
+               : (uint8_t)k_wifi_hal_ascii_sub;
+  }
+  (void)ra8_board_uart_console_write(out, capped);
 }
 
 void wifi_hal_put_hex(uint32_t value, uint8_t digits)

@@ -64,6 +64,8 @@ static ra8_c6link_t s_link;
 static ra8_wifi_c6link_t s_c6;
 /** @brief The Wi-Fi handle every operation goes through. @since 0.1.0 */
 static ra8_wifi_t s_wifi;
+/** @brief Scan records populated before provisioning; static off the worker stack. */
+static ra8_wifi_ap_t s_scan_aps[k_wifi_hal_scan_max];
 /** @brief Board-console binding for the shared runtime provisioner. @since 0.1.0 */
 static const ra8_net_provision_uart_t s_provision_uart = {
   .write   = ra8_board_uart_console_write,
@@ -300,6 +302,54 @@ static void wifi_hal_heartbeat(bool passed)
  * @note Not thread-safe; this is the application's sole worker thread.
  * @since 0.1.0
  */
+/**
+ * @brief Run one bounded Wi-Fi AP scan via `ra8_wifi_scan()` and log results.
+ * @since 0.2.0
+ */
+static void wifi_hal_scan_and_log(void)
+{
+  ra8_wifi_cfg_t  cfg  = {};
+  const ra8_err_t made = wifi_hal_make_cfg(&cfg);
+  if (made != k_ra8_ok) {
+    wifi_hal_puts("wifi_scan: FAIL transport setup err=");
+    wifi_hal_puts(ra8_err_to_str(made));
+    wifi_hal_puts("\r\n");
+    return;
+  }
+
+  const wifi_hal_scan_cfg_t scfg = {
+    .wifi_cfg = &cfg,
+    .wifi     = &s_wifi,
+    .out_aps  = s_scan_aps,
+    .max_aps  = (uint16_t)k_wifi_hal_scan_max,
+  };
+  wifi_hal_scan_result_t res = {};
+  if (!wifi_hal_scan_run(&scfg, &res)) {
+    wifi_hal_puts("wifi_scan: FAIL init=");
+    wifi_hal_puts(ra8_err_to_str(res.init_err));
+    wifi_hal_puts(" scan=");
+    wifi_hal_puts(ra8_err_to_str(res.scan_err));
+    wifi_hal_puts("\r\n");
+    return;
+  }
+
+  wifi_hal_puts("wifi_scan: aps=");
+  wifi_hal_put_u32((uint32_t)res.count);
+  wifi_hal_puts("\r\n");
+  for (uint16_t i = 0U; i < res.count; ++i) {
+    const ra8_wifi_ap_t* ap = &s_scan_aps[i];
+    wifi_hal_puts("wifi_scan: ap ssid=");
+    wifi_hal_put_text(ap->ssid, (size_t)ap->ssid_len);
+    wifi_hal_puts(" channel=");
+    wifi_hal_put_u32((uint32_t)ap->channel);
+    wifi_hal_puts(" rssi=");
+    wifi_hal_put_i32((int32_t)ap->rssi);
+    wifi_hal_puts(" authmode=");
+    wifi_hal_put_i32(ap->authmode);
+    wifi_hal_puts("\r\n");
+  }
+}
+
 static void wifi_hal_worker_entry(ULONG thread_input)
 {
   (void)thread_input;
@@ -314,6 +364,7 @@ static void wifi_hal_worker_entry(ULONG thread_input)
   }
 
   ra8_delay_ms((uint32_t)k_wifi_hal_boot_wait_ms);
+  wifi_hal_scan_and_log();
 
   ra8_net_credentials_t credentials = {};
   const ra8_err_t provisioned = ra8_net_provision_receive(&s_provision_uart,

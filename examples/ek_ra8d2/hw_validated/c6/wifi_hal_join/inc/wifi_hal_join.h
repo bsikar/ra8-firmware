@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -61,6 +62,7 @@ typedef enum : uint32_t {
   k_wifi_hal_worker_stack = 8192U,    /**< Worker-thread stack, in bytes.         */
   k_wifi_hal_worker_prio  = 8U,       /**< Worker priority and preemption cap.    */
   k_wifi_hal_arena_bytes  = 4096U,    /**< Decode arena handed to the facade.     */
+  k_wifi_hal_scan_max     = 8U,       /**< Maximum AP records kept from one scan. */
 } wifi_hal_cfg_t;
 
 /**
@@ -264,6 +266,40 @@ typedef struct wifi_hal_run_cfg {
 [[nodiscard]] bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out);
 
 /**
+ * @struct wifi_hal_scan_cfg
+ * @brief Injected dependencies for ::wifi_hal_scan_run.
+ * @since 0.2.0
+ */
+typedef struct wifi_hal_scan_cfg {
+  const ra8_wifi_cfg_t* wifi_cfg; /**< Facade config: backend + ip provider. */
+  ra8_wifi_t*           wifi;     /**< Caller-allocated facade handle.       */
+  ra8_wifi_ap_t*        out_aps;  /**< Caller array receiving AP records.    */
+  uint16_t              max_aps;  /**< Capacity of `out_aps` in records.     */
+} wifi_hal_scan_cfg_t;
+
+/**
+ * @struct wifi_hal_scan_result
+ * @brief Outcome of one ::wifi_hal_scan_run call.
+ * @since 0.2.0
+ */
+typedef struct wifi_hal_scan_result {
+  bool      init_ok;  /**< True if ::ra8_wifi_init succeeded. */
+  bool      scan_ok;  /**< True if ::ra8_wifi_scan succeeded. */
+  ra8_err_t init_err; /**< Status from ::ra8_wifi_init.       */
+  ra8_err_t scan_err; /**< Status from ::ra8_wifi_scan.       */
+  uint16_t  count;    /**< Number of AP records written.      */
+} wifi_hal_scan_result_t;
+
+/**
+ * @brief Run one bounded Wi-Fi scan through `ra8_wifi_scan()` and tear down.
+ * @param[in]  cfg Scan configuration and caller buffer; must be non-null.
+ * @param[out] out Scan result populated on return; must be non-null.
+ * @return true when init and `ra8_wifi_scan()` both succeeded.
+ * @since 0.2.0
+ */
+[[nodiscard]] bool wifi_hal_scan_run(const wifi_hal_scan_cfg_t* cfg, wifi_hal_scan_result_t* out);
+
+/**
  * @brief The application's IP provider: the shared NetX Duo bring-up, configured.
  *
  * @details
@@ -344,6 +380,21 @@ void wifi_hal_puts(const char* text);
  * @since 0.1.0
  */
 void wifi_hal_put_u32(uint32_t value);
+
+/**
+ * @brief Write a signed 32-bit decimal integer.
+ * @param[in] value Signed value to emit.
+ * @since 0.2.0
+ */
+void wifi_hal_put_i32(int32_t value);
+
+/**
+ * @brief Write an untrusted co-processor byte string sanitized to printable ASCII.
+ * @param[in] text Raw bytes from the radio, or null for a no-op.
+ * @param[in] len  Number of bytes to consider (clamped to ::k_wifi_hal_str_max).
+ * @since 0.2.0
+ */
+void wifi_hal_put_text(const char* text, size_t len);
 
 /**
  * @brief Write the low @p digits nibbles of a value in hexadecimal.

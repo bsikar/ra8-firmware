@@ -55,6 +55,7 @@ app	audio_memory_replay_demo	examples/ek_ra8d2/hw_pending/audio_memory_replay_de
 app	audio_memory_source_demo	examples/ek_ra8d2/hw_pending/audio_memory_source_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	battery_monitor_demo	examples/ek_ra8d2/hw_pending/battery_monitor_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
 app	blink_m33_hal	examples/ek_ra8d2/hw_pending/blink_m33_hal/CMakeLists.txt	ek_ra8d2	-	aux_srcs,cpu1_image	2200
+app	c6_ble_hci	examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/CMakeLists.txt	ek_ra8d2	esp_hosted,threadx	extra_srcs,threadx_heap	8192
 app	cache_hal_enable_demo	examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
 app	cache_store_paged_demo	examples/ek_ra8d2/hw_pending/cache_store_paged_demo/CMakeLists.txt	ek_ra8d2	levelx_standalone	-	2400
 app	camera_io_stream_demo	examples/ek_ra8d2/hw_pending/camera_io_stream_demo/CMakeLists.txt	ek_ra8d2	-	-	4096

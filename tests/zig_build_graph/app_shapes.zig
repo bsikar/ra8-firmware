@@ -695,6 +695,15 @@ pub const uncovered = [_]Uncovered{
         .note = "3 declarations: the C6 co-processor host stack, which brings its own generated sources",
     },
     .{
+        .representative = "c6_ble_hci",
+        .shape = .{
+            .uses = &.{ "esp_hosted", "threadx" },
+            .extra_srcs = true,
+            .threadx_heap = true,
+        },
+        .note = "1 declaration: C6 BLE HCI bring-up combining esp_hosted, threadx, and ble_hci_c6link",
+    },
+    .{
         .representative = "threadx_fs_demo",
         .shape = .{ .uses = &.{ "levelx", "threadx" }, .threadx_heap = true },
         .note = "2 declarations: LevelX over ThreadX, the flash-translation stack",
