@@ -86,6 +86,8 @@ fn substitutions(
     out.appendSlice(b.allocator, &.{
         .{ .placeholder = "@RA8_NS_SRAM_ORIGIN@", .value = vars.get("RA8_NS_SRAM_ORIGIN", source) },
         .{ .placeholder = "@RA8_NS_SRAM_LENGTH@", .value = vars.get("RA8_NS_SRAM_LENGTH", source) },
+        .{ .placeholder = "@RA8_NS_SDRAM_ORIGIN@", .value = vars.get("RA8_NS_SDRAM_ORIGIN", source) },
+        .{ .placeholder = "@RA8_NS_SDRAM_LENGTH@", .value = vars.get("RA8_NS_SDRAM_LENGTH", source) },
     }) catch @panic("OOM");
 
     switch (layout) {
