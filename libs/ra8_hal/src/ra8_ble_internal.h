@@ -22,6 +22,28 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_err.h"
+
+#if defined(UNIT_TEST) || defined(RA8_OFF_TARGET)
+
+/**
+ * @brief Explicitly bind the host-only in-memory BLE loopback transport.
+ * @details Clears any attached external transport and enables the host-test
+ *          in-memory capture and RX-injection backend. Target firmware builds do
+ *          not export or support this helper and require a bound transport via
+ *          ::ra8_ble_bind_transport.
+ * @return ``k_ra8_ok`` Always when built for host unit tests.
+ * @pre Host unit-test build (``UNIT_TEST`` / ``RA8_OFF_TARGET``).
+ * @post Any previously bound external transport is detached and loopback mode is
+ *       active until ::ra8_ble_bind_transport, ::ra8_ble_unbind_transport, or
+ *       ::ra8_ble_close is called.
+ * @note Host-test-only hook; absent from freestanding target firmware archives.
+ * @par MC/DC:
+ * Decision-free state setter activating host-only loopback mode for the TX/RX
+ * seam verification suite.
+ * @since Version 0.2.0
+ */
+RA8_TEST_HELPER [[nodiscard]] ra8_err_t ra8_ble_test_bind_loopback(void);
 
 /**
  * @brief Reset the BLE loopback capture and injection cursors.
@@ -81,6 +103,8 @@ RA8_TEST_HELPER void ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
  * @since Version 0.1.0
  */
 RA8_TEST_HELPER const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
+
+#endif /* UNIT_TEST || RA8_OFF_TARGET */
 
 #ifdef __cplusplus
 }

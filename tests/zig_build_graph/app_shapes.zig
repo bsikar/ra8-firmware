@@ -734,6 +734,11 @@ pub const uncovered = [_]Uncovered{
         .note = "1 declaration: a USBX vendor-class app that names no USES at all, so the only thing making it its own kind is the generated heap fragment",
     },
     .{
+        .representative = "c6_ble_nimble",
+        .shape = .{ .uses = &.{ "esp_hosted", "nimble", "threadx" }, .extra_srcs = true, .threadx_heap = true },
+        .note = "1 declaration: C6 BLE peripheral over Apache NimBLE host and ThreadX",
+    },
+    .{
         .representative = "threadx_nimble_peripheral",
         .shape = .{ .uses = &.{ "nimble", "threadx" }, .threadx_heap = true },
         .note = "1 declaration: the NimBLE host",

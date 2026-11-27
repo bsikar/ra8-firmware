@@ -17,10 +17,19 @@ const AclFn = *const fn (ctx: ?*anyopaque, handle: u16, payload: [*]const u8, le
 
 var state: ble.State = .{};
 var bound: ble.Transport = .{};
+var loopback: bool = false;
 var evt_fn: ?EventFn = null;
 var evt_ctx: ?*anyopaque = null;
 var acl_fn: ?AclFn = null;
 var acl_ctx: ?*anyopaque = null;
+
+fn loopbackActive() bool {
+    return if (comptime common.hosted) loopback else false;
+}
+
+fn transportBound() bool {
+    return bound.send != null or loopbackActive();
+}
 
 const Sink = struct {
     pub fn event(_: Sink, code: u8, params: []const u8) void {
@@ -63,6 +72,7 @@ export fn ra8_ble_open(cfg: ?*const ble.Config) u16 {
 export fn ra8_ble_close() u16 {
     if (!state.open) return common.k_ra8_err_invalid_arg;
     state.open = false;
+    loopback = false;
     common.ra8_log_emit_info(tag, "BLE HCI transport closed");
     return ok;
 }
@@ -71,17 +81,19 @@ export fn ra8_ble_bind_transport(transport: ?*const ble.Transport) u16 {
     const t = transport orelse return nullPtr("transport must not be NULL");
     if (t.send == null) return nullPtr("transport.send must not be NULL");
     bound = t.*;
+    loopback = false;
     return ok;
 }
 
 export fn ra8_ble_unbind_transport() u16 {
     bound = .{};
+    loopback = false;
     return ok;
 }
 
 export fn ra8_ble_rx_push(h4_pkt: ?[*]const u8, len: u16) u16 {
     const pkt = h4_pkt orelse return nullPtr("h4_pkt must not be NULL");
-    if (!state.open) return common.k_ra8_err_not_initialized;
+    if (!state.open or !transportBound()) return common.k_ra8_err_not_initialized;
     return switch (state.pushRx(pkt[0..len])) {
         .ok => ok,
         .invalid_arg => common.k_ra8_err_invalid_arg,
@@ -97,8 +109,11 @@ export fn ra8_ble_hci_send_command(opcode: u16, params: ?[*]const u8, params_len
         const total = ble.frameCommand(&frame, opcode, bytes(params, params_len));
         return send_fn(bound.ctx, &frame, total);
     }
-    state.sendCommand(opcode, bytes(params, params_len));
-    return ok;
+    if (loopbackActive()) {
+        state.sendCommand(opcode, bytes(params, params_len));
+        return ok;
+    }
+    return common.k_ra8_err_not_initialized;
 }
 
 export fn ra8_ble_hci_send_acl_data(handle: u16, payload: ?[*]const u8, len: u16) u16 {
@@ -110,8 +125,11 @@ export fn ra8_ble_hci_send_acl_data(handle: u16, payload: ?[*]const u8, len: u16
         const total = ble.frameAcl(&frame, handle, bytes(payload, len));
         return send_fn(bound.ctx, &frame, total);
     }
-    state.sendAcl(handle, bytes(payload, len));
-    return ok;
+    if (loopbackActive()) {
+        state.sendAcl(handle, bytes(payload, len));
+        return ok;
+    }
+    return common.k_ra8_err_not_initialized;
 }
 
 export fn ra8_ble_attach_event_handler(f: ?EventFn, ctx: ?*anyopaque) u16 {
@@ -127,7 +145,7 @@ export fn ra8_ble_attach_acl_handler(f: ?AclFn, ctx: ?*anyopaque) u16 {
 }
 
 export fn ra8_ble_dispatch() u16 {
-    if (!state.open) return common.k_ra8_err_not_initialized;
+    if (!state.open or !transportBound()) return common.k_ra8_err_not_initialized;
     if (bound.poll) |poll_fn| {
         const poll_err = poll_fn(bound.ctx);
         if (poll_err != ok) return poll_err;
@@ -164,19 +182,35 @@ export fn ra8_ble_scan_start(active: u8, interval: u16, window: u16) u16 {
     return ra8_ble_hci_send_command(ble.op_scan_enable, &enable, enable.len);
 }
 
-/// RA8_TEST_HELPER in the C: exported for the host C tests.
-export fn ra8_ble_test_reset_capture() void {
+/// RA8_TEST_HELPER: host-only opt-in enabling in-memory loopback transport.
+fn testBindLoopback() callconv(.c) u16 {
+    bound = .{};
+    loopback = true;
+    return ok;
+}
+
+/// RA8_TEST_HELPER in the C: exported only for the host C tests.
+fn testResetCapture() callconv(.c) void {
     state.reset();
 }
 
 /// RA8_TEST_HELPER: NULL or empty leaves the cursor alone.
-export fn ra8_ble_test_inject_rx(data: ?[*]const u8, len: u16) void {
+fn testInjectRx(data: ?[*]const u8, len: u16) callconv(.c) void {
     const d = data orelse return;
     state.inject(d[0..len]);
 }
 
 /// RA8_TEST_HELPER: the capture buffer, with its length when asked.
-export fn ra8_ble_test_tx_capture(out_len: ?*u16) [*]const u8 {
+fn testTxCapture(out_len: ?*u16) callconv(.c) [*]const u8 {
     if (out_len) |p| p.* = state.tx_len;
     return &state.tx;
+}
+
+comptime {
+    if (common.hosted) {
+        @export(&testBindLoopback, .{ .name = "ra8_ble_test_bind_loopback" });
+        @export(&testResetCapture, .{ .name = "ra8_ble_test_reset_capture" });
+        @export(&testInjectRx, .{ .name = "ra8_ble_test_inject_rx" });
+        @export(&testTxCapture, .{ .name = "ra8_ble_test_tx_capture" });
+    }
 }

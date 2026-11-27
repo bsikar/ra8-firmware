@@ -106,6 +106,7 @@ app	vfs_port_demo	examples/ek_ra8d2/hw_pending/vfs_port_demo/CMakeLists.txt	ek_r
 app	webp_decode_demo	examples/ek_ra8d2/hw_pending/webp_decode_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	widget_keyboard_demo	examples/ek_ra8d2/hw_pending/widget_keyboard_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	c6_ble_hci	examples/ek_ra8d2/hw_validated/c6/c6_ble_hci/CMakeLists.txt	ek_ra8d2	esp_hosted,threadx	extra_srcs,threadx_heap	8192
+app	c6_ble_nimble	examples/ek_ra8d2/hw_validated/c6/c6_ble_nimble/CMakeLists.txt	ek_ra8d2	esp_hosted,nimble,threadx	extra_srcs,threadx_heap	8192
 app	c6_fw_version	examples/ek_ra8d2/hw_validated/c6/c6_fw_version/CMakeLists.txt	ek_ra8d2	esp_hosted,threadx	threadx_heap	8192
 app	c6_hosted_init	examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/CMakeLists.txt	ek_ra8d2	esp_hosted,threadx	threadx_heap	4096
 app	c6_spi_probe	examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/CMakeLists.txt	ek_ra8d2	-	-	2200

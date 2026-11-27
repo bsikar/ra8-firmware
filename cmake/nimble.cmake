@@ -19,24 +19,17 @@
 #          ra8_ble_hci_send_acl_data) and pumps inbound HCI events /
 #          ACL frames back into NimBLE via
 #          ble_transport_to_hs_evt / ble_transport_to_hs_acl.
-#   3. Surfaces the upstream NimBLE include directories through a single
-#      `nimble` INTERFACE library so the per-app build can
-#      `target_link_libraries(<app>.elf PRIVATE nimble nimble_port_threadx)`.
+#   3. Compiles the upstream NimBLE 1.10.0 host stack, GAP/GATT/BAS/DIS
+#      services, RAM config store, HCI transport pools, and OS porting
+#      primitives (`porting/nimble/src` minus controller hal_timer/cputime,
+#      plus `nimble/transport/src` minus `rx_task.c`, and
+#      `nimble/host/src` minus `ble_gatts_lcl.c` which requires console.h)
+#      into `nimble_objs`, surfaced through the `nimble` INTERFACE library
+#      so the per-app build links `nimble nimble_port_threadx`.
 #
 # Apps that want NimBLE link `nimble nimble_port_threadx` -- the
-# include dirs and ThreadX dependency flow through the interface.
-#
-# WHAT THIS DOES NOT DO: it compiles no upstream NimBLE source. `nimble`
-# is an INTERFACE target with no `target_sources` and no source list, so
-# the only sources a linking app gains are the two first-party files
-# carried by `nimble_port_threadx` (`port/nimble/src/`). The one upstream
-# header that reaches a compiled TU is `nimble/nimble_npl.h`. This file
-# used to claim it "compiles a curated subset of the upstream NimBLE host
-# sources"; it never has, and that claim -- read against a
-# `docs/SOUP/nimble.md` that said the opposite -- is what made the NimBLE
-# CVE triage harder than it needed to be. Linking `nimble/host/src` for
-# real is RA8FW-270; when that lands, this comment must change with it.
-#
+# include dirs, compiled host objects, and ThreadX dependency flow
+# through the interface.
 #
 
 # Idempotency guard. The same per-app build can include this file
@@ -83,38 +76,82 @@ if(NOT EXISTS "${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include/host/ble_hs.h")
   )
 endif()
 
-# Surface the upstream public include dirs through an INTERFACE
-# library so apps can `#include "host/ble_hs.h"` /
-# `#include "nimble/transport.h"` / `#include "nimble/nimble_npl.h"`
-# without the per-app CMakeLists having to enumerate the path list.
+set(_RA8_NIMBLE_INCLUDE_DIRS
+    # Put port/nimble/inc ahead of upstream porting/nimble/include so
+    # port/nimble/inc/syscfg/syscfg.h, nimble/nimble_npl_os.h, and
+    # nimble/nimble_npl_os_log.h pre-empt upstream fallbacks cleanly.
+    ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/bas/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/dis/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/gap/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/gatt/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/store/config/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/util/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/include
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
+)
+
+# Host, services, config store, transport pools, and OS primitives from pinned
+# Apache NimBLE 1.10.0. Exclude ble_gatts_lcl.c (requires console/console.h)
+# and controller-only timer/cputime/rx_task TUs.
+file(GLOB _RA8_NIMBLE_HOST_SOURCES CONFIGURE_DEPENDS
+     "${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/src/*.c"
+)
+list(
+  FILTER
+  _RA8_NIMBLE_HOST_SOURCES
+  EXCLUDE
+  REGEX
+  ".*/ble_gatts_lcl\\.c$"
+)
+
+set(_RA8_NIMBLE_SOURCES
+    ${_RA8_NIMBLE_HOST_SOURCES}
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/util/src/addr.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/bas/src/ble_svc_bas.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/dis/src/ble_svc_dis.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/gap/src/ble_svc_gap.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/services/gatt/src/ble_svc_gatt.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/store/config/src/ble_store_config.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/store/config/src/ble_store_config_conf.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/src/monitor.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/src/transport.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/endian.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/mem.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/nimble_port.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/os_mbuf.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/os_mempool.c
+    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/src/os_msys.c
+)
+
+add_library(nimble_objs OBJECT ${_RA8_NIMBLE_SOURCES})
+
+target_compile_definitions(nimble_objs PUBLIC RA8_TARGET_BUILD)
+
+target_include_directories(nimble_objs SYSTEM PUBLIC ${_RA8_NIMBLE_INCLUDE_DIRS})
+target_include_directories(
+  nimble_objs SYSTEM PRIVATE ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/src
+                             ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/store/config/src
+)
+
+target_link_libraries(nimble_objs PUBLIC threadx)
+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
+  target_compile_options(
+    nimble_objs PRIVATE -fshort-enums -ffreestanding -DNDEBUG
+                        -include${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc/nimble_port_alloc.h
+  )
+endif()
+
 add_library(nimble INTERFACE)
 
-# Apps that link `nimble` are by definition the cross-compiled target
-# build, so any TU that pulls in NimBLE headers via this interface
-# library should also see RA8_TARGET_BUILD. The host unit-test build in
-# tests/CMakeLists.txt does not link `nimble`, so it stays unaffected
-# and the wrappers fall through to their portable bookkeeping path.
 target_compile_definitions(nimble INTERFACE RA8_TARGET_BUILD)
 
-target_include_directories(
-  nimble SYSTEM
-  INTERFACE ${_RA8_NIMBLE_VENDOR_DIR}/nimble/include
-            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include
-            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/mesh/include
-            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/include
-            ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
-            # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``,
-            # which every port supplies. Ours is
-            # ``port/nimble/inc/nimble/nimble_npl_os.h``, so point the whole build
-            # at it. This used to fall back to the upstream "dummy" port's header
-            # for translation units that reference NimBLE host APIs without going
-            # through nimble_port_threadx (e.g. application TUs that call the
-            # NimBLE host APIs directly).
-            # That put two different definitions of ``struct ble_npl_mutex`` and
-            # friends into one image depending on which target a TU linked, which
-            # is an ABI mismatch no diagnostic reports.
-            ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
-)
+target_include_directories(nimble SYSTEM INTERFACE ${_RA8_NIMBLE_INCLUDE_DIRS})
+
+target_sources(nimble INTERFACE $<TARGET_OBJECTS:nimble_objs>)
 
 # NimBLE's NPL header pulls ThreadX primitives in via our
 # port/nimble/inc/nimble_npl_threadx.h shim. Inherit the ThreadX include

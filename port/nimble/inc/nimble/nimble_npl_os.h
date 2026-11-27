@@ -122,8 +122,8 @@ struct ble_npl_event {
  * @see ble_npl_event
  */
 struct ble_npl_eventq {
-  TX_QUEUE q;           /**< Backing ThreadX queue.                  */
-  uint8_t  storage[64]; /**< Backing storage (16 entries * 4 bytes). */
+  TX_QUEUE q;            /**< Backing ThreadX queue.                  */
+  uint8_t  storage[256]; /**< Backing storage (64 entries * 4 bytes). */
 };
 
 /**
@@ -131,7 +131,7 @@ struct ble_npl_eventq {
  * @brief One-shot timer that posts an event into a queue when it fires.
  *
  * @details Wraps a ``TX_TIMER`` and the ``ble_npl_event`` it should
- * post. ``priv_callout_trampoline`` reads the event pointer out of
+ * post. ``internal_callout_trampoline`` reads the event pointer out of
  * the timer's user-data field and pushes it via ``ble_npl_eventq_put``.
  *
  * @invariant ``evq`` stays the queue passed to ``ble_npl_callout_init``.
@@ -145,9 +145,11 @@ struct ble_npl_eventq {
  * @see ble_npl_eventq
  */
 struct ble_npl_callout {
-  TX_TIMER               handle; /**< Backing ThreadX one-shot timer. */
-  struct ble_npl_eventq* evq;    /**< Queue to post the event into.   */
-  struct ble_npl_event   ev;     /**< Event posted on each firing.    */
+  TX_TIMER               handle;      /**< Backing ThreadX one-shot timer. */
+  struct ble_npl_eventq* evq;         /**< Queue to post the event into.   */
+  struct ble_npl_event   ev;          /**< Event posted on each firing.    */
+  ble_npl_time_t         ticks;       /**< Armed deadline tick value.      */
+  uint8_t                initialized; /**< Non-zero after first init.      */
 };
 
 /**

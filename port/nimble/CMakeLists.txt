@@ -4,7 +4,7 @@
 # port/nimble/CMakeLists.txt
 #
 # Defines the `nimble_port_threadx` interface library that exposes
-# our two adapter source files to the per-app build:
+# our adapter source files to the per-app build:
 #
 #   - `ble_hci_ra8_ble.c`    -- bridges NimBLE's HCI transport API
 #                              onto our `ra8_ble` HCI ring (host ->
@@ -15,25 +15,11 @@
 #                              `ra8_c6link` ESP32-C6 SPI (`ESP_HCI_IF`).
 #   - `nimble_npl_threadx.c` -- ThreadX-backed implementation of the
 #                              NimBLE Native Porting Layer (mutex /
-#                              semaphore / event-queue / callout
-#                              primitives that NimBLE expects from
-#                              the host RTOS).
+#                              semaphore / event-queue / callout /
+#                              critical-section / timebase).
 #
-# Pulled in by `cmake/nimble.cmake` when `RA8_USE_NIMBLE=ON`. The
-# example app links against `nimble_port_threadx` -- it brings its
-# own globbed `ra8_hal` sources, so this shim only needs to surface
-# the include dir + the source list as a GLOBAL property the per-app
-# CMakeLists splices into its own add_executable() call.
-#
-# UNVALIDATED SCAFFOLD: the two sources surfaced here link
-# and pass the static gates, but the NimBLE port has NEVER been
-# hardware-validated and is NOT emulator-gated -- ra8_emulator models no RA8D2
-# BLE controller / HCI mailbox, and the underlying ra8_ble transport is
-# itself unproven on this board. Every app that links
-# `nimble_port_threadx` therefore stays under `examples/_unsupported/`
-# until a NimBLE app is driven to real hardware validation and promoted.
-#
-#
+# Pulled in by `cmake/nimble.cmake` when `RA8_USE_NIMBLE=ON`, alongside
+# the compiled upstream `nimble_objs` host stack objects.
 
 cmake_minimum_required(VERSION 3.20)
 
@@ -49,8 +35,10 @@ target_link_libraries(nimble_port_threadx INTERFACE nimble threadx)
 # their own add_executable() globs. Same pattern used by
 # port/usbx/CMakeLists.txt.
 set_property(
-  GLOBAL PROPERTY RA8_NIMBLE_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_ra8_ble.c
-                  ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_npl_threadx.c
+  GLOBAL
+  PROPERTY RA8_NIMBLE_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_ra8_ble.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_npl_threadx.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_port_alloc.c
 )
 
 set_property(

@@ -371,7 +371,7 @@
       "name": "Apache NimBLE",
       "group": "apache",
       "version": "1.10.0 (nimble_1_10_0_tag, 2026-07-10)",
-      "description": "Bluetooth 5.4 host + controller stack (staged, not linked).",
+      "description": "Bluetooth 5.4 host stack linked into BLE apps over ThreadX and ra8_ble via port/nimble/.",
       "scope": "required",
       "licenses": [
         {

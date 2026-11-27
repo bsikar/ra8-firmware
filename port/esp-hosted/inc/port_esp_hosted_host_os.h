@@ -385,6 +385,32 @@ static inline void* heap_caps_malloc(size_t size, uint32_t caps)
 }
 
 /**
+ * @brief Non-DMA zero-filled allocation helper served from the transport pool.
+ *
+ * @details
+ * Upstream ``host/drivers/transport/transport_util.c`` invokes bare
+ * ``calloc`` on its ``HOSTED_MEM_CAP_NONE`` branch. Defining ``hosted_calloc``
+ * here and mapping ``calloc=hosted_calloc`` privately on ``esp_hosted_objs``
+ * keeps `<stdlib.h>` out of freestanding builds and prevents GCC 15+ C23
+ * implicit-declaration errors without emitting any libc ``calloc`` symbol.
+ *
+ * @param[in] num_elem  Element count.
+ * @param[in] size_elem Bytes per element.
+ *
+ * @return Zeroed pointer from ``g_h.funcs->_h_calloc``, or nullptr if unbound.
+ * @pre ``ra8_esp_hosted_port_init`` has bound the OS-abstraction vtable.
+ * @post Zero libc heap or ``_sbrk`` dependency is introduced.
+ * @since 0.2.0
+ */
+static inline void* hosted_calloc(size_t num_elem, size_t size_elem)
+{
+  if (g_h.funcs == nullptr) {
+    return nullptr;
+  }
+  return g_h.funcs->_h_calloc(num_elem, size_elem);
+}
+
+/**
  * @def HOSTED_FREE
  * @brief Release a pointer through the vtable and null the variable.
  * @details Nulling is part of the contract: the vendored code frees a

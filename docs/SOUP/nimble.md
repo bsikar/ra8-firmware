@@ -50,10 +50,10 @@ firmware as Software Of Unknown Provenance (SOUP).
   Apache-2.0 redistribution requires them; `README.md`,
   `RELEASE_NOTES.md` and `version.yml` because this document cites them
   for the component's version identity. The prune shrinks the OSV, SBOM
-  and exemption surface by roughly a quarter with no build change: the
-  compiled surface from the vendored tree is still the single header
-  `nimble/nimble_npl.h`. A future re-vendor must re-apply this subset
-  rather than take the upstream tree whole.
+  and exemption surface by roughly a quarter: the compiled surface from the
+  upstream dependency tarball is the host, GATT services, store/config,
+  transport, and porting-layer subset in `cmake/nimble.cmake`. A future
+  re-vendor must keep excluding `apps/` and the pruned directories above.
 - **Previous pin**: `8b6f3e819118a1839e5f238bfe1797d64878dc3d`, a
   default-branch snapshot 42 commits past `nimble_1_9_0_tag`, recovered
   by tree fingerprinting rather than by tag. It was replaced because it
@@ -63,38 +63,37 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-**No upstream NimBLE translation unit is compiled today.** This section
-states the intended role and then, separately, what is actually in the
-build, because the two are not yet the same and conflating them has
-already misled one triage.
+**Upstream Apache NimBLE 1.10.0 host translation units are compiled and linked
+into NimBLE firmware targets (RA8FW-270).**
 
-- **Intended role**: Bluetooth 5.4 host stack. The ESP32-C6 companion
-  runs the BLE controller; NimBLE runs the host, reached over the
-  `ra8_ble` HCI transport seam through `port/nimble/` (the ThreadX + HCI
-  port).
-- **Actually compiled**: `cmake/nimble.cmake` declares `nimble` as an
-  INTERFACE target. It has no `target_sources` and no source list, so it
-  contributes include directories only. `cmake/ra8_add_app.cmake` maps
-  `USES nimble` onto `nimble_port_threadx`, whose entire source list is
-  the two **first-party** files `port/nimble/src/ble_hci_ra8_ble.c` and
-  `port/nimble/src/nimble_npl_threadx.c`. No `nimble/host/src`,
-  `nimble/controller/src`, `nimble/transport/src`, mesh, audio or
-  porting-layer source is in any image; the upstream transport core and
-  NPL are stood in for by the weak no-op symbols declared in
-  `port/nimble/inc/nimble_transport_stubs.h`.
-- **Compiled surface from the vendored tree**: the single upstream header
-  `nimble/nimble_npl.h`, reached via
-  `port/nimble/inc/nimble_npl_threadx.h`. The `nimble/nimble_npl_os.h` it
-  chains to resolves to this port's own shadowing copy under
-  `port/nimble/inc/`, not to an upstream port. So what the vendored tree
-  contributes to a linked image is a handful of NPL type and prototype
-  declarations.
-- **Corroboration**: `.github/misra-baseline.txt` lists only those two
-  first-party `port/nimble/` files and no upstream NimBLE file, so no
-  upstream TU has ever been through the compile-gated static analysis.
-- `examples/_unsupported/threadx_nimble_peripheral` is the only app that
-  links the port. It includes no upstream NimBLE header, is HW-blocked on
-  the ESP32-C6 radio companion, and is an unvalidated scaffold.
+- **Intended & actual role**: Bluetooth 5.4 host stack. The ESP32-C6 companion
+  runs the BLE controller over `ra8_c6link` (`ESP_HCI_IF`); NimBLE runs the host
+  and GATT services on the RA8D2 MCU, reached over `ra8_ble` through
+  `port/nimble/`.
+- **Actually compiled**: `cmake/nimble.cmake` compiles upstream
+  `nimble/host/src/*.c` (excluding `ble_gatts_lcl.c`),
+  `nimble/host/util/src/addr.c`, `nimble/host/services/{bas,dis,gap,gatt}`,
+  `nimble/host/store/config`, `nimble/transport/src/{monitor,transport}.c`, and
+  `porting/nimble/src/{endian,mem,nimble_port,os_mbuf,os_mempool,os_msys}.c`
+  into `nimble_objs`, pre-empting upstream syscfg defaults via
+  `port/nimble/inc/syscfg/syscfg.h` (`#include_next`) and redirecting startup
+  GATT table allocations on freestanding `Generic` targets onto an 8 KiB static
+  SRAM pool (`port/nimble/src/nimble_port_alloc.c`). `nimble_port_threadx`
+  provides `port/nimble/src/ble_hci_ra8_ble.c`, `nimble_npl_threadx.c`, and
+  `nimble_port_alloc.c`; C6 BLE apps additionally compile
+  `port/nimble/src/ble_hci_c6link.c`.
+- **Disabled features**: Legacy/SC SMP (`MYNEWT_VAL_BLE_SM_LEGACY=0`,
+  `MYNEWT_VAL_BLE_SM_SC=0`, `MYNEWT_VAL_BLE_SM_BONDING=0`), ISO pools, and Mesh
+  (`MYNEWT_VAL_BLE_MESH=0`) remain compiled out via `port/nimble/inc/syscfg/syscfg.h`.
+- **Firmware & host test coverage**:
+  - `examples/ek_ra8d2/hw_validated/c6/c6_ble_nimble` builds a connectable
+    peripheral (GAP, GATT, BAS `0x180F` / `0x2A19`) over `ble_hci_c6link` and
+    `ra8_c6link`.
+  - `tests/wireless/src/test_app_c6_ble_nimble.c` exercises real `nimble/host`
+    GAP advertising, synthetic LE Connection Complete, ATT MTU exchange, and
+    disconnect re-advertising over `ra8_c6_model`.
+  - `examples/_unsupported/threadx_nimble_peripheral` retains its compile-only
+    reference build against real `ble_hs_cfg` and `nimble_port_init()`.
 - Integrity claim category: none (no BLE-driven safety signal in the
   current firmware).
 
@@ -124,13 +123,9 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 - The pin is a tagged release rather than a dev-branch snapshot, so the
   shipped code corresponds to something upstream voted on, and advisories
   can be attributed to it by version.
-- Stack is not yet wired to any production-track example; introduction
-  will require a fresh integration test pass. Because no upstream TU is
-  compiled today, the first change that links `nimble/host/src` -- the
-  ESP32-C6 BLE HCI seam (RA8FW-270) -- is the point at which every host-stack
-  advisory becomes live exposure in shipped code. Keeping this pin ahead
-  of published fixes is therefore a precondition of that work, not a
-  follow-up to it.
+- Host stack integration tests (`test_app_c6_ble_nimble`) and bounded HCI
+  event sizing (`static_assert(MYNEWT_VAL(BLE_TRANSPORT_EVT_SIZE) >= 257)`)
+  validate host/transport boundaries prior to live ESP32-C6 HIL testing.
 
 ## Deviations / patches
 
@@ -187,10 +182,10 @@ advisories, the code each one lives in, and their status here:
 
 | CVE | Vulnerable code | In a build of ours? | Status |
 | --- | --- | --- | --- |
-| CVE-2026-45811 | `nimble/transport/socket/src/ble_hci_socket.c`, `ble_hci_sock_rx_msg` -- unchecked HCI event copy in the POSIX **socket** transport | No, and not under RA8FW-270 either: our transport is `port/nimble/src/ble_hci_ra8_ble.c`, and `nimble/transport/socket/` is a host / simulator transport this firmware never builds | Fixed in the pin |
-| CVE-2026-45815 | `nimble/host/src/ble_gattc.c`, `ble_gattc_read_mult_cb_var` -- reachable assertion parsing an ATT Read Multiple Variable Response | Not today; **yes** once RA8FW-270 links `nimble/host/src`. Core GATT client, remotely triggerable (`AV:N/AC:L`) | Fixed in the pin |
-| CVE-2026-45816 | `nimble/host/src/ble_sm.c`, `ble_sm_ltk_req_rx` -- NULL dereference on an LE Long Term Key Request naming an unknown connection handle | Not today; **yes** once RA8FW-270 links `nimble/host/src`. Its threat model is a misbehaving controller, which is exactly what sits across our SPI HCI link to the C6 | Fixed in the pin |
-| CVE-2026-46452 | `nimble/host/mesh/src/proxy_msg.c`, `bt_mesh_proxy_msg_recv` -- unbounded SAR reassembly append | No, unless BLE Mesh is adopted: the mesh sources are a separate opt-in subset that neither the current build nor RA8FW-270 compiles | Fixed in the pin |
+| CVE-2026-45811 | `nimble/transport/socket/src/ble_hci_socket.c`, `ble_hci_sock_rx_msg` -- unchecked HCI event copy in the POSIX **socket** transport | No: our transport is `port/nimble/src/ble_hci_ra8_ble.c`, and `nimble/transport/socket/` is never built (`MYNEWT_VAL_BLE_TRANSPORT_LL__socket=0`) | Fixed in the pin |
+| CVE-2026-45815 | `nimble/host/src/ble_gattc.c`, `ble_gattc_read_mult_cb_var` -- reachable assertion parsing an ATT Read Multiple Variable Response | **Yes** -- compiled in `nimble/host/src`; fixed in 1.10.0 | Fixed in the pin |
+| CVE-2026-45816 | `nimble/host/src/ble_sm.c`, `ble_sm_ltk_req_rx` -- NULL dereference on an LE Long Term Key Request naming an unknown connection handle | Compiled in `nimble/host/src` with SMP disabled (`MYNEWT_VAL_BLE_SM_LEGACY=0`, `MYNEWT_VAL_BLE_SM_SC=0`); also fixed in 1.10.0 | Fixed in the pin |
+| CVE-2026-46452 | `nimble/host/mesh/src/proxy_msg.c`, `bt_mesh_proxy_msg_recv` -- unbounded SAR reassembly append | No: BLE Mesh is excluded (`MYNEWT_VAL_BLE_MESH=0`, mesh sources omitted from `cmake/nimble.cmake`) | Fixed in the pin |
 
 The four upstream fixes are commits `dcc4e4f0`, `fae6a487`, `9448c5f4`
 and `593f9522` respectively; all are ancestors of `nimble_1_10_0_tag`,
@@ -204,6 +199,7 @@ changed the outcome.
 
 ## Last review date
 
-- Reviewed: 2026-07-28 (bumped 1.9.0+dev -> 1.10.0 for the four 2026
-  advisories; provenance re-verified against the release tag)
+- Reviewed: 2026-11-27 (RA8FW-270 linked NimBLE 1.10.0 host/GATT/transport
+  subset into C6 BLE firmware and host integration tests; pin unchanged at
+  `nimble_1_10_0_tag`, `2026-07-28` CVE audit verified against active TUs)
 - Expected re-review by: 2027-07-28

@@ -13,21 +13,11 @@
  * resolve to our ``*_impl`` symbols below thanks to the upstream
  * weak-binding scheme.
  *
- * Inbound HCI events / ACL frames originate from the radio block.
- * ``ra8_ble_dispatch`` (called from the kernel main loop or BLE IRQ)
- * fires our ``internal_event_cb`` / ``internal_acl_cb`` callbacks. We copy
- * the bytes into NimBLE-allocated buffers and hand them off to
- * ``ble_transport_to_hs_evt`` / ``ble_transport_to_hs_acl`` so they
- * land in NimBLE's host-side input queue.
- *
- * @warning UNVALIDATED SCAFFOLD: this NimBLE port and its
- * ThreadX Native Porting Layer link and pass the static gates, but have
- * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
- * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
- * transport is itself unproven on this board. Treat every
- * symbol here as a link-only stub, not a working BLE stack. Consumers stay
- * under ``examples/_unsupported/`` until a NimBLE app is driven to real
- * hardware validation and promoted out of that tier.
+ * Inbound HCI events / ACL frames originate from the bound transport.
+ * ``ble_hci_ra8_ble_dispatch()`` acquires the adapter mutex, calls
+ * ``ra8_ble_dispatch()``, and dispatches inbound packets through
+ * ``internal_event_cb`` / ``internal_acl_cb`` into NimBLE's host-side
+ * input queues (``ble_transport_to_hs_evt`` / ``ble_transport_to_hs_acl``).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -36,13 +26,22 @@
 
 #include "ble_hci_ra8_ble.h"
 
+#include <os/os_mbuf.h>
+#include <os/os_mempool.h>
 #include <stdint.h>
 #include <string.h>
+#include <syscfg/syscfg.h>
 
-#include "nimble_transport_stubs.h"
+#include "nimble/transport.h"
 #include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_err.h"
+#ifndef RA8_OFF_TARGET
+#include "tx_api.h"
+#endif
+
+static_assert(MYNEWT_VAL(BLE_TRANSPORT_EVT_SIZE) >= (int)k_ble_hci_ra8_ble_evt_buf_max,
+              "MYNEWT_VAL_BLE_TRANSPORT_EVT_SIZE must fit full HCI events");
 
 /* =============================================================================
  * Adapter-private state
@@ -110,6 +109,32 @@ typedef enum : uint32_t {
 
 /** @brief Single-instance state for the adapter. */
 static ble_hci_ra8_ble_state_t s_state = k_ble_hci_ra8_ble_state_idle;
+
+#ifndef RA8_OFF_TARGET
+/** @brief Serializes ThreadX host TX calls against HCI pump dispatch. */
+static TX_MUTEX s_hci_mtx;
+/** @brief Creation flag for ::s_hci_mtx. */
+static uint8_t s_hci_mtx_ready = 0U;
+
+/** @brief Acquire the adapter mutex when executing inside a ThreadX thread. */
+RA8_INTERNAL static void internal_lock_hci(void)
+{
+  if ((s_hci_mtx_ready != 0U) && (tx_thread_identify() != TX_NULL)) {
+    (void)tx_mutex_get(&s_hci_mtx, TX_WAIT_FOREVER);
+  }
+}
+
+/** @brief Release the adapter mutex when executing inside a ThreadX thread. */
+RA8_INTERNAL static void internal_unlock_hci(void)
+{
+  if ((s_hci_mtx_ready != 0U) && (tx_thread_identify() != TX_NULL)) {
+    (void)tx_mutex_put(&s_hci_mtx);
+  }
+}
+#else
+RA8_INTERNAL static void internal_lock_hci(void) {}
+RA8_INTERNAL static void internal_unlock_hci(void) {}
+#endif
 
 /* =============================================================================
  * Private callbacks: ra8_ble -> NimBLE host
@@ -234,6 +259,15 @@ internal_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len
 /* Ble hci ra ble init -- see implementation for details. */
 ra8_err_t ble_hci_ra8_ble_init(void)
 {
+#ifndef RA8_OFF_TARGET
+  static CHAR s_mtx_name[] = {'b', 'l', 'e', '_', 'h', 'c', 'i', '\0'};
+  if (s_hci_mtx_ready == 0U) {
+    if (tx_mutex_create(&s_hci_mtx, s_mtx_name, TX_INHERIT) != TX_SUCCESS) {
+      return k_ra8_err_not_initialized;
+    }
+    s_hci_mtx_ready = 1U;
+  }
+#endif
   if (ra8_ble_attach_event_handler(internal_event_cb, nullptr) != k_ra8_ok) {
     return k_ra8_err_not_initialized;
   }
@@ -251,6 +285,15 @@ ra8_err_t ble_hci_ra8_ble_deinit(void)
   (void)ra8_ble_attach_event_handler(nullptr, nullptr);
   (void)ra8_ble_attach_acl_handler(nullptr, nullptr);
   return k_ra8_ok;
+}
+
+/* Poll and dispatch inbound HCI traffic under the adapter TX/RX lock. */
+ra8_err_t ble_hci_ra8_ble_dispatch(void)
+{
+  internal_lock_hci();
+  const ra8_err_t err = ra8_ble_dispatch();
+  internal_unlock_hci();
+  return err;
 }
 
 /* =============================================================================
@@ -302,7 +345,9 @@ int ble_transport_to_ll_cmd_impl(void* buf)
   const uint8_t  params_len = bytes[2];
   const uint8_t* params     = (params_len == 0U) ? nullptr : &bytes[3];
 
+  internal_lock_hci();
   const ra8_err_t err = ra8_ble_hci_send_command(opcode, params, params_len);
+  internal_unlock_hci();
   ble_transport_free(buf);
   return (err == k_ra8_ok) ? 0 : -1;
 }
@@ -340,8 +385,10 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
     return -1;
   }
 
-  const uint8_t*  payload = (len == 0U) ? nullptr : &flat[k_ble_hci_acl_off_payload];
-  const ra8_err_t err     = ra8_ble_hci_send_acl_data(handle, payload, len);
+  const uint8_t* payload = (len == 0U) ? nullptr : &flat[k_ble_hci_acl_off_payload];
+  internal_lock_hci();
+  const ra8_err_t err = ra8_ble_hci_send_acl_data(handle, payload, len);
+  internal_unlock_hci();
   return (err == k_ra8_ok) ? 0 : -1;
 }
 
