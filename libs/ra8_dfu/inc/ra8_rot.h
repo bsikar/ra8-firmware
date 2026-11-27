@@ -32,8 +32,8 @@
  *
  *  1. confirms the trailer magic + version (missing / malformed trailer
  *     -> deny);
- *  2. re-computes SHA-256 over the body (the RSIP hardware hash on target,
- *     the ``ra8_psa`` software hash in ``RA8_OFF_TARGET``);
+ *  2. re-computes SHA-256 over the body (via ``ra8_rsip_sha256`` software
+ *     backend on target, and ``ra8_psa`` software hash in ``RA8_OFF_TARGET``);
  *  3. confirms the freshly-computed digest equals the trailer digest
  *     (tampered body -> deny); and
  *  4. verifies the ECDSA-P256 signature over the freshly-computed digest
