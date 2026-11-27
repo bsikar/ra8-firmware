@@ -564,6 +564,228 @@ static void test_marian_batch_beam_and_error_guards(void)
                  ra8_translate_marian_batch_work_bytes(buf, len_sl, &bad_beam, &wb));
 }
 
+static void init_ssru_specs(c_tensor_spec_t* specs, size_t count)
+{
+  enum { k_d = 4U, k_ffn = 8U, k_vocab = 10U };
+  TEST_ASSERT(count == 45U);
+  specs[0]                   = (c_tensor_spec_t){.dtype   = k_ra8_translate_marian_dtype_i8,
+                                                 .rows    = k_vocab,
+                                                 .cols    = k_d,
+                                                 .scale   = 0.02F,
+                                                 .fill_i8 = 2};
+  specs[2]                   = specs[0];
+  specs[3]                   = (c_tensor_spec_t){.dtype = k_ra8_translate_marian_dtype_f32,
+                                                 .rows  = k_vocab,
+                                                 .cols  = 1U,
+                                                 .scale = 1.0F};
+  const c_tensor_spec_t sq   = {.dtype   = k_ra8_translate_marian_dtype_i8,
+                                .rows    = k_d,
+                                .cols    = k_d,
+                                .scale   = 0.02F,
+                                .fill_i8 = 4};
+  const c_tensor_spec_t ln_g = {.dtype    = k_ra8_translate_marian_dtype_f32,
+                                .rows     = k_d,
+                                .cols     = 1U,
+                                .scale    = 1.0F,
+                                .fill_f32 = 1.0F};
+  const c_tensor_spec_t ln_b = {.dtype = k_ra8_translate_marian_dtype_f32,
+                                .rows  = k_d,
+                                .cols  = 1U,
+                                .scale = 1.0F};
+  const c_tensor_spec_t fc1  = {.dtype   = k_ra8_translate_marian_dtype_i8,
+                                .rows    = k_ffn,
+                                .cols    = k_d,
+                                .scale   = 0.02F,
+                                .fill_i8 = 5};
+  const c_tensor_spec_t fc2  = {.dtype   = k_ra8_translate_marian_dtype_i8,
+                                .rows    = k_d,
+                                .cols    = k_ffn,
+                                .scale   = 0.02F,
+                                .fill_i8 = 4};
+
+  for (uint32_t p = 0U; p < 4U; ++p) {
+    specs[8U + p * 2U] = sq;
+  }
+  specs[16] = ln_g;
+  specs[17] = ln_b;
+  specs[18] = fc1;
+  specs[20] = fc2;
+  specs[22] = ln_g;
+  specs[23] = ln_b;
+
+  /* SSRU decoder layer (slots 24..44): rnn (24..28), cross (29..38), ffn (39..44). */
+  specs[24] = sq;
+  specs[25] = sq;
+  specs[26] = ln_b;
+  specs[27] = ln_g;
+  specs[28] = ln_b;
+  for (uint32_t p = 0U; p < 4U; ++p) {
+    specs[29U + p * 2U] = sq;
+  }
+  specs[37] = ln_g;
+  specs[38] = ln_b;
+  specs[39] = fc1;
+  specs[41] = fc2;
+  specs[43] = ln_g;
+  specs[44] = ln_b;
+}
+
+static size_t pack_ssru_tensors(uint8_t*               out,
+                                size_t                 cap,
+                                const c_tensor_spec_t* specs,
+                                size_t                 slots,
+                                uint16_t               force_tok)
+{
+  const size_t k_header = k_ra8_translate_marian_header_bytes;
+  const size_t k_desc   = k_ra8_translate_marian_tensor_desc_bytes;
+  size_t       cursor   = (k_header + slots * k_desc + 3U) & ~3U;
+
+  for (uint32_t s = 0U; s < slots; ++s) {
+    const size_t doff = k_header + (size_t)s * k_desc;
+    if (specs[s].dtype == k_ra8_translate_marian_dtype_none) {
+      wr_f32(out, doff + 16U, 1.0F);
+      continue;
+    }
+    cursor               = (cursor + 3U) & ~3U;
+    const size_t   elems = (size_t)specs[s].rows * specs[s].cols;
+    const uint32_t bytes =
+      (uint32_t)(elems * (specs[s].dtype == k_ra8_translate_marian_dtype_i8 ? 1U : 4U));
+    TEST_ASSERT(cursor + bytes <= cap);
+    if (specs[s].dtype == k_ra8_translate_marian_dtype_i8) {
+      for (size_t k = 0; k < elems; ++k) {
+        out[cursor + k] = (uint8_t)(int8_t)(specs[s].fill_i8 + (int8_t)((k * 3U) % 9U) - 4);
+      }
+    } else {
+      for (size_t k = 0; k < elems; ++k) {
+        wr_f32(out,
+               cursor + k * 4U,
+               (s == 3U && k == (size_t)force_tok) ? 18.0F : specs[s].fill_f32);
+      }
+    }
+    wr_u32(out, doff + 0U, (uint32_t)cursor);
+    wr_u32(out, doff + 4U, bytes);
+    wr_u32(out, doff + 8U, specs[s].rows);
+    wr_u32(out, doff + 12U, specs[s].cols);
+    wr_f32(out, doff + 16U, specs[s].scale);
+    out[doff + 20U] = specs[s].dtype;
+    out[doff + 21U] = 0U;
+    cursor += bytes;
+  }
+  return (cursor + 3U) & ~3U;
+}
+
+static size_t build_ssru_tmnt(uint8_t* out, size_t cap, uint16_t force_tok, uint16_t first_k)
+{
+  enum { k_d = 4U, k_ffn = 8U, k_vocab = 10U, k_max_seq = 8U, k_slots = 45U };
+  const size_t k_header     = k_ra8_translate_marian_header_bytes;
+  const size_t k_desc       = k_ra8_translate_marian_tensor_desc_bytes;
+  const size_t k_weights_at = (k_header + k_slots * k_desc + 3U) & ~3U;
+
+  c_tensor_spec_t specs[k_slots] = {};
+  init_ssru_specs(specs, k_slots);
+  memset(out, 0, cap);
+
+  const size_t weights_end = pack_ssru_tensors(out, cap, specs, k_slots, force_tok);
+  const size_t sl_bytes    = 16U + ((size_t)k_vocab + 1U) * 4U;
+  TEST_ASSERT(weights_end + sl_bytes <= cap);
+  wr_u32(out, weights_end + 0U, k_ra8_translate_marian_shortlist_magic);
+  wr_u16(out, weights_end + 4U, 1U);
+  wr_u16(out, weights_end + 6U, first_k);
+  wr_u32(out, weights_end + 8U, k_vocab);
+
+  const size_t total_bytes = weights_end + sl_bytes;
+  const size_t dir_end     = k_header + (size_t)k_slots * k_desc;
+  wr_u32(out, 0U, k_ra8_translate_marian_magic);
+  wr_u16(out, 4U, (uint16_t)k_ra8_translate_marian_version);
+  wr_u16(out,
+         6U,
+         (uint16_t)(k_ra8_translate_marian_flag_scale_embed |
+                    k_ra8_translate_marian_flag_decoder_ssru |
+                    k_ra8_translate_marian_flag_zero_bos));
+  wr_u32(out, 8U, (uint32_t)total_bytes);
+  out[20] = (uint8_t)k_ra8_translate_nmt_ko_en;
+  out[21] = 2U;
+  out[22] = 1U;
+  out[23] = 1U;
+  wr_u16(out, 24U, k_d);
+  wr_u16(out, 26U, k_ffn);
+  wr_u16(out, 28U, k_max_seq);
+  wr_u32(out, 32U, k_vocab);
+  wr_u32(out, 36U, 1U);
+  wr_f32(out, 52U, 1e-6F);
+  wr_u32(out, 64U, (uint32_t)weights_end);
+  wr_u32(out, 68U, (uint32_t)sl_bytes);
+  wr_u32(out, 72U, k_slots);
+  wr_u32(out, 76U, (uint32_t)k_weights_at);
+  wr_u32(out, 80U, (uint32_t)(weights_end - k_weights_at));
+  wr_u32(out, 16U, ieee_crc32(out + k_weights_at, total_bytes - k_weights_at));
+  wr_u32(out, 12U, ieee_crc32(out, dir_end));
+  return total_bytes;
+}
+
+static void test_marian_ssru_zero_bos_and_first_k(void)
+{
+  uint8_t      buf[4096] = {};
+  const size_t len       = build_ssru_tmnt(buf, sizeof(buf), 6U, 8U);
+
+  ra8_translate_marian_header_t hdr = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_marian_open(buf, len, k_ra8_translate_marian_open_verify_payload, &hdr));
+  TEST_ASSERT_EQ((uint16_t)(k_ra8_translate_marian_flag_scale_embed |
+                            k_ra8_translate_marian_flag_decoder_ssru |
+                            k_ra8_translate_marian_flag_zero_bos),
+                 hdr.model_flags);
+
+  size_t wbytes = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_marian_work_bytes(buf, len, 3U, 3U, &wbytes));
+  static uint8_t work[16384];
+  TEST_ASSERT(wbytes <= sizeof(work));
+
+  const uint32_t               src[3] = {4U, 7U, 0U};
+  uint32_t                     out[3] = {};
+  ra8_translate_marian_stats_t stats  = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_marian_greedy_decode(buf, len, src, 3U, 3U, work, wbytes, out, 3U, &stats));
+  TEST_ASSERT_EQ(3U, stats.generated_tokens);
+  TEST_ASSERT_EQ(6U, out[0]);
+
+  const ra8_translate_marian_batch_cfg_t cfg_sl = {
+    .max_src_len = 3U,
+    .max_tgt_len = 3U,
+    .flags       = k_ra8_translate_marian_batch_flag_use_shortlist,
+    .batch_size  = 1U,
+    .beam_width  = 1U,
+  };
+  size_t wb = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_marian_batch_work_bytes(buf, len, &cfg_sl, &wb));
+  TEST_ASSERT(wb <= sizeof(work));
+  ra8_translate_marian_batch_job_t   job     = {.src_off = 0U,
+                                                .src_len = 3U,
+                                                .tgt_off = 0U,
+                                                .tgt_cap = 3U};
+  uint32_t                           btgt[3] = {};
+  ra8_translate_marian_batch_stats_t bstats  = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_marian_batch_decode(buf,
+                                                   len,
+                                                   &cfg_sl,
+                                                   src,
+                                                   3U,
+                                                   &job,
+                                                   1U,
+                                                   work,
+                                                   wb,
+                                                   btgt,
+                                                   3U,
+                                                   nullptr,
+                                                   0U,
+                                                   &bstats));
+  TEST_ASSERT_EQ(3U, job.out_len);
+  TEST_ASSERT_EQ(6U, btgt[0]);
+}
+
 int main(void)
 {
   TEST_BEGIN("test_marian_open_and_error_guards");
@@ -581,5 +803,9 @@ int main(void)
   TEST_BEGIN("test_marian_batch_beam_and_error_guards");
   test_marian_batch_beam_and_error_guards();
   TEST_END("test_marian_batch_beam_and_error_guards");
+
+  TEST_BEGIN("test_marian_ssru_zero_bos_and_first_k");
+  test_marian_ssru_zero_bos_and_first_k();
+  TEST_END("test_marian_ssru_zero_bos_and_first_k");
   return 0;
 }

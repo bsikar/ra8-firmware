@@ -25,9 +25,11 @@ pub const WorkSizes = struct {
     max_attn_len: usize,
     num_enc: usize,
     num_dec: usize,
+    is_ssru: bool,
     enc_seq_elems: usize,
     cross_kv_elems: usize,
     self_kv_elems: usize,
+    ssru_cell_elems: usize,
     total_f32_elems: usize,
     total_bytes: usize,
 };
@@ -41,6 +43,7 @@ const WorkMem = struct {
     cross_v: []f32,
     self_k: []f32,
     self_v: []f32,
+    ssru_cell: []f32,
     dec_x: []f32,
     tok_in: []f32,
     tok_q: []f32,
@@ -71,15 +74,18 @@ pub fn planWorkspace(hdr: MarianHeader, max_src: usize, max_tgt: usize) Error!Wo
     const max_dim = @max(d_model, d_ff);
     const max_attn_len = @max(max_src, max_tgt);
 
+    const is_ssru = (hdr.model_flags & cont.flag_decoder_ssru) != 0;
     const enc_seq_elems = try checkedMul(max_src, d_model);
     const cross_kv_elems = try checkedMul(num_dec, enc_seq_elems);
     const tgt_seq_elems = try checkedMul(max_tgt, d_model);
-    const self_kv_elems = try checkedMul(num_dec, tgt_seq_elems);
+    const self_kv_elems = if (is_ssru) 0 else try checkedMul(num_dec, tgt_seq_elems);
+    const ssru_cell_elems = if (is_ssru) try checkedMul(num_dec, d_model) else 0;
 
     var total_f32: usize = 0;
     total_f32 = try checkedAdd(total_f32, try checkedMul(4, enc_seq_elems)); // enc_x, sub, k, v
     total_f32 = try checkedAdd(total_f32, try checkedMul(2, cross_kv_elems)); // cross_k, cross_v
     total_f32 = try checkedAdd(total_f32, try checkedMul(2, self_kv_elems)); // self_k, self_v
+    total_f32 = try checkedAdd(total_f32, ssru_cell_elems); // ssru_cell
     total_f32 = try checkedAdd(total_f32, try checkedMul(6, d_model)); // dec_x, in, q, ctx, out, tmp_b
     total_f32 = try checkedAdd(total_f32, d_ff); // ffn_tmp
     total_f32 = try checkedAdd(total_f32, max_dim); // f32_tmp_a
@@ -98,9 +104,11 @@ pub fn planWorkspace(hdr: MarianHeader, max_src: usize, max_tgt: usize) Error!Wo
         .max_attn_len = max_attn_len,
         .num_enc = num_enc,
         .num_dec = num_dec,
+        .is_ssru = is_ssru,
         .enc_seq_elems = enc_seq_elems,
         .cross_kv_elems = cross_kv_elems,
         .self_kv_elems = self_kv_elems,
+        .ssru_cell_elems = ssru_cell_elems,
         .total_f32_elems = total_f32,
         .total_bytes = total_bytes,
     };
@@ -127,6 +135,7 @@ pub fn evalStepLogits(
 
     var bytes_read: u64 = 0;
     try runEncoderAndPrecomputeCross(view, sizes, &mem, src_ids, &bytes_read);
+    if (sizes.is_ssru) @memset(mem.ssru_cell, 0.0);
 
     for (prefix_ids, 0..) |tok_id, pos| {
         try runDecoderStep(view, sizes, &mem, tok_id, pos, src_ids.len, &bytes_read);
@@ -155,6 +164,7 @@ pub fn greedyDecode(
 
     var bytes_read: u64 = 0;
     try runEncoderAndPrecomputeCross(view, sizes, &mem, src_ids, &bytes_read);
+    if (sizes.is_ssru) @memset(mem.ssru_cell, 0.0);
 
     var cur_tok: u32 = hdr.bos_id;
     var generated: usize = 0;
@@ -221,6 +231,7 @@ fn bindWorkspace(work_buf: []u8, sizes: WorkSizes) Error!WorkMem {
     const cross_v = takeF32(f32_pool, &cursor, sizes.cross_kv_elems);
     const self_k = takeF32(f32_pool, &cursor, sizes.self_kv_elems);
     const self_v = takeF32(f32_pool, &cursor, sizes.self_kv_elems);
+    const ssru_cell = takeF32(f32_pool, &cursor, sizes.ssru_cell_elems);
     const dec_x = takeF32(f32_pool, &cursor, sizes.d_model);
     const tok_in = takeF32(f32_pool, &cursor, sizes.d_model);
     const tok_q = takeF32(f32_pool, &cursor, sizes.d_model);
@@ -240,6 +251,7 @@ fn bindWorkspace(work_buf: []u8, sizes: WorkSizes) Error!WorkMem {
         .cross_v = cross_v,
         .self_k = self_k,
         .self_v = self_v,
+        .ssru_cell = ssru_cell,
         .dec_x = dec_x,
         .tok_in = tok_in,
         .tok_q = tok_q,
@@ -448,9 +460,11 @@ fn runEncoderAndPrecomputeCross(
 
     // Precompute cross-attention K/V projections once across all decoder layers.
     const dec_start = cont.global_tensor_count + sizes.num_enc * cont.enc_layer_tensor_count;
+    const dec_stride = cont.decLayerStride(view.header.model_flags);
+    const cross_off_in_layer: usize = if (sizes.is_ssru) 5 else 10;
     var dl: usize = 0;
     while (dl < sizes.num_dec) : (dl += 1) {
-        const cross_base = dec_start + dl * cont.dec_layer_tensor_count + 10;
+        const cross_base = dec_start + dl * dec_stride + cross_off_in_layer;
         const layer_off = dl * sizes.enc_seq_elems;
         s = 0;
         while (s < src_len) : (s += 1) {
@@ -492,200 +506,30 @@ fn runDecoderStep(
     const d = sizes.d_model;
     const d_ff = sizes.d_ff;
     const pre_norm = (hdr.model_flags & cont.flag_pre_norm) != 0;
+    const zero_bos = pos == 0 and (hdr.model_flags & cont.flag_zero_bos) != 0;
     const n_heads: usize = @intCast(hdr.num_heads);
     const dec_start = cont.global_tensor_count + sizes.num_enc * cont.enc_layer_tensor_count;
+    const dec_stride = cont.decLayerStride(hdr.model_flags);
 
-    try embedInto(view, tok_id, pos, mem.dec_x, mem.f32_tmp_a[0..d], bytes_read);
+    if (zero_bos) {
+        try embedZeroInto(view, pos, mem.dec_x, mem.f32_tmp_a[0..d], bytes_read);
+    } else {
+        try embedInto(view, tok_id, pos, mem.dec_x, mem.f32_tmp_a[0..d], bytes_read);
+    }
 
     var dl: usize = 0;
     while (dl < sizes.num_dec) : (dl += 1) {
-        const dec_base = dec_start + dl * cont.dec_layer_tensor_count;
-        const self_base = dec_base;
-        const cross_base = dec_base + 10;
-        const ffn_base = dec_base + 20;
+        const dec_base = dec_start + dl * dec_stride;
+        const cross_base = dec_base + (if (sizes.is_ssru) @as(usize, 5) else @as(usize, 10));
+        const ffn_base = cross_base + 10;
 
-        // 1. Causal self-attention sublayer.
-        try prepareBlockInput(
-            view,
-            mem.dec_x,
-            mem.tok_in,
-            pre_norm,
-            self_base + 8,
-            self_base + 9,
-            hdr.ln_eps,
-            mem,
-            bytes_read,
-        );
-        try projectMatVec(
-            view,
-            self_base + 0,
-            self_base + 1,
-            mem.tok_in,
-            mem.tok_q,
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        const self_layer_off = dl * sizes.max_tgt * d;
-        const step_off = self_layer_off + pos * d;
-        try projectMatVec(
-            view,
-            self_base + 2,
-            self_base + 3,
-            mem.tok_in,
-            mem.self_k[step_off .. step_off + d],
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        try projectMatVec(
-            view,
-            self_base + 4,
-            self_base + 5,
-            mem.tok_in,
-            mem.self_v[step_off .. step_off + d],
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        const kv_len = pos + 1;
-        attendAllHeads(
-            mem.tok_q,
-            mem.self_k[self_layer_off .. self_layer_off + kv_len * d],
-            mem.self_v[self_layer_off .. self_layer_off + kv_len * d],
-            kv_len,
-            n_heads,
-            d,
-            mem.attn_scores[0..kv_len],
-            mem.tok_ctx,
-        );
-        try projectMatVec(
-            view,
-            self_base + 6,
-            self_base + 7,
-            mem.tok_ctx,
-            mem.tok_out,
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        addInPlace(mem.dec_x, mem.tok_out);
-        if (!pre_norm) {
-            try applyLayerNormSlot(
-                view,
-                self_base + 8,
-                self_base + 9,
-                mem.dec_x,
-                hdr.ln_eps,
-                mem.f32_tmp_a[0..d],
-                mem.f32_tmp_b,
-                bytes_read,
-            );
+        if (sizes.is_ssru) {
+            try runSsruSublayer(view, sizes, mem, dec_base, dl, pre_norm, hdr.ln_eps, bytes_read);
+        } else {
+            try runSelfAttnSublayer(view, sizes, mem, dec_base, dl, pos, n_heads, pre_norm, hdr.ln_eps, bytes_read);
         }
-
-        // 2. Encoder-decoder cross-attention sublayer.
-        try prepareBlockInput(
-            view,
-            mem.dec_x,
-            mem.tok_in,
-            pre_norm,
-            cross_base + 8,
-            cross_base + 9,
-            hdr.ln_eps,
-            mem,
-            bytes_read,
-        );
-        try projectMatVec(
-            view,
-            cross_base + 0,
-            cross_base + 1,
-            mem.tok_in,
-            mem.tok_q,
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        const cross_layer_off = dl * sizes.enc_seq_elems;
-        attendAllHeads(
-            mem.tok_q,
-            mem.cross_k[cross_layer_off .. cross_layer_off + src_len * d],
-            mem.cross_v[cross_layer_off .. cross_layer_off + src_len * d],
-            src_len,
-            n_heads,
-            d,
-            mem.attn_scores[0..src_len],
-            mem.tok_ctx,
-        );
-        try projectMatVec(
-            view,
-            cross_base + 6,
-            cross_base + 7,
-            mem.tok_ctx,
-            mem.tok_out,
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        addInPlace(mem.dec_x, mem.tok_out);
-        if (!pre_norm) {
-            try applyLayerNormSlot(
-                view,
-                cross_base + 8,
-                cross_base + 9,
-                mem.dec_x,
-                hdr.ln_eps,
-                mem.f32_tmp_a[0..d],
-                mem.f32_tmp_b,
-                bytes_read,
-            );
-        }
-
-        // 3. Position-wise feed-forward sublayer.
-        try prepareBlockInput(
-            view,
-            mem.dec_x,
-            mem.tok_in,
-            pre_norm,
-            ffn_base + 4,
-            ffn_base + 5,
-            hdr.ln_eps,
-            mem,
-            bytes_read,
-        );
-        try projectMatVec(
-            view,
-            ffn_base + 0,
-            ffn_base + 1,
-            mem.tok_in,
-            mem.ffn_tmp[0..d_ff],
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        ops.reluInPlace(mem.ffn_tmp[0..d_ff]);
-        try projectMatVec(
-            view,
-            ffn_base + 2,
-            ffn_base + 3,
-            mem.ffn_tmp[0..d_ff],
-            mem.tok_out,
-            mem.q_tmp,
-            mem.f32_tmp_a,
-            bytes_read,
-        );
-        addInPlace(mem.dec_x, mem.tok_out);
-        if (!pre_norm) {
-            try applyLayerNormSlot(
-                view,
-                ffn_base + 4,
-                ffn_base + 5,
-                mem.dec_x,
-                hdr.ln_eps,
-                mem.f32_tmp_a[0..d],
-                mem.f32_tmp_b,
-                bytes_read,
-            );
-        }
+        try runCrossAttnSublayer(view, sizes, mem, cross_base, dl, src_len, n_heads, pre_norm, hdr.ln_eps, bytes_read);
+        try runDecFfnSublayer(view, d, d_ff, mem, ffn_base, pre_norm, hdr.ln_eps, bytes_read);
     }
 
     // Optional decoder final LayerNorm (`slots 6, 7`).
@@ -699,6 +543,106 @@ fn runDecoderStep(
         mem.f32_tmp_b,
         bytes_read,
     );
+}
+
+fn runSsruSublayer(
+    view: TmntView,
+    sizes: WorkSizes,
+    mem: *const WorkMem,
+    dec_base: usize,
+    dl: usize,
+    pre_norm: bool,
+    ln_eps: f32,
+    bytes_read: *u64,
+) Error!void {
+    const d = sizes.d_model;
+    try prepareBlockInput(view, mem.dec_x, mem.tok_in, pre_norm, dec_base + 3, dec_base + 4, ln_eps, mem, bytes_read);
+    try projectMatVecOptBias(view, dec_base + 0, null, mem.tok_in, mem.tok_ctx, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    try projectMatVecOptBias(view, dec_base + 1, dec_base + 2, mem.tok_in, mem.tok_out, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+
+    const cell = mem.ssru_cell[dl * d ..][0..d];
+    var i: usize = 0;
+    while (i < d) : (i += 1) {
+        const gate = ops.sigmoidF32(mem.tok_out[i]);
+        const c_next = gate * cell[i] + (1.0 - gate) * mem.tok_ctx[i];
+        cell[i] = c_next;
+        mem.dec_x[i] += if (c_next > 0.0) c_next else 0.0;
+    }
+    if (!pre_norm) {
+        try applyLayerNormSlot(view, dec_base + 3, dec_base + 4, mem.dec_x, ln_eps, mem.f32_tmp_a[0..d], mem.f32_tmp_b, bytes_read);
+    }
+}
+
+fn runSelfAttnSublayer(
+    view: TmntView,
+    sizes: WorkSizes,
+    mem: *const WorkMem,
+    self_base: usize,
+    dl: usize,
+    pos: usize,
+    n_heads: usize,
+    pre_norm: bool,
+    ln_eps: f32,
+    bytes_read: *u64,
+) Error!void {
+    const d = sizes.d_model;
+    try prepareBlockInput(view, mem.dec_x, mem.tok_in, pre_norm, self_base + 8, self_base + 9, ln_eps, mem, bytes_read);
+    try projectMatVec(view, self_base + 0, self_base + 1, mem.tok_in, mem.tok_q, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    const self_layer_off = dl * sizes.max_tgt * d;
+    const step_off = self_layer_off + pos * d;
+    try projectMatVec(view, self_base + 2, self_base + 3, mem.tok_in, mem.self_k[step_off .. step_off + d], mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    try projectMatVec(view, self_base + 4, self_base + 5, mem.tok_in, mem.self_v[step_off .. step_off + d], mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    const kv_len = pos + 1;
+    attendAllHeads(mem.tok_q, mem.self_k[self_layer_off .. self_layer_off + kv_len * d], mem.self_v[self_layer_off .. self_layer_off + kv_len * d], kv_len, n_heads, d, mem.attn_scores[0..kv_len], mem.tok_ctx);
+    try projectMatVec(view, self_base + 6, self_base + 7, mem.tok_ctx, mem.tok_out, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    addInPlace(mem.dec_x, mem.tok_out);
+    if (!pre_norm) {
+        try applyLayerNormSlot(view, self_base + 8, self_base + 9, mem.dec_x, ln_eps, mem.f32_tmp_a[0..d], mem.f32_tmp_b, bytes_read);
+    }
+}
+
+fn runCrossAttnSublayer(
+    view: TmntView,
+    sizes: WorkSizes,
+    mem: *const WorkMem,
+    cross_base: usize,
+    dl: usize,
+    src_len: usize,
+    n_heads: usize,
+    pre_norm: bool,
+    ln_eps: f32,
+    bytes_read: *u64,
+) Error!void {
+    const d = sizes.d_model;
+    try prepareBlockInput(view, mem.dec_x, mem.tok_in, pre_norm, cross_base + 8, cross_base + 9, ln_eps, mem, bytes_read);
+    try projectMatVec(view, cross_base + 0, cross_base + 1, mem.tok_in, mem.tok_q, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    const cross_layer_off = dl * sizes.enc_seq_elems;
+    attendAllHeads(mem.tok_q, mem.cross_k[cross_layer_off .. cross_layer_off + src_len * d], mem.cross_v[cross_layer_off .. cross_layer_off + src_len * d], src_len, n_heads, d, mem.attn_scores[0..src_len], mem.tok_ctx);
+    try projectMatVec(view, cross_base + 6, cross_base + 7, mem.tok_ctx, mem.tok_out, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    addInPlace(mem.dec_x, mem.tok_out);
+    if (!pre_norm) {
+        try applyLayerNormSlot(view, cross_base + 8, cross_base + 9, mem.dec_x, ln_eps, mem.f32_tmp_a[0..d], mem.f32_tmp_b, bytes_read);
+    }
+}
+
+fn runDecFfnSublayer(
+    view: TmntView,
+    d: usize,
+    d_ff: usize,
+    mem: *const WorkMem,
+    ffn_base: usize,
+    pre_norm: bool,
+    ln_eps: f32,
+    bytes_read: *u64,
+) Error!void {
+    try prepareBlockInput(view, mem.dec_x, mem.tok_in, pre_norm, ffn_base + 4, ffn_base + 5, ln_eps, mem, bytes_read);
+    try projectMatVec(view, ffn_base + 0, ffn_base + 1, mem.tok_in, mem.ffn_tmp[0..d_ff], mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    ops.reluInPlace(mem.ffn_tmp[0..d_ff]);
+    try projectMatVec(view, ffn_base + 2, ffn_base + 3, mem.ffn_tmp[0..d_ff], mem.tok_out, mem.q_tmp, mem.f32_tmp_a, bytes_read);
+    addInPlace(mem.dec_x, mem.tok_out);
+    if (!pre_norm) {
+        try applyLayerNormSlot(view, ffn_base + 4, ffn_base + 5, mem.dec_x, ln_eps, mem.f32_tmp_a[0..d], mem.f32_tmp_b, bytes_read);
+    }
 }
 
 fn computeLogits(
@@ -844,6 +788,26 @@ fn embedInto(
     }
 }
 
+fn embedZeroInto(
+    view: TmntView,
+    pos: usize,
+    out_vec: []f32,
+    f32_tmp: []f32,
+    bytes_read: *u64,
+) Error!void {
+    const d: usize = @intCast(view.header.d_model);
+    const pos_ref = try view.tensorAt(1);
+    if (pos_ref.dtype == .f32) {
+        var i: usize = 0;
+        while (i < d) : (i += 1) {
+            f32_tmp[i] = view.f32At(pos_ref, pos * d + i);
+        }
+        ops.embedZeroToken(0, f32_tmp[0..d], d, out_vec, bytes_read);
+    } else {
+        ops.embedZeroToken(pos, null, d, out_vec, bytes_read);
+    }
+}
+
 fn projectMatVec(
     view: TmntView,
     w_slot: usize,
@@ -854,9 +818,22 @@ fn projectMatVec(
     f32_tmp: []f32,
     bytes_read: *u64,
 ) Error!void {
+    return projectMatVecOptBias(view, w_slot, b_slot, x, out, q_tmp, f32_tmp, bytes_read);
+}
+
+fn projectMatVecOptBias(
+    view: TmntView,
+    w_slot: usize,
+    b_slot_opt: ?usize,
+    x: []const f32,
+    out: []f32,
+    q_tmp: []i8,
+    f32_tmp: []f32,
+    bytes_read: *u64,
+) Error!void {
     const w_ref = try view.tensorAt(w_slot);
     const w_i8 = view.i8Slice(w_ref);
-    const b_opt = try readF32Opt(view, b_slot, f32_tmp);
+    const b_opt = if (b_slot_opt) |b_slot| try readF32Opt(view, b_slot, f32_tmp) else null;
     ops.matVecI8(
         x,
         w_i8,

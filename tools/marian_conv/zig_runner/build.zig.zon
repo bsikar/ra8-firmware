@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+.{
+    .name = .marian_zig_runner,
+    .version = "0.1.0",
+    .fingerprint = 0x1c7daf032904a3e3,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_translate = .{ .path = "../../../libs/ra8_translate" },
+        .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}

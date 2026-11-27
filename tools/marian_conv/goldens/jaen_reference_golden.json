@@ -1,0 +1,579 @@
+{
+  "schema": 1,
+  "pair": "ja-en",
+  "source_version": "2.1",
+  "marian_version": "v1.12.14 2d067af 2024-02-16 11:44:13 -0500",
+  "license_spdx": "MPL-2.0",
+  "license_url": "https://github.com/mozilla/firefox-translations-models/blob/main/LICENSE",
+  "source_sha256": {
+    "model.jaen.intgemm.alphas.bin": "3a603e20bfe1be86071913f9e23ab5129075bc0a8490151020ac4821e4f17302",
+    "vocab.jaen.spm": "5cb217758bae05877bb3f0c2f612e4e7c1e4cb03c10db11f4a47098d7ae62919",
+    "lex.50.50.jaen.s2t.bin": "525f412f0d210536c2933c78ae395fa0bf2b5ee6cc5dda61ebc2e79410ebaee4"
+  },
+  "output_sha256": {
+    "jaen.tmnt": "93045bfbb9b9b5ae5cd7a49025472d22f575c91ddd9519072a8c580c05817a33",
+    "jaen.tvoc": "4273f8ffd3c1ca39c9943f04aefa7224afda1970c5063bec90e9ef7ccbe6eb55",
+    "jaen.tslt": "a379fe6447026eb534c96f344fc30a23fac2e306d0a6b6746341bfb870678919"
+  },
+  "zig_verified": true,
+  "cases": [
+    {
+      "source_text": "\u3053\u3093\u306b\u3061\u306f\u3002",
+      "src_ids": [
+        20724,
+        266,
+        0
+      ],
+      "greedy_ids": [
+        12800,
+        264,
+        0
+      ],
+      "decoded_en": "Hello.",
+      "steps": [
+        {
+          "step": 0,
+          "selected_id": 12800,
+          "selected_logit": 13.580135,
+          "top_candidates": [
+            {
+              "id": 12800,
+              "logit": 13.580135
+            },
+            {
+              "id": 265,
+              "logit": 11.658053
+            },
+            {
+              "id": 4393,
+              "logit": 11.655164
+            },
+            {
+              "id": 36393,
+              "logit": 10.756897
+            },
+            {
+              "id": 851,
+              "logit": 9.257267
+            }
+          ],
+          "zig_logits_sha256": "650c8f5c8a5f601d018274c76e477eee96e3554e1965eadf5de4656ba65b3f8a",
+          "zig_selected_logit_bits": "0x4159483c"
+        },
+        {
+          "step": 1,
+          "selected_id": 264,
+          "selected_logit": 9.779249,
+          "top_candidates": [
+            {
+              "id": 264,
+              "logit": 9.779249
+            },
+            {
+              "id": 357,
+              "logit": 8.602145
+            },
+            {
+              "id": 0,
+              "logit": 8.235623
+            },
+            {
+              "id": 268,
+              "logit": 7.836181
+            },
+            {
+              "id": 316,
+              "logit": 7.414088
+            }
+          ],
+          "zig_logits_sha256": "744527b165c393ceaf1be6b4035a3e0c640cfaea8d03ed01ff36d92da10d2fbe",
+          "zig_selected_logit_bits": "0x411c77ce"
+        },
+        {
+          "step": 2,
+          "selected_id": 0,
+          "selected_logit": 14.641797,
+          "top_candidates": [
+            {
+              "id": 0,
+              "logit": 14.641797
+            },
+            {
+              "id": 264,
+              "logit": 6.343923
+            },
+            {
+              "id": 265,
+              "logit": 4.827117
+            },
+            {
+              "id": 266,
+              "logit": 2.961246
+            },
+            {
+              "id": 12800,
+              "logit": 2.90312
+            }
+          ],
+          "zig_logits_sha256": "7151407e151c53eb42024b9bf0aace6129163e69bfdadb7bffc0980988c23dbc",
+          "zig_selected_logit_bits": "0x416a44cd"
+        }
+      ]
+    },
+    {
+      "source_text": "\u4eca\u65e5\u306f\u3044\u3044\u5929\u6c17\u3067\u3059\u3002",
+      "src_ids": [
+        4067,
+        1821,
+        9336,
+        318,
+        266,
+        0
+      ],
+      "greedy_ids": [
+        330,
+        292,
+        272,
+        3524,
+        3312,
+        718,
+        264,
+        0
+      ],
+      "decoded_en": "It's nice weather today.",
+      "steps": [
+        {
+          "step": 0,
+          "selected_id": 330,
+          "selected_logit": 13.838144,
+          "top_candidates": [
+            {
+              "id": 330,
+              "logit": 13.838144
+            },
+            {
+              "id": 289,
+              "logit": 13.004807
+            },
+            {
+              "id": 265,
+              "logit": 12.550164
+            },
+            {
+              "id": 287,
+              "logit": 11.984272
+            },
+            {
+              "id": 2578,
+              "logit": 11.95128
+            }
+          ],
+          "zig_logits_sha256": "1d8a88acb2bf20145f91bac1ce2d5f2351ddf5fc282f8b962510054938cc433e",
+          "zig_selected_logit_bits": "0x415d690a"
+        },
+        {
+          "step": 1,
+          "selected_id": 292,
+          "selected_logit": 17.592999,
+          "top_candidates": [
+            {
+              "id": 292,
+              "logit": 17.592999
+            },
+            {
+              "id": 277,
+              "logit": 13.625726
+            },
+            {
+              "id": 300,
+              "logit": 12.533363
+            },
+            {
+              "id": 331,
+              "logit": 11.238262
+            },
+            {
+              "id": 265,
+              "logit": 10.950407
+            }
+          ],
+          "zig_logits_sha256": "44cdfca881849f027d871a753b60deab85439424df281f9f0c59e8a66bb15e0b",
+          "zig_selected_logit_bits": "0x418cbe75"
+        },
+        {
+          "step": 2,
+          "selected_id": 272,
+          "selected_logit": 28.468441,
+          "top_candidates": [
+            {
+              "id": 272,
+              "logit": 28.468441
+            },
+            {
+              "id": 544,
+              "logit": 13.804942
+            },
+            {
+              "id": 379,
+              "logit": 13.179832
+            },
+            {
+              "id": 2790,
+              "logit": 12.720474
+            },
+            {
+              "id": 405,
+              "logit": 11.614933
+            }
+          ],
+          "zig_logits_sha256": "e5eb2658d31cfc97a1143feea340b69b575f5a726f4e22bdccc96b3e96f44038",
+          "zig_selected_logit_bits": "0x41e3bf5e"
+        },
+        {
+          "step": 3,
+          "selected_id": 3524,
+          "selected_logit": 16.353813,
+          "top_candidates": [
+            {
+              "id": 3524,
+              "logit": 16.353813
+            },
+            {
+              "id": 481,
+              "logit": 15.907108
+            },
+            {
+              "id": 3168,
+              "logit": 15.422303
+            },
+            {
+              "id": 273,
+              "logit": 15.213201
+            },
+            {
+              "id": 265,
+              "logit": 12.852046
+            }
+          ],
+          "zig_logits_sha256": "d0c540b9e498e78f8eafbac69d1696b32078f8443b7b361b69957e7b0d567b4b",
+          "zig_selected_logit_bits": "0x4182d49c"
+        },
+        {
+          "step": 4,
+          "selected_id": 3312,
+          "selected_logit": 18.766151,
+          "top_candidates": [
+            {
+              "id": 3312,
+              "logit": 18.766151
+            },
+            {
+              "id": 21381,
+              "logit": 10.725594
+            },
+            {
+              "id": 265,
+              "logit": 10.674031
+            },
+            {
+              "id": 319,
+              "logit": 10.171788
+            },
+            {
+              "id": 267,
+              "logit": 9.129947
+            }
+          ],
+          "zig_logits_sha256": "f37b4b1a9699e3eafd21bea7b00e8ac314465e40d5d64c0cf6a36c5a60262739",
+          "zig_selected_logit_bits": "0x41962114"
+        },
+        {
+          "step": 5,
+          "selected_id": 718,
+          "selected_logit": 15.739202,
+          "top_candidates": [
+            {
+              "id": 718,
+              "logit": 15.739202
+            },
+            {
+              "id": 269,
+              "logit": 12.252415
+            },
+            {
+              "id": 265,
+              "logit": 10.226057
+            },
+            {
+              "id": 282,
+              "logit": 8.594874
+            },
+            {
+              "id": 264,
+              "logit": 7.76368
+            }
+          ],
+          "zig_logits_sha256": "7323eef3c0bd5490101b55b2849c5d074a15352d930383ddb1176cbb2f405304",
+          "zig_selected_logit_bits": "0x417bd3c6"
+        },
+        {
+          "step": 6,
+          "selected_id": 264,
+          "selected_logit": 16.363613,
+          "top_candidates": [
+            {
+              "id": 264,
+              "logit": 16.363613
+            },
+            {
+              "id": 0,
+              "logit": 8.092031
+            },
+            {
+              "id": 268,
+              "logit": 7.310246
+            },
+            {
+              "id": 265,
+              "logit": 6.921422
+            },
+            {
+              "id": 266,
+              "logit": 6.692505
+            }
+          ],
+          "zig_logits_sha256": "284d24a1168e44dbfc0360498f06ff7028b8b1e61371dc3df0dec79a8dd352eb",
+          "zig_selected_logit_bits": "0x4182e8ad"
+        },
+        {
+          "step": 7,
+          "selected_id": 0,
+          "selected_logit": 20.969158,
+          "top_candidates": [
+            {
+              "id": 0,
+              "logit": 20.969158
+            },
+            {
+              "id": 265,
+              "logit": 7.265895
+            },
+            {
+              "id": 264,
+              "logit": 6.92385
+            },
+            {
+              "id": 292,
+              "logit": 6.643322
+            },
+            {
+              "id": 330,
+              "logit": 4.684611
+            }
+          ],
+          "zig_logits_sha256": "ebc3610d392e74054960f12c9410358b40523409a42e8ef413522becb2a41aae",
+          "zig_selected_logit_bits": "0x41a7c0d5"
+        }
+      ]
+    },
+    {
+      "source_text": "\u3042\u308a\u304c\u3068\u3046\u3054\u3056\u3044\u307e\u3059\u3002",
+      "src_ids": [
+        265,
+        8296,
+        266,
+        0
+      ],
+      "greedy_ids": [
+        3161,
+        280,
+        432,
+        530,
+        264,
+        0
+      ],
+      "decoded_en": "Thank you very much.",
+      "steps": [
+        {
+          "step": 0,
+          "selected_id": 3161,
+          "selected_logit": 15.312749,
+          "top_candidates": [
+            {
+              "id": 3161,
+              "logit": 15.312749
+            },
+            {
+              "id": 265,
+              "logit": 12.31259
+            },
+            {
+              "id": 3850,
+              "logit": 11.38697
+            },
+            {
+              "id": 4471,
+              "logit": 10.717026
+            },
+            {
+              "id": 17523,
+              "logit": 10.575009
+            }
+          ],
+          "zig_logits_sha256": "06ff92e96e84677dc4ee00c2b297625845d28201851718e49614a9b8c7d3ab07",
+          "zig_selected_logit_bits": "0x41750107"
+        },
+        {
+          "step": 1,
+          "selected_id": 280,
+          "selected_logit": 16.607162,
+          "top_candidates": [
+            {
+              "id": 280,
+              "logit": 16.607162
+            },
+            {
+              "id": 265,
+              "logit": 12.194877
+            },
+            {
+              "id": 272,
+              "logit": 10.785042
+            },
+            {
+              "id": 353,
+              "logit": 8.688614
+            },
+            {
+              "id": 22324,
+              "logit": 7.484657
+            }
+          ],
+          "zig_logits_sha256": "de9d5bb0680adf80849e518715406039a841ef4f5be3577ba08f0fd1c1f9e2f5",
+          "zig_selected_logit_bits": "0x4184db78"
+        },
+        {
+          "step": 2,
+          "selected_id": 432,
+          "selected_logit": 12.130022,
+          "top_candidates": [
+            {
+              "id": 432,
+              "logit": 12.130022
+            },
+            {
+              "id": 264,
+              "logit": 11.829417
+            },
+            {
+              "id": 282,
+              "logit": 10.827802
+            },
+            {
+              "id": 316,
+              "logit": 9.501145
+            },
+            {
+              "id": 265,
+              "logit": 9.350616
+            }
+          ],
+          "zig_logits_sha256": "b557d5608d8161b5f23920e53b061de19b35b82eb65f07f8dc3c85d416fc170a",
+          "zig_selected_logit_bits": "0x41421492"
+        },
+        {
+          "step": 3,
+          "selected_id": 530,
+          "selected_logit": 19.608583,
+          "top_candidates": [
+            {
+              "id": 530,
+              "logit": 19.608583
+            },
+            {
+              "id": 265,
+              "logit": 12.404701
+            },
+            {
+              "id": 4122,
+              "logit": 10.891313
+            },
+            {
+              "id": 462,
+              "logit": 9.186477
+            },
+            {
+              "id": 1035,
+              "logit": 8.753786
+            }
+          ],
+          "zig_logits_sha256": "33ffb947676c89e8675215ea64840c1dbfe5ff29f157504fd62df38405bcc30b",
+          "zig_selected_logit_bits": "0x419cde61"
+        },
+        {
+          "step": 4,
+          "selected_id": 264,
+          "selected_logit": 14.465078,
+          "top_candidates": [
+            {
+              "id": 264,
+              "logit": 14.465078
+            },
+            {
+              "id": 0,
+              "logit": 11.29097
+            },
+            {
+              "id": 282,
+              "logit": 10.992772
+            },
+            {
+              "id": 316,
+              "logit": 9.982512
+            },
+            {
+              "id": 5475,
+              "logit": 8.386245
+            }
+          ],
+          "zig_logits_sha256": "8e79c19daf72976ee8c03f160357707d1e0c3574ed3426137c5a0ada204a59c2",
+          "zig_selected_logit_bits": "0x416770f4"
+        },
+        {
+          "step": 5,
+          "selected_id": 0,
+          "selected_logit": 15.82585,
+          "top_candidates": [
+            {
+              "id": 0,
+              "logit": 15.82585
+            },
+            {
+              "id": 3161,
+              "logit": 9.636491
+            },
+            {
+              "id": 265,
+              "logit": 7.293175
+            },
+            {
+              "id": 264,
+              "logit": 5.114621
+            },
+            {
+              "id": 20602,
+              "logit": 4.640069
+            }
+          ],
+          "zig_logits_sha256": "af0cb471e75fc8e5ca2dc209c92eefc9676d1c12e36e6c054eda950fb42353c5",
+          "zig_selected_logit_bits": "0x417d36af"
+        }
+      ]
+    }
+  ],
+  "zig_verification": {
+    "max_step_logit_diff": 2e-06,
+    "batch_full_weight_bytes": 411095168,
+    "batch_shortlist_weight_bytes": 213228420
+  }
+}

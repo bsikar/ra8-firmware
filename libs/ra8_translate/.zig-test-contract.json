@@ -1152,5 +1152,5 @@
       "-Moverlay_mask=src/internal/overlay_mask.zig"
     ]
   },
-  "minimum_tests": 61
+  "minimum_tests": 63
 }

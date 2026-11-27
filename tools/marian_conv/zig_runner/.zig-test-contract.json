@@ -1,0 +1,13 @@
+{
+  "test_roots": [
+    "tests/runner_test.zig"
+  ],
+  "covered_sources": [
+    "src/c_api.zig",
+    "src/json_out.zig",
+    "src/main.zig",
+    "src/runner.zig",
+    "tests/runner_test.zig"
+  ],
+  "minimum_tests": 2
+}

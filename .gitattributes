@@ -37,6 +37,9 @@ infra/network/fortigate-bench.conf binary
 *.rgb binary
 *.tchr binary
 *.npub binary
+*.tmnt binary
+*.tvoc binary
+*.tslt binary
 libs/third_party/** -text
 apps/shared_libs/third_party/** -text
 # Fuzz corpus seeds: every byte (including CRLF in AT responses and
