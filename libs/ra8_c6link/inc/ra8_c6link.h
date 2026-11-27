@@ -967,6 +967,73 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
 ra8_c6link_hci_send(ra8_c6link_t* link, const uint8_t* h4_pkt, uint16_t len);
 
 /**
+ * @brief Initialise and enable the co-processor's Bluetooth HCI controller.
+ *
+ * @details
+ * Issues `Req_FeatureControl` (`Feature_Bluetooth`, `Feature_Command_BT_Init`)
+ * followed by `Feature_Command_BT_Enable` so the co-processor turns on its BLE
+ * controller and registers the VHCI callback for `ESP_HCI_IF` frames. If
+ * `BT_Init` reports `k_ra8_err_invalid_state` because the co-processor stayed
+ * powered across a host reset with Bluetooth already active, disables and
+ * deinitialises the controller and retries `BT_Init` once before enabling.
+ *
+ * @param[in,out] link Open handle; must be non-null.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Bluetooth controller is initialised and enabled.
+ * @retval k_ra8_err_null_ptr @p link was null.
+ * @retval k_ra8_err_not_initialized @p link is not open.
+ * @retval k_ra8_err_busy A request is already outstanding on @p link.
+ * @retval k_ra8_err_timeout The co-processor did not answer a step.
+ * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE.
+ * @retval k_ra8_err_protocol_error The co-processor rejected a step;
+ *         ::ra8_c6link_last_fault names the request.
+ * @retval k_ra8_err_spi_error The transport refused a transfer.
+ *
+ * @pre @p link was opened with ::ra8_c6link_open and announced cleanly.
+ * @pre No other request is outstanding on @p link.
+ * @post On success the co-processor routes `ESP_HCI_IF` frames to its BLE
+ *       controller.
+ * @post On failure the handle's last fault names the failed request.
+ *
+ * @note Not thread-safe; it pumps.
+ * @see ra8_c6link_bt_stop
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ra8_c6link_bt_start(ra8_c6link_t* link);
+
+/**
+ * @brief Disable and deinitialise the co-processor's Bluetooth controller.
+ *
+ * @details
+ * Issues `Req_FeatureControl` (`Feature_Bluetooth`,
+ * `Feature_Command_BT_Disable`) then `Feature_Command_BT_Deinit`. Continues to
+ * `BT_Deinit` even if `BT_Disable` fails, returning the first failure.
+ *
+ * @param[in,out] link Open handle; must be non-null.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Both teardown steps succeeded.
+ * @retval k_ra8_err_null_ptr @p link was null.
+ * @retval k_ra8_err_not_initialized @p link is not open.
+ * @retval k_ra8_err_busy A request is already outstanding on @p link.
+ * @retval k_ra8_err_timeout A step went unanswered.
+ * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE.
+ * @retval k_ra8_err_protocol_error A step reported a failure.
+ * @retval k_ra8_err_spi_error The transport refused a transfer.
+ *
+ * @pre @p link was opened with ::ra8_c6link_open.
+ * @pre Callers have stopped queuing outbound `ESP_HCI_IF` traffic.
+ * @post Both teardown steps were attempted.
+ * @post On failure the handle's last fault names the failed request.
+ *
+ * @note Not thread-safe; it pumps.
+ * @see ra8_c6link_bt_start
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ra8_c6link_bt_stop(ra8_c6link_t* link);
+
+/**
  * @brief Report the last request that failed on this link.
  *
  * @param[in] link Open handle; must be non-null.

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/inc/c6_ble_hci.h
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_ble_hci/inc/c6_ble_hci.h
  * @brief Contract, bounds, and core runner for the C6 BLE HCI example.
  * @ingroup grp_hal_system
  *

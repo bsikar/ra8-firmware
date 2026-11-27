@@ -358,6 +358,10 @@ ra8_ble_hci_send_acl_data(uint16_t handle, const uint8_t* payload, uint16_t len)
 /**
  * @brief Send LE_Set_Advertising_Data (opcode 0x2008).
  *
+ * @details Sends a fixed 32-octet HCI command parameter payload (1-octet
+ *          @p len followed by 31 octets zero-padded) per Bluetooth Core
+ *          Vol 4 Part E 7.8.7.
+ *
  * @param[in] data Advertising-data bytes.
  * @param[in] len  Byte count (0..k_ra8_ble_adv_data_max).
  *

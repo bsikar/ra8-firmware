@@ -32,7 +32,8 @@ extern "C" {
  * @brief Bind `ra8_ble` onto an open `ra8_c6link_t` companion link.
  *
  * @details
- * Attaches the inbound `ESP_HCI_IF` callback via ::ra8_c6link_set_hci_rx and
+ * Starts the co-processor's Bluetooth HCI controller via ::ra8_c6link_bt_start,
+ * attaches the inbound `ESP_HCI_IF` callback via ::ra8_c6link_set_hci_rx, and
  * binds transmit/poll callbacks via ::ra8_ble_bind_transport. Does not open or
  * reset `ra8_ble` or @p link; callers open both handles separately.
  *
@@ -40,13 +41,19 @@ extern "C" {
  *                     open until ::ble_hci_c6link_deinit is called.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok Transport bound cleanly onto @p link.
+ * @retval k_ra8_ok Controller enabled and transport bound cleanly onto @p link.
  * @retval k_ra8_err_null_ptr @p link was null.
  * @retval k_ra8_err_not_initialized @p link is not open.
+ * @retval k_ra8_err_busy A request is already outstanding on @p link.
+ * @retval k_ra8_err_timeout The co-processor did not answer a control request.
+ * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE.
+ * @retval k_ra8_err_protocol_error The co-processor rejected BT start.
+ * @retval k_ra8_err_spi_error The transport refused a transfer.
  *
  * @pre @p link was opened with ::ra8_c6link_open and has no conflicting HCI
  *      receiver registered.
- * @post Outbound `ra8_ble` commands and ACL packets clock over SPI via
+ * @post Co-processor BLE controller is initialised and enabled, and outbound
+ *       `ra8_ble` commands and ACL packets clock over SPI via
  *       ::ra8_c6link_hci_send.
  * @post ::ra8_ble_dispatch polls @p link and delivers inbound H4 packets via
  *       `ra8_ble`'s event/ACL callbacks.
@@ -61,8 +68,9 @@ extern "C" {
  * @brief Unbind `ra8_ble` from the companion link and restore loopback mode.
  *
  * @details
- * Detaches the `ra8_ble` external transport and clears the `ESP_HCI_IF` sink
- * on the previously bound `ra8_c6link_t` handle if it is still open.
+ * Detaches the `ra8_ble` external transport, clears the `ESP_HCI_IF` sink,
+ * and stops the co-processor Bluetooth controller via ::ra8_c6link_bt_stop on
+ * the previously bound `ra8_c6link_t` handle if it is still open.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok Unbound cleanly; `ra8_ble` operates in loopback mode again.
