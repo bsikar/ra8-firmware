@@ -64,9 +64,18 @@ extern uint32_t g_ra8_ls_ebss;      /**< End of .bss in SRAM.               */
  * resolves to address 0, the start/end comparison below is then `0 < 0`, and
  * the copy loop runs zero times. That keeps one shared boot file correct for
  * both shapes without a per-app fork or a build flag. */
-[[gnu::weak]] extern uint32_t g_ra8_ls_ssram_text;     /**< Start of .sram_text in SRAM. */
-[[gnu::weak]] extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.   */
-[[gnu::weak]] extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM.*/
+[[gnu::weak]] extern uint32_t g_ra8_ls_ssram_text;     /**< Start of .sram_text in SRAM.  */
+[[gnu::weak]] extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.    */
+[[gnu::weak]] extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM. */
+
+/* DTCM carries 64-bit ECC on Cortex-M85; linker_script.ld 8-byte-aligns these
+ * spans so Reset_Handler() can initialize them with 64-bit stores. Declared
+ * weak so apps with private linker scripts lacking DTCM symbols link cleanly. */
+[[gnu::weak]] extern uint64_t g_ra8_ls_sdtcm;      /**< Start of .dtcm_data in DTCM.  */
+[[gnu::weak]] extern uint64_t g_ra8_ls_edtcm;      /**< End of .dtcm_data in DTCM.    */
+[[gnu::weak]] extern uint32_t g_ra8_ls_sdtcm_load; /**< Source of .dtcm_data in MRAM. */
+[[gnu::weak]] extern uint64_t g_ra8_ls_sdtcm_bss;  /**< Start of .dtcm_bss in DTCM.   */
+[[gnu::weak]] extern uint64_t g_ra8_ls_edtcm_bss;  /**< End of .dtcm_bss in DTCM.     */
 
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 /* Root-of-Trust anti-rollback reads the counter word out of extra MRAM, and on
@@ -518,6 +527,23 @@ void Reset_Handler(void)
   dst = &g_ra8_ls_ssram_text;
   while (dst < &g_ra8_ls_esram_text) {
     *dst++ = *src++;
+  }
+
+  /* Step 3b: copy `.dtcm_data` and zero `.dtcm_bss` with 64-bit stores so
+   * Cortex-M85 DTCM 64-bit ECC is valid before any sub-width write or read. */
+  const uint32_t*          dtcm_src      = &g_ra8_ls_sdtcm_load;
+  volatile uint64_t*       dtcm_data_dst = &g_ra8_ls_sdtcm;
+  volatile uint64_t* const dtcm_data_end = &g_ra8_ls_edtcm;
+  while (dtcm_data_dst < dtcm_data_end) {
+    const uint64_t word64 = (uint64_t)dtcm_src[0] | ((uint64_t)dtcm_src[1] << 32U);
+    *dtcm_data_dst++      = word64;
+    dtcm_src += 2U;
+  }
+
+  volatile uint64_t*       dtcm_bss_dst = &g_ra8_ls_sdtcm_bss;
+  volatile uint64_t* const dtcm_bss_end = &g_ra8_ls_edtcm_bss;
+  while (dtcm_bss_dst < dtcm_bss_end) {
+    *dtcm_bss_dst++ = 0ULL;
   }
 
   /* Step 4: core-level init (VTOR, FPU, caches, priority grouping,

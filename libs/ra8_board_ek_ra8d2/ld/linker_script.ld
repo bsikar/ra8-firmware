@@ -348,19 +348,26 @@ SECTIONS
         g_ra8_ls_eitcm = .;
     } > ITCM AT > MRAM
 
-    .dtcm_data : ALIGN(4)
+    /* Align DTCM sections to 8 bytes so Reset_Handler() can initialize them in
+     * full 64-bit stores (Cortex-M85 DTCM ECC is 64-bit; sub-width writes on
+     * uninitialized ECC leave the syndrome invalid and fault subsequent reads). */
+    .dtcm_data : ALIGN(8)
     {
         g_ra8_ls_sdtcm = .;
         *(.dtcm_data)
         *(.dtcm_data.*)
+        . = ALIGN(8);
         g_ra8_ls_edtcm = .;
     } > DTCM AT > MRAM
 
-    .dtcm_bss (NOLOAD) : ALIGN(4)
+    g_ra8_ls_sdtcm_load = LOADADDR(.dtcm_data);
+
+    .dtcm_bss (NOLOAD) : ALIGN(8)
     {
         g_ra8_ls_sdtcm_bss = .;
         *(.dtcm_bss)
         *(.dtcm_bss.*)
+        . = ALIGN(8);
         g_ra8_ls_edtcm_bss = .;
     } > DTCM
 
