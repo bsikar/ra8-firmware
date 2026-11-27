@@ -10,6 +10,7 @@
 //! (ra8_nsc_appimg_pubkey, RA8FW-291), whose shipped default derives from
 //! libs/ra8_app/tools/test_key.zig's seed, so only images
 //! `zig build txm-hello-m33` signs pass.
+const std = @import("std");
 
 const root = @import("root");
 const appimg_verify = @import("appimg_verify");
