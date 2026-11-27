@@ -112,12 +112,12 @@ pub const DetSummary = extern struct {
 pub const CtcCharsetHeader = extern struct {
     total_bytes: u32 = 0,
     container_crc32: u32 = 0,
+    version: u16 = 0,
+    flags: u16 = 0,
     class_count: u32 = 0,
     blank_index: u32 = 0,
-    unknown_index: u32 = 0,
-    glyph_pool_bytes: u32 = 0,
-    version: u16 = 0,
-    header_flags: u16 = 0,
+    unk_index: u32 = 0,
+    string_pool_bytes: u32 = 0,
     ocr_model: u8 = 0,
     reserved: [3]u8 = .{ 0, 0, 0 },
 };
@@ -134,14 +134,23 @@ pub const CtcDecodeCfg = extern struct {
 
 pub const CtcResult = extern struct {
     text_bytes: u32 = 0,
-    glyph_count: u32 = 0,
-    unknown_count: u32 = 0,
-    collapsed_steps: u32 = 0,
+    emitted_tokens: u32 = 0,
+    blank_frames: u32 = 0,
+    unk_count: u32 = 0,
     confidence_bps: u16 = 0,
-    min_char_confidence_bps: u16 = 0,
+    min_token_confidence_bps: u16 = 0,
     low_confidence: u8 = 0,
     reserved: [3]u8 = .{ 0, 0, 0 },
 };
+
+comptime {
+    if (@sizeOf(CtcCharsetHeader) != 32 or @offsetOf(CtcCharsetHeader, "class_count") != 12) {
+        @compileError("CtcCharsetHeader ABI layout mismatch");
+    }
+    if (@sizeOf(CtcResult) != 24 or @offsetOf(CtcResult, "unk_count") != 12) {
+        @compileError("CtcResult ABI layout mismatch");
+    }
+}
 
 pub const VocabHeader = extern struct {
     total_bytes: u32 = 0,
