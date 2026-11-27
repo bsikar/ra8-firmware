@@ -97,22 +97,23 @@ RA8_PRIV uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint
 
 /**
  * @enum ra8_mipi_phy_mstpc_bit_t
- * @brief Direct-write fallback for the MIPI PHY module-stop bit.
+ * @brief MSTPCRC module-stop bit positions for MIPI subsystems.
  *
  * @details
- * The shared ``ra8_mstp_t`` enum in ``libs/ra8_hal/inc/ra8_mstp_regs.h``
- * does NOT yet have a ``k_ra8_mipi_phy`` entry, and this driver must not
- * extend that file. As a stop-gap the driver clears MSTPCRC bit 13 (the
- * MIPI PHY slot in MSTPCRC -- HUM Ch 64.4.2 p 3838 references MSTPCRC for
- * the block) directly, and the observers in ``mipi_phy_ops_abi.zig`` read the
- * same bit to tell "module stopped" from "idle".
- *
- * TODO: When ``ra8_mstp_regs.h`` gains an explicit ``k_ra8_mstp_mipi_phy``
- * value (driven by HUM Ch 11.2.8 "MSTPCRC" p 446-447), replace the direct
- * register accesses with ``ra8_mstp_enable(k_ra8_mstp_mipi_phy)``.
+ * Renesas RA8D2 Hardware User's Manual Ch 11.2.8 "Module Stop Control Register C
+ * (MSTPCRC)" pp 446-447 (Table 11.13) and Ch 64.4.2 p 3838 ("Module-Stop Function
+ * Setting"):
+ * The RA8D2 D-PHY does not possess an independent MSTPCRC slot. Module-stop
+ * gating is tied to the parent subsystem:
+ * - MSTPC10 (bit 10) for MIPI DSI Host mode (k_ra8_mstp_mipi_dsi)
+ * - MSTPC17 (bit 17) for MIPI CSI-2 Device mode (k_ra8_mstp_mipi_csi)
+ * Note: Bit 13 in MSTPCRC is MSTPC13: DOC (Data Operation Circuit), which was
+ * previously referenced as a provisional slot.
  */
 typedef enum : uint8_t {
-  k_ra8_mipi_phy_mstpc_bit = 13U, /**< Provisional MSTPC slot. */
+  k_ra8_mipi_phy_mstpc_bit_dsi = 10U, /**< HUM Table 11.13 p 446: MSTPC10 MIPI DSI. */
+  k_ra8_mipi_phy_mstpc_bit_csi = 17U, /**< HUM Table 11.13 p 447: MSTPC17 MIPI CSI. */
+  k_ra8_mipi_phy_mstpc_bit     = 10U, /**< Default / DSI Host fallback bit.         */
 } ra8_mipi_phy_mstpc_bit_t;
 
 /**

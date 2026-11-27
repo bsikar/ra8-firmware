@@ -34,11 +34,13 @@
  *
  * # Module-stop note
  *
- * HUM Ch 64.4.2 p 3838: MIPI PHY is gated by MSTPCRC. There is no
- * ``k_ra8_mstp_mipi_phy`` entry in ``libs/ra8_hal/inc/ra8_mstp_regs.h``
- * yet. This driver does NOT add one (touching a shared enum file is
- * forbidden); ``ra8_mipi_phy_init`` performs a direct MSTPCRC write
- * with a TODO marker so a later wave can promote it into ``ra8_mstp_t``.
+ * HUM Ch 11.2.8 Table 11.13 pp 446-447 and Ch 64.4.2 p 3838:
+ * The RA8D2 shared D-PHY does not possess an independent MSTPCRC bit;
+ * module-stop gating is tied to the parent subsystem:
+ * - MSTPC10 (bit 10) for MIPI DSI Host mode (k_ra8_mstp_mipi_dsi)
+ * - MSTPC17 (bit 17) for MIPI CSI-2 Device mode (k_ra8_mstp_mipi_csi)
+ * (Note: Bit 13 in MSTPCRC is MSTPC13: DOC / Data Operation Circuit).
+ * ``ra8_mipi_phy_init`` ungates the respective bit for the active mode.
  *
  * # Header layout
  *

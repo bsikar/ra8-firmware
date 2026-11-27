@@ -23,8 +23,9 @@ pub const mosc_max_mhz: u8 = 48;
 pub const lane_rate_div: u32 = 2;
 pub const hz_per_mhz: u32 = 1_000_000;
 
-/// MSTPCRC bit 13 (provisional slot), as ra8_mstp_t (k_ra8_mstp_reg_c = 2).
-pub const mstp_id: u16 = (2 << 8) | 13;
+/// MSTPCRC bit 10 (MIPI DSI, HUM 11.2.8 Table 11.13 p 446 / Ch 64.4.2 p 3838),
+/// as ra8_mstp_t (k_ra8_mstp_reg_c = 2).
+pub const mstp_id: u16 = (2 << 8) | 10;
 
 pub const mode_csi_device: u8 = 0;
 pub const mode_dsi_host: u8 = 1;
