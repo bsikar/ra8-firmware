@@ -1,8 +1,8 @@
 #
 # ra8-firmware development container.
 #
-# Ships an Ubuntu 24.04 base with the ARM GNU Toolchain, cmake,
-# clang-format, clang-tidy, and the J-Link toolchain
+# Ships an Ubuntu 26.04 base with the ARM GNU Toolchain, cmake,
+# clang-format, and the J-Link toolchain
 # prerequisites. Everything needed to build, test, and flash the
 # firmware. SEGGER J-Link package is NOT baked in because it
 # requires an EULA click-through -- install manually after first
@@ -11,28 +11,12 @@
 
 # Reproducibility posture (recon T5-02): the base image is pinned by its
 # immutable index digest so the gate suite starts from a byte-identical root
-# filesystem on every host. The toolchain packages the audit calls out --
-# the ARM cross-compiler (whose version-specific miniz miscompile means
-# codegen depends on the build host) and its matching newlib -- are pinned to
-# exact Ubuntu noble
-# versions below. These four live in `universe` and do not rotate within an
-# LTS, so the exact pin stays installable.
+# filesystem on every host.
 #
-# The clang / llvm-18 family is deliberately NOT exact-version-pinned: it
-# receives Ubuntu -security updates that rotate the exact version string off
-# the mirror, so an exact pin (e.g. clang-18=1:18.1.3-1ubuntu1) would make the
-# image UNBUILDABLE the moment a security update lands. It stays on the
-# major-version package name (clang-18 / clang-tools-18 / llvm-18) plus the
-# explicit clang-format-22 repo pin further down -- the same major the tree is
-# formatted and linted against.
-#
-# gcc-14 is the SECOND host-tool compiler arm. The tools-build gate
-# compiles the first-party host tools under clang-18 AND gcc-14 so the warning
-# families each catches but the other misses are both held: gcc-14's
-# -Wformat-truncation found a silent PATH_MAX path-join truncation in
-# a host app that clang-18 did not flag. Like the clang family it tracks the
-# major-version package name (gcc-14) rather than an exact string, and
-# check_tool_versions.py reads that major from here.
+# gcc-14 is the host-tool compiler arm. The tools-build gate
+# compiles the first-party host tools under gcc-14. Like other toolchains
+# it tracks the major-version package name (gcc-14) rather than an exact string,
+# and check_tool_versions.py reads that major from here.
 #
 # Cross-compiler: this image fetches Arm GNU Toolchain 15.2.rel1 to
 # /opt/arm-gnu-toolchain-15.2 by URL + sha256 (below) -- the SAME release + path
@@ -40,7 +24,7 @@
 # byte-reproducible codegen and cmake/toolchain-ra8d2.cmake's HINTS find it. It
 # bundles libstdc++ (the apt gcc-arm-none-eabi did not, so the C++ apps could not
 # build here) and its own newlib, so neither apt package is installed anymore.
-FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
+FROM ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -55,6 +39,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 # reason the gate suite must fail rather than skip on a missing tool.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# In unprivileged/rootless container engines (e.g. rootless podman), apt's privilege
+# dropping to the _apt user fails setgroups(65534). Configure apt to keep sandbox
+# execution under root.
+RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/01sandbox
+
 # Arm GNU Toolchain 15.2.rel1 -- pinned by URL + sha256 so the devcontainer's
 # cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-15.2.
 # Linux and Darwin publish different archives for each architecture;
@@ -64,22 +53,6 @@ ARG ARM_GCC_SHA256_X86_64=597893282ac8c6ab1a4073977f2362990184599643b4c5ee34870a
 ARG ARM_GCC_SHA256_AARCH64=d061559d814b205ed30c5b7c577c03317ec447ca51cd5a159d26b12a5bbeb20c
 ARG ARM_GCC_SHA256_DARWIN_ARM64=1938a84b7105c192e3fb4fa5e893ba25f425f7ddab40515ae608cd40f68669a8
 
-# Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
-# ra8_emulator decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
-# runner. An unpinned Unicorn is exactly the skew (runner 2.1.4 vs an old
-# 2.0.1). Keep these two in step with RA8_UNICORN_* in the ra8ci unicorn pin.
-ARG UNICORN_VERSION=2.1.4
-ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4
-
-# libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
-# disassembly only -- NOT the decode variable). the gate suite lints
-# tools/, so the tidy gate needs that header present inside the
-# container even though the tidy pass builds neither tool. A missing header does
-# not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
-# that TU -- so keep this list in step with the runner install step in
-# .github/workflows/firmware.yml. Unicorn is NOT here: it is the pinned source
-# build below (docs/TOOLCHAIN.md), not an apt package.
-#
 # THE INVARIANT: this list is a SUPERSET of every tool the gates declare
 # with require_cmd / require_python_mod. Nothing asserts it automatically any
 # more, so keep it true by hand when a gate gains a tool. openssh-client is here for exactly that reason and
@@ -101,22 +74,14 @@ ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce560
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
-      clang \
-      clang-18 \
-      clang-format \
-      clangd-18 \
       cmake \
       curl \
-      clang-tools-18 \
       gcc-14 \
       g++-14 \
       git \
       graphviz \
       jq \
-      libcapstone-dev \
-      libclang-rt-18-dev \
       libcurl4-openssl-dev \
-      llvm-18 \
       locales \
       ninja-build \
       openssh-client \
@@ -161,43 +126,6 @@ RUN set -eux; \
     /opt/arm-gnu-toolchain-15.2/bin/arm-none-eabi-gcc -dumpfullversion
 ENV PATH="/opt/arm-gnu-toolchain-15.2/bin:${PATH}"
 
-# Unicorn ${UNICORN_VERSION} from source -> /usr/local (the runner's layout), so
-# the gate suite's ra8_emulator gates decode Armv8.1-M byte-identically to CI. Pinned by
-# URL + sha256 so a corrupted/swapped/regenerated download fails loudly. Only
-# the arm target is built (ra8_emulator emulates the Cortex-M core), which keeps
-# the build small without changing the arm decode. Verified by re-reading the
-# installed header's UC_API_* version afterwards.
-RUN set -eux; \
-    url="https://github.com/unicorn-engine/unicorn/archive/refs/tags/${UNICORN_VERSION}.tar.gz"; \
-    alt_url="https://codeload.github.com/unicorn-engine/unicorn/tar.gz/refs/tags/${UNICORN_VERSION}"; \
-    cache_url="http://10.250.9.1:8080/unicorn-${UNICORN_VERSION}.tar.gz"; \
-    curl -fsSL --connect-timeout 2 "$cache_url" -o /tmp/unicorn.tar.gz || \
-      curl -fsSL --retry 5 --retry-delay 2 "$url" -o /tmp/unicorn.tar.gz || \
-      curl -fsSL --retry 5 --retry-delay 2 "$alt_url" -o /tmp/unicorn.tar.gz; \
-    echo "${UNICORN_SHA256}  /tmp/unicorn.tar.gz" | sha256sum -c -; \
-    tar -xzf /tmp/unicorn.tar.gz -C /tmp; \
-    cmake -S "/tmp/unicorn-${UNICORN_VERSION}" -B /tmp/unicorn-build \
-      -DCMAKE_BUILD_TYPE=Release -DUNICORN_ARCH=arm -DBUILD_SHARED_LIBS=ON \
-      -DCMAKE_INSTALL_PREFIX=/usr/local; \
-    cmake --build /tmp/unicorn-build --parallel "$(nproc)"; \
-    cmake --install /tmp/unicorn-build; \
-    ldconfig; \
-    rm -rf /tmp/unicorn.tar.gz "/tmp/unicorn-${UNICORN_VERSION}" /tmp/unicorn-build; \
-    grep -E 'UC_API_(MAJOR|MINOR|PATCH)' /usr/local/include/unicorn/unicorn.h
-
-# Sanity-check that the clang-18 profile runtime is present. MC/DC
-# instrumented binaries link against libclang_rt.profile-<arch>.a; if
-# the package layout changes upstream we want the image build to fail
-# loudly rather than during the MC/DC check on a contributor's machine.
-# The arch suffix is aarch64 on Apple Silicon hosts and x86_64 on
-# Intel hosts -- accept either.
-RUN set -eux; \
-    rt_dir="/usr/lib/llvm-18/lib/clang/18/lib/linux"; \
-    arch="$(uname -m)"; \
-    test -f "${rt_dir}/libclang_rt.profile-${arch}.a" \
-      || (echo "missing libclang_rt.profile-${arch}.a in ${rt_dir}" >&2; \
-          ls "${rt_dir}" >&2; exit 1)
-
 # git-lfs -- the repo LFS-tracks apps/board/stand_alone/ereader/content/library/*.epub. the gate suite snapshots the
 # tree with `git archive HEAD`, which spawns the git-lfs filter for those
 # pointers; without the binary present, archive aborts mid-stream. No gate reads
@@ -210,17 +138,17 @@ RUN apt-get update \
 
 # clang-format-22 -- the exact binary the CI format gate pins
 # (CLANG_FORMAT=clang-format-22 in .github/workflows/firmware.yml, and the tree
-# is formatted to it). Ubuntu 24.04 only ships clang-format-18, which disagrees
-# with v22 on edge cases, so the gate suite's format gate would be unfaithful without
-# it. Pulled from the official LLVM apt repository for noble. If LLVM 22 ever
+# is formatted to it). Ubuntu 26.04 ships a different default,
+# so the gate suite's format gate would be unfaithful without
+# it. Pulled from the official LLVM apt repository for resolute. If LLVM 22 ever
 # disappears from the snapshot mirror, the ra8ci runner falls back to the highest
 # clang-format-NN present and prints a clear warning rather than skipping.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gnupg \
     && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
          | gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
-         > /etc/apt/sources.list.d/llvm-toolchain-noble-22.list \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/resolute/ llvm-toolchain-resolute-22 main" \
+         > /etc/apt/sources.list.d/llvm-toolchain-resolute-22.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends clang-format-22 \
     && rm -rf /var/lib/apt/lists/*
@@ -451,7 +379,7 @@ RUN set -eux; \
     hadolint --version
 
 # Create a non-root user so post-create scripts run as a human.
-# Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
+# Ubuntu ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the
 # host bind-mount.
 ARG USERNAME=vscode

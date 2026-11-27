@@ -32,9 +32,9 @@ ignored:
   # by URL + sha256, and the four `universe` packages that do not rotate
   # within an LTS (cppcheck, gcovr) by exact version ARG.
   #
-  # The packages this rule fires on are git, curl, ca-certificates and the
-  # clang-18 family -- none of which any gate's BEHAVIOUR depends on, and the
-  # clang family is documented in the Dockerfile as intentionally tracking the
+  # The packages this rule fires on are git, curl, ca-certificates and
+  # compiler packages -- none of which any gate's BEHAVIOUR depends on, and
+  # gcc is documented in the Dockerfile as intentionally tracking the
   # major-version package name for exactly this reason.
   #
   # Revisit if the base ever moves to a distribution with an immutable package
