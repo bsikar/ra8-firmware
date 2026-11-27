@@ -7,8 +7,10 @@ RA8FW-290). CPU0:
    and reads `txm_hello_m33.ra8app` (`src/card.zig`);
 2. admits it through `ra8_appimg_verify` with a software Ed25519 backend and
    the pinned test public key from `libs/ra8_app/tools/test_key.zig`'s seed
-   (`src/verify.zig`), then flips the file's last payload byte in RAM,
-   checks the gate refuses that copy, and restores it (RA8FW-831);
+   (`src/verify.zig`), checks the gate refuses an unsigned (all-zero
+   signature) copy (RA8FW-291), then flips the file's last payload byte in
+   RAM, checks the gate refuses that tampered copy, and restores it
+   (RA8FW-831);
 3. reads and admits `txm_fault_m33.ra8app` from the same card the same way;
 4. memory-loads the hello module through the ThreadX Module Manager, starts
    it unprivileged, waits for its start thread to run ten times, then stops
@@ -37,6 +39,7 @@ root. `zig build txm-hello-m33` installs both under `zig-out/arm/`.
 Console, on a pass:
 
 ```
+txm_sd_hello_m85: unsigned image refused PASS
 txm_sd_hello_m85: tampered image refused PASS
 txm_sd_hello_m85: run 1 exited, unload returned N bytes, module pool F of F free
 txm_sd_hello_m85: run 2 exited, unload returned N bytes, module pool F of F free
@@ -49,7 +52,7 @@ txm_sd_hello_m85: faulting module killed, firmware ran on PASS
 
 N is what the loaded module held in the pool and F the pool's free bytes;
 each unload must return all of N. Otherwise `txm_sd_hello_m85: FAIL <step>`
-naming pins, card, mount, open, size, read, header, signature, tamper,
+naming pins, card, mount, open, size, read, header, signature, unsigned, tamper,
 fault_signature, manager, notify, pool, load, start, run, stop, unload, leak
 or fault.
 
