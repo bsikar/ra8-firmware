@@ -72,22 +72,15 @@ endif()
 get_filename_component(_RA8_MBEDTLS_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
 include(${_RA8_MBEDTLS_REPO_ROOT}/cmake/zig_package.cmake)
+include(${_RA8_MBEDTLS_REPO_ROOT}/cmake/tf_psa_crypto.cmake)
+
 ra8_zig_package_dir(mbedtls _RA8_MBEDTLS_VENDOR_DIR)
 set(_RA8_MBEDTLS_INC_DIR "${_RA8_MBEDTLS_VENDOR_DIR}/include")
 set(_RA8_MBEDTLS_LIB_DIR "${_RA8_MBEDTLS_VENDOR_DIR}/library")
 set(_RA8_MBEDTLS_PORT_DIR "${_RA8_MBEDTLS_REPO_ROOT}/port/mbedtls")
 set(_RA8_MBEDTLS_CONFIG_FILE "${_RA8_MBEDTLS_PORT_DIR}/inc/mbedtls_config.h")
 
-ra8_zig_package_dir(tf_psa_crypto _RA8_TFPSA_DIR)
-set(_RA8_TFPSA_INC_DIR "${_RA8_TFPSA_DIR}/include")
-set(_RA8_TFPSA_CORE_DIR "${_RA8_TFPSA_DIR}/core")
-set(_RA8_TFPSA_DISPATCH_DIR "${_RA8_TFPSA_DIR}/dispatch")
-set(_RA8_TFPSA_DRIVERS_DIR "${_RA8_TFPSA_DIR}/drivers/builtin")
-set(_RA8_TFPSA_DRIVERS_INC_DIR "${_RA8_TFPSA_DRIVERS_DIR}/include")
-set(_RA8_TFPSA_DRIVERS_SRC_DIR "${_RA8_TFPSA_DRIVERS_DIR}/src")
-set(_RA8_TFPSA_PLATFORM_DIR "${_RA8_TFPSA_DIR}/platform")
-set(_RA8_TFPSA_UTILITIES_DIR "${_RA8_TFPSA_DIR}/utilities")
-set(_RA8_TFPSA_EXTRAS_DIR "${_RA8_TFPSA_DIR}/extras")
+ra8_tf_psa_crypto_paths(_RA8_TFPSA)
 set(_RA8_TFPSA_CRYPTO_CONFIG "${_RA8_MBEDTLS_PORT_DIR}/inc/tf_psa_crypto_config.h")
 
 if(NOT EXISTS "${_RA8_MBEDTLS_INC_DIR}/mbedtls/build_info.h")
@@ -105,7 +98,7 @@ endif()
 # The TF-PSA-Crypto companion vendor tree must be present. Mbed TLS 4.x
 # pulls cryptographic primitives from this tree via
 # `tf_psa_crypto_platform_requirements.h` and the PSA driver wrappers.
-if(NOT EXISTS "${_RA8_TFPSA_CORE_DIR}/tf_psa_crypto_platform_requirements.h")
+if(NOT EXISTS "${_RA8_TFPSA_DIR}/core/tf_psa_crypto_platform_requirements.h")
   message(
     FATAL_ERROR
       "RA8_USE_MBEDTLS=ON but the tf-psa-crypto companion vendor tree "
@@ -115,11 +108,11 @@ if(NOT EXISTS "${_RA8_TFPSA_CORE_DIR}/tf_psa_crypto_platform_requirements.h")
   )
 endif()
 
-if(NOT EXISTS "${_RA8_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h")
+if(NOT EXISTS "${_RA8_TFPSA_DIR}/core/psa_crypto_driver_wrappers.h")
   message(
     FATAL_ERROR
       "RA8_USE_MBEDTLS=ON but the generated PSA driver wrapper header "
-      "${_RA8_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h is missing. "
+      "${_RA8_TFPSA_DIR}/core/psa_crypto_driver_wrappers.h is missing. "
       "Regenerate it via "
       "`python scripts/generate_driver_wrappers.py <out>` from the " # PATHREF-OK: upstream tree
       "tf-psa-crypto source tree (requires the `framework` git "
@@ -141,16 +134,6 @@ add_subdirectory(${_RA8_MBEDTLS_PORT_DIR} ${CMAKE_BINARY_DIR}/port_mbedtls)
 # include path.
 file(GLOB _RA8_MBEDTLS_LIB_SOURCES CONFIGURE_DEPENDS "${_RA8_MBEDTLS_LIB_DIR}/*.c")
 
-file(GLOB _RA8_TFPSA_CORE_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_CORE_DIR}/*.c")
-
-file(GLOB _RA8_TFPSA_DRIVER_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_DRIVERS_SRC_DIR}/*.c")
-
-file(GLOB _RA8_TFPSA_PLATFORM_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_PLATFORM_DIR}/*.c")
-
-file(GLOB _RA8_TFPSA_UTIL_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_UTILITIES_DIR}/*.c")
-
-file(GLOB _RA8_TFPSA_EXTRAS_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_EXTRAS_DIR}/*.c")
-
 # ---------------------------------------------------------------------------
 # Mbed TLS / TF-PSA-Crypto -- compiled as one OBJECT library so apps
 # can splice the objects directly into their final ELF without
@@ -160,11 +143,7 @@ file(GLOB _RA8_TFPSA_EXTRAS_SOURCES CONFIGURE_DEPENDS "${_RA8_TFPSA_EXTRAS_DIR}/
 add_library(
   mbedtls_objs OBJECT
   ${_RA8_MBEDTLS_LIB_SOURCES}
-  ${_RA8_TFPSA_CORE_SOURCES}
-  ${_RA8_TFPSA_DRIVER_SOURCES}
-  ${_RA8_TFPSA_PLATFORM_SOURCES}
-  ${_RA8_TFPSA_UTIL_SOURCES}
-  ${_RA8_TFPSA_EXTRAS_SOURCES}
+  ${_RA8_TFPSA_SOURCES}
 )
 
 # Order matters here: the port include dir comes first so any
@@ -176,14 +155,7 @@ target_include_directories(mbedtls_objs PUBLIC ${_RA8_MBEDTLS_PORT_DIR})
 target_include_directories(
   mbedtls_objs SYSTEM
   PUBLIC ${_RA8_MBEDTLS_INC_DIR}
-         ${_RA8_TFPSA_INC_DIR}
-         ${_RA8_TFPSA_DRIVERS_INC_DIR}
-         ${_RA8_TFPSA_CORE_DIR}
-         ${_RA8_TFPSA_DISPATCH_DIR}
-         ${_RA8_TFPSA_DRIVERS_SRC_DIR}
-         ${_RA8_TFPSA_UTILITIES_DIR}
-         ${_RA8_TFPSA_EXTRAS_DIR}
-         ${_RA8_TFPSA_PLATFORM_DIR}
+         ${_RA8_TFPSA_INCLUDE_DIRS}
          ${_RA8_MBEDTLS_LIB_DIR}
 )
 
@@ -211,10 +183,7 @@ target_include_directories(mbedtls INTERFACE ${_RA8_MBEDTLS_PORT_DIR})
 target_include_directories(
   mbedtls SYSTEM
   INTERFACE ${_RA8_MBEDTLS_INC_DIR}
-            ${_RA8_TFPSA_INC_DIR}
-            ${_RA8_TFPSA_DRIVERS_INC_DIR}
-            ${_RA8_TFPSA_CORE_DIR}
-            ${_RA8_TFPSA_DISPATCH_DIR}
+            ${_RA8_TFPSA_INCLUDE_DIRS}
 )
 target_compile_definitions(mbedtls INTERFACE MBEDTLS_CONFIG_FILE="${_RA8_MBEDTLS_CONFIG_FILE}")
 if(EXISTS "${_RA8_TFPSA_CRYPTO_CONFIG}")

@@ -46,51 +46,12 @@ ra8_link_zig_library_for_cpu(
   FLOAT hard
 )
 
-# tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil).
-include(${_d}/cmake/zig_package.cmake)
-ra8_zig_package_dir(tf_psa_crypto _TF)
-ra8_zig_package_dir(mbedtls _MBEDTLS)
-set(_PORT "${_d}/port/mbedtls/inc")
-file(
-  GLOB
-  _TF_SRC
-  CONFIGURE_DEPENDS
-  ${_TF}/core/*.c
-  ${_TF}/drivers/builtin/src/*.c
-  ${_TF}/platform/*.c
-  ${_TF}/utilities/*.c
-  ${_TF}/extras/*.c
+# tf-psa-crypto software crypto for ARM, built by the shared recipe in
+# cmake/tf_psa_crypto.cmake with this app's tf_psa_crypto_config_sb.h.
+include(${_d}/cmake/tf_psa_crypto.cmake)
+ra8_add_tf_psa_crypto(
+  tfpsa_sb CONFIG "tf_psa_crypto_config_sb.h" CONFIG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
-add_library(tfpsa_sb STATIC ${_TF_SRC})
-target_include_directories(
-  tfpsa_sb SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
-         ${_TF}/include
-         ${_TF}/drivers/builtin/include
-         ${_TF}/core
-         ${_TF}/dispatch
-         ${_TF}/drivers/builtin/src
-         ${_TF}/platform
-         ${_TF}/utilities
-         ${_TF}/extras
-         ${_MBEDTLS}/include
-         ${_PORT}
-)
-target_compile_definitions(
-  tfpsa_sb
-  PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_config.h"
-         TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config_sb.h" MBEDTLS_PLATFORM_MEMORY
-         MBEDTLS_MEMORY_BUFFER_ALLOC_C
-)
-# No warning suppression: this OBJECT library has no warning profile to suppress.
-# ra8_add_app() applies the project profile to the app target, not to this
-# separately-declared tf-psa-crypto object library, so its compile line is the
-# toolchain flags plus this one. Compiling all 77 tf-psa-crypto TUs with
-# -Wno-attributes and -Wno-redundant-decls removed, under arm-none-eabi-gcc
-# 13.3.1 at -O0, emits nothing at all: neither -Wattributes nor
-# -Wredundant-decls is ever enabled here. Both are deleted; -fno-strict-aliasing
-# stays because it changes code generation, not diagnostics.
-target_compile_options(tfpsa_sb PRIVATE -fno-strict-aliasing)
 
 target_link_libraries(secure_boot_hil.elf PRIVATE tfpsa_sb)
 target_compile_definitions(secure_boot_hil.elf PRIVATE RA8_ENABLE_ROOT_OF_TRUST)

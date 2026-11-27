@@ -45,12 +45,12 @@ target_include_directories(
   test_mbedtls_psa_rng PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/inc ${FW_ROOT}/libs/ra8_core/inc
                                ${FW_ROOT}/libs/ra8_hal/inc
 )
-include(${FW_ROOT}/cmake/zig_package.cmake)
-ra8_zig_package_dir(tf_psa_crypto _RA8_TFPSA_PKG_DIR)
+include(${FW_ROOT}/cmake/tf_psa_crypto.cmake)
+ra8_tf_psa_crypto_paths(_RA8_TFPSA_KAT)
 target_include_directories(
   test_mbedtls_psa_rng SYSTEM
-  PRIVATE ${_RA8_TFPSA_PKG_DIR}/drivers/builtin/include
-          ${_RA8_TFPSA_PKG_DIR}/include
+  PRIVATE ${_RA8_TFPSA_KAT_DIR}/drivers/builtin/include
+          ${_RA8_TFPSA_KAT_DIR}/include
 )
 target_compile_definitions(test_mbedtls_psa_rng PRIVATE MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1)
 target_compile_options(
@@ -71,31 +71,13 @@ add_test(NAME test_mbedtls_psa_rng COMMAND test_mbedtls_psa_rng)
 # TF-PSA-Crypto library directly -- the exact psa_* primitives the production
 # !RA8_OFF_TARGET path calls -- and pins them to NIST/RFC vectors. It is a
 # self-contained executable (no ra8_core_hal, no fake). TF-PSA-Crypto is SOUP:
-# compile it -w -fno-strict-aliasing like the other vendored trees; it is
-# pinned in build.zig.zon and lives in the Zig package cache, outside the tree.
-set(_RA8_TFPSA_KAT_DIR ${_RA8_TFPSA_PKG_DIR})
-file(
-  GLOB
-  _RA8_TFPSA_KAT_SRC
-  CONFIGURE_DEPENDS
-  ${_RA8_TFPSA_KAT_DIR}/core/*.c
-  ${_RA8_TFPSA_KAT_DIR}/drivers/builtin/src/*.c
-  ${_RA8_TFPSA_KAT_DIR}/platform/*.c
-  ${_RA8_TFPSA_KAT_DIR}/utilities/*.c
-  ${_RA8_TFPSA_KAT_DIR}/extras/*.c
-)
-set(_RA8_TFPSA_KAT_INC
-    ${_RA8_TFPSA_KAT_DIR}/include
-    ${_RA8_TFPSA_KAT_DIR}/drivers/builtin/include
-    ${_RA8_TFPSA_KAT_DIR}/core
-    ${_RA8_TFPSA_KAT_DIR}/dispatch
-    ${_RA8_TFPSA_KAT_DIR}/drivers/builtin/src
-    ${_RA8_TFPSA_KAT_DIR}/platform
-    ${_RA8_TFPSA_KAT_DIR}/utilities
-    ${_RA8_TFPSA_KAT_DIR}/extras
-)
-add_library(ra8_tfpsa_host_kat OBJECT ${_RA8_TFPSA_KAT_SRC})
-target_include_directories(ra8_tfpsa_host_kat PRIVATE ${_RA8_TFPSA_KAT_INC})
+# compile it -fno-strict-aliasing like the other vendored trees; it is pinned
+# in build.zig.zon and lives in the Zig package cache, outside the tree. The
+# source set and include trees come from cmake/tf_psa_crypto.cmake, the same
+# recipe every on-target secure-boot image uses; this host build alone keeps
+# the upstream default crypto config.
+add_library(ra8_tfpsa_host_kat OBJECT ${_RA8_TFPSA_KAT_SOURCES})
+target_include_directories(ra8_tfpsa_host_kat PRIVATE ${_RA8_TFPSA_KAT_INCLUDE_DIRS})
 # No warning suppression: this OBJECT library never had a warning profile to
 # suppress. Its only compile options are the ones on this line, so -Wall is off
 # and neither -Wattributes nor -Wredundant-decls is ever enabled. Compiling all
@@ -109,7 +91,7 @@ add_executable(
                     $<TARGET_OBJECTS:ra8_tfpsa_host_kat>
 )
 target_include_directories(
-  test_psa_real_kat PRIVATE ${_RA8_TFPSA_KAT_INC} ${RA8_TEST_SHARED_INCLUDE_DIRS}
+  test_psa_real_kat PRIVATE ${_RA8_TFPSA_KAT_INCLUDE_DIRS} ${RA8_TEST_SHARED_INCLUDE_DIRS}
                             ${FW_ROOT}/libs/ra8_core/inc
 )
 target_compile_options(test_psa_real_kat PRIVATE -Wall -Wextra -Werror)
