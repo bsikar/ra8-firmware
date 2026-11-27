@@ -31,12 +31,12 @@ jobs:
       - name: Locked Python environment
         run: /bin/bash -p scripts/dev/setup_python.sh
 
-      - name: Install clang-format 22 (parity byte-identity)
+      - name: Install clang-format 22 (parity byte-identity) and poppler-utils
         run: |
           wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
           chmod +x /tmp/llvm.sh
           sudo /tmp/llvm.sh 22
-          sudo apt-get install -y clang-format-22
+          sudo apt-get install -y clang-format-22 poppler-utils
 
       - name: Drift gate
         run: bash scripts/checks/check_regen_drift.sh
