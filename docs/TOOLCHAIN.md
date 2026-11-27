@@ -53,7 +53,7 @@ prerequisites. It:
 1. creates or updates the ignored `.venv` from exact runtime pins in
    `pyproject.toml` and the complete transitive set in `uv.lock`;
 2. installs only the pinned Python tools it names (`ruff`, `cmake-format`,
-   `cmake-lint`, `yamllint`, `gcovr`); it never invokes system pip.
+   `cmake-lint`, `yamllint`); it never invokes system pip.
 
 The immutable-HEAD Git hook launchers are the separate `just hooks` step. The
 container image is built straight from `.devcontainer/Dockerfile` (the CI-era
@@ -96,7 +96,7 @@ target; the "status" column flags the known skews.
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `pyproject.toml` / `uv.lock`) | 0.6.13 (`.venv`) | 0.6.13 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | 1.7.7 (devcontainer) | 1.7.7 (`/usr/local/bin`) | CONVERGED -- see 3.5 |
-| `gcovr` | **7.0** (`pyproject.toml` / `uv.lock`) | 7.0 (`.venv`) | 7.0 (`/opt/ra8-python-tools`, uv-synchronized) | Exact pin, deliberately; 8.0 and 8.4 both break the coverage data model -- see 3.7 |
+| `gcovr` | *retired* (RA8FW-1266) | n/a | n/a | RETIRED -- gcov-era coverage retired in RA8FW-1266; see 3.7 |
 
 ---
 
@@ -257,45 +257,10 @@ check (`scripts/ci/unicorn_pin.sh`, `scripts/ci/install_unicorn.sh`,
 `scripts/checks/check_unicorn_version.sh`) were retired with the CI move to
 bsikar/ra8ci and are no longer called from this repository.
 
-### 3.7 gcovr: exact-pinned 7.0 on purpose, and what moving off it costs
+### 3.7 gcovr: retired with gcov-era coverage in RA8FW-1266
 
-`pyproject.toml` pins `gcovr==7.0` (January 2024). Upstream is **8.6**
-(2026-01-13). Unlike the other stale pins in this tree, this one is a decision
-rather than an oversight: `check_tool_versions.py` classifies gcovr as `exact`,
-The CI-era callers (`scripts/report/tree_coverage.sh`, the `coverage-tree`
-gate, and their `require_tool_versions gcovr` calls) were retired with the CI
-move; `use_pinned_tool_path` exists partly because a user-installed gcovr 8.6
-once won the PATH race against the repository pin during a coverage run.
-
-**The barrier is two editions, not one.** Every gcovr rationale in this tree
-names 8.4. That is correct but incomplete; the 7.0 -> 8.6 path crosses two
-breaking data-model changes, both from upstream's own changelog:
-
-| Edition | Released | Breaking change that reaches this tree |
-| --- | --- | --- |
-| **8.0** | 2024-10-07 | Function return count removed from the data model, HTML and JSON output; data-model/JSON `name` key renamed to `demangled_name` (both from adopting gcov's JSON intermediate format) |
-| **8.4** | 2025-09-27 | "Improve data model to have several coverage information per line" -- a JSON report may now carry several entries per line even with the legacy text parser, and `function_name` is always set |
-
-8.4 also removed `--merge-mode-conditions`. That option appears nowhere in this
-tree, so it costs nothing here; `--merge-mode-functions`, which the retired
-`tree_coverage.sh` depended on, survives. 8.3 and 8.6 drop old Pythons (3.8,
-3.9), which `requires-python = ">=3.11"` already clears. The re-baseline cost
-named below applied to the CI-era coverage gates, which were retired with the
-CI move; nothing on dev consumes those baselines today.
-
-**The argument on the other side** is the gcc coupling, and it is stronger than
-"the pin is old". gcov moves with the GCC pins, and 7.0 predates gcc-14
-entirely; the coverage gate already pins `gcc-14`/`gcov-14` for exactly this
-reason. If the gcc-14 -> 16 bump lands, 7.0 would be parsing output from
-a gcov two majors newer than anything it was written against. Upstream 8.4 is
-also where gcovr began aborting on a gcc/gcov version mismatch instead of trying
-every working directory, which is the failure this document describes as
-`no_working_dir_found` in 3.5.
-
-**Status: the gcovr pin decision is open.** Nothing here records a choice; it
-records what the choice costs, so the next audit measures instead of
-re-litigating. Do not bump the pin without regenerating both baselines in the
-same change and attributing every delta.
+gcovr was retired under `RA8FW-1266` when gcov-era coverage instrumentation and
+gates were removed. It is no longer declared in `pyproject.toml` or `uv.lock`.
 
 ---
 
