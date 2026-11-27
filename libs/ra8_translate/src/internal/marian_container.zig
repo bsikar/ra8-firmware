@@ -22,7 +22,9 @@ pub const max_seq_len: u16 = 2048;
 pub const flag_pre_norm: u16 = 0x01;
 pub const flag_scale_embed: u16 = 0x02;
 pub const flag_tied_embed: u16 = 0x04;
-pub const flag_valid_mask: u16 = 0x07;
+pub const flag_decoder_ssru: u16 = 0x08;
+pub const flag_zero_bos: u16 = 0x10;
+pub const flag_valid_mask: u16 = 0x1F;
 
 pub const open_verify_payload: u8 = 0x01;
 pub const open_valid_mask: u8 = 0x01;
@@ -30,6 +32,7 @@ pub const open_valid_mask: u8 = 0x01;
 pub const global_tensor_count: usize = 8;
 pub const enc_layer_tensor_count: usize = 16;
 pub const dec_layer_tensor_count: usize = 26;
+pub const ssru_dec_layer_tensor_count: usize = 21;
 
 pub const shortlist_magic: u32 = 0x544C_5354; // Little-endian "TSLT".
 pub const shortlist_version: u16 = 1;
@@ -40,16 +43,17 @@ pub const ShortlistView = struct {
     bytes: []const u8,
     src_vocab_size: u32,
     entry_count: u32,
+    first_k: u16,
 
     /// Parse and bounds-validate a serialized `TSLT` lexical shortlist blob.
     pub fn parse(bytes: []const u8, vocab_size: u32) Error!ShortlistView {
         if (bytes.len < shortlist_header_bytes) return Error.InvalidSize;
         if (readU32(bytes, 0) != shortlist_magic) return Error.ValidationFailed;
         const ver = readU16(bytes, 4);
-        const flags = readU16(bytes, 6);
+        const first_k = readU16(bytes, 6);
         const src_vocab = readU32(bytes, 8);
         const entry_count = readU32(bytes, 12);
-        if (ver != shortlist_version or flags != 0) return Error.ValidationFailed;
+        if (ver != shortlist_version or first_k > vocab_size) return Error.ValidationFailed;
         if (src_vocab != vocab_size) return Error.ValidationFailed;
 
         const row_offs_count = try checkedAdd(@as(usize, src_vocab), 1);
@@ -77,6 +81,7 @@ pub const ShortlistView = struct {
             .bytes = bytes,
             .src_vocab_size = src_vocab,
             .entry_count = entry_count,
+            .first_k = first_k,
         };
     }
 
@@ -249,7 +254,7 @@ pub const TmntView = struct {
         }
         if (!std.math.isFinite(ln_eps) or ln_eps <= 0.0) return Error.ValidationFailed;
 
-        const expected_tensors = expectedTensorCount(num_enc, num_dec);
+        const expected_tensors = expectedTensorCountForFlags(model_flags, num_enc, num_dec);
         if (tensor_count != expected_tensors) return Error.ValidationFailed;
 
         const dir_bytes = try checkedMul(@as(usize, tensor_count), tensor_desc_bytes);
@@ -377,15 +382,29 @@ pub const TmntView = struct {
             try self.expectFfnAndLnBlock(slot, d, ffn);
             slot += 6;
         }
+        const dec_ssru = (h.model_flags & flag_decoder_ssru) != 0;
         var dl: u8 = 0;
         while (dl < h.num_dec_layers) : (dl += 1) {
-            try self.expectProjAndLnBlock(slot, d, d);
-            slot += 10;
+            if (dec_ssru) {
+                try self.expectSsruAndLnBlock(slot, d);
+                slot += 5;
+            } else {
+                try self.expectProjAndLnBlock(slot, d, d);
+                slot += 10;
+            }
             try self.expectProjAndLnBlock(slot, d, d);
             slot += 10;
             try self.expectFfnAndLnBlock(slot, d, ffn);
             slot += 6;
         }
+    }
+
+    fn expectSsruAndLnBlock(self: TmntView, base: usize, d: usize) Error!void {
+        try self.expectTensor(base + 0, true, .i8, d, d); // rnn_w
+        try self.expectTensor(base + 1, true, .i8, d, d); // rnn_wf
+        try self.expectTensor(base + 2, false, .f32, d, 1); // rnn_bf
+        try self.expectTensor(base + 3, true, .f32, d, 1); // ln_g
+        try self.expectTensor(base + 4, true, .f32, d, 1); // ln_b
     }
 
     fn expectProjAndLnBlock(self: TmntView, base: usize, rows: usize, cols: usize) Error!void {
@@ -445,10 +464,18 @@ pub const TmntView = struct {
 };
 
 /// Compute exact tensor slot count for `(num_enc_layers, num_dec_layers)`.
+pub fn decLayerStride(model_flags: u16) usize {
+    return if ((model_flags & flag_decoder_ssru) != 0) ssru_dec_layer_tensor_count else dec_layer_tensor_count;
+}
+
 pub fn expectedTensorCount(num_enc_layers: u8, num_dec_layers: u8) usize {
+    return expectedTensorCountForFlags(0, num_enc_layers, num_dec_layers);
+}
+
+pub fn expectedTensorCountForFlags(model_flags: u16, num_enc_layers: u8, num_dec_layers: u8) usize {
     return global_tensor_count +
         @as(usize, num_enc_layers) * enc_layer_tensor_count +
-        @as(usize, num_dec_layers) * dec_layer_tensor_count;
+        @as(usize, num_dec_layers) * decLayerStride(model_flags);
 }
 
 /// Serialize a deterministic CRC-32-protected `TMNT` container into `out`.
@@ -467,7 +494,18 @@ pub fn writeContainerWithShortlist(
     shortlist_rows: ?[]const []const u32,
     out: []u8,
 ) Error!usize {
-    const exp_count = expectedTensorCount(opts.num_enc_layers, opts.num_dec_layers);
+    return writeContainerWithShortlistFirstK(opts, inputs, shortlist_rows, 0, out);
+}
+
+/// Serialize a deterministic `TMNT` container with optional `TSLT` CSR shortlist and top-K seed.
+pub fn writeContainerWithShortlistFirstK(
+    opts: WriteOpts,
+    inputs: []const TensorInput,
+    shortlist_rows: ?[]const []const u32,
+    first_k: u16,
+    out: []u8,
+) Error!usize {
+    const exp_count = expectedTensorCountForFlags(opts.model_flags, opts.num_enc_layers, opts.num_dec_layers);
     if (inputs.len != exp_count) return Error.InvalidArg;
 
     const dir_bytes = exp_count * tensor_desc_bytes;
@@ -538,9 +576,10 @@ pub fn writeContainerWithShortlist(
         sl_bytes = @intCast(sl_sz);
         total_bytes = weights_end + sl_sz;
 
+        if (first_k > opts.vocab_size) return Error.InvalidArg;
         writeU32(out, weights_end + 0, shortlist_magic);
         writeU16(out, weights_end + 4, shortlist_version);
-        writeU16(out, weights_end + 6, 0);
+        writeU16(out, weights_end + 6, first_k);
         writeU32(out, weights_end + 8, opts.vocab_size);
         writeU32(out, weights_end + 12, @intCast(entry_total));
 

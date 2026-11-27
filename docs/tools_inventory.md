@@ -22,6 +22,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/gen_jlink_w4` | `just/tools.just` via `scripts/builders/gen_jlink_w4.sh` | `.zig-test-contract.json` suite | keep |
 | `tools/glyph_bench` | `just/tools.just` (`tools::build_glyph_bench`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; built through the Zig graph (`build.zig`, RA8FW-999) | smoke run (`just tools::bench_cache`) | keep |
 | `tools/list_tests` | `just/tests.just` via `scripts/builders/list_tests.sh`; `libs/ra8_widget/build.zig` | `.zig-test-contract.json` suite | keep |
+| `tools/marian_conv` | `libs/ra8_translate`, `docs/formats/TMNT.md`, `tools/marian_conv/goldens/`; `tools/marian_conv/zig_runner` consumes `libs/ra8_translate` C ABI | `tools/marian_conv/tests/test_marian_conv.py`, `zig build test` (`tools/marian_conv/zig_runner/build.zig`) | keep |
 | `tools/mcp` | `.mcp.json` (agent MCP server); `scripts/dev/run_just.sh`; `tools/mcp/README.md` | `tests/mcp_selftest.py` | keep |
 | `tools/merge_ihex` | `build.zig.zon`, `cmake/ra8_add_ns_image.cmake`, `cmake/ra8_zig_tool.cmake`, secure-boot NS example | `.zig-test-contract.json` suite | keep |
 | `tools/mkbookimg` | `tools/mkbookimg/build.zig` (`zig build` integration; `tests/cmake_sha256sum.sh` maps the suite's one `cmake -E sha256sum` call onto coreutils), `scripts/emu/smoke_apps.sh`, `scripts/emu/smoke_run.sh` | integration suite (`zig build integration`) | keep |

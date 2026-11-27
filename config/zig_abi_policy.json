@@ -3927,7 +3927,7 @@
         },
         {
           "path": "libs/ra8_translate/inc/ra8_translate_marian.h",
-          "compatibility_sha256": "b4e6079e191ff02d75959b2486b43c9ffc7729b3d5f7785568d2a33802727314",
+          "compatibility_sha256": "9ed949ca97b892ba09545a973ff1e9301a5d399b92bbddebdbc3282db693d160",
           "symbol_prefix": "ra8_translate_marian_",
           "layout_assertions": [
             "@sizeOf(MarianHeader) == 64",

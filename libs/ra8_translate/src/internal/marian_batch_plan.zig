@@ -63,6 +63,7 @@ pub const BatchPlan = struct {
     max_dim: usize,
     num_enc: usize,
     num_dec: usize,
+    is_ssru: bool,
     vocab_size: usize,
     use_shortlist: bool,
     max_sl_cap: usize,
@@ -70,6 +71,8 @@ pub const BatchPlan = struct {
     enc_seq_elems: usize,
     cross_slot_elems: usize,
     self_lane_elems: usize,
+    ssru_lane_elems: usize,
+    ssru_scratch_elems: usize,
     total_f32: usize,
     total_u32: usize,
     total_i32: usize,
@@ -88,6 +91,8 @@ pub const BatchMem = struct {
     cross_v: []f32,
     self_k: []f32,
     self_v: []f32,
+    ssru_cell: []f32,
+    ssru_scratch: []f32,
     bat_x: []f32,
     bat_in: []f32,
     bat_q: []f32,
@@ -162,7 +167,9 @@ pub fn planBatchWork(view: TmntView, cfg: MarianBatchCfg) Error!BatchPlan {
             const r = try sl_view.rowRange(tok);
             max_row = @max(max_row, @as(usize, r.end - r.start));
         }
-        const bound = try checkedAdd(4, try checkedMul(@as(usize, cfg.max_src_len), max_row));
+        const seed_top = @min(vocab_size, @as(usize, sl_view.first_k));
+        const row_bound = try checkedMul(@as(usize, cfg.max_src_len), max_row);
+        const bound = try checkedAdd(4, try checkedAdd(seed_top, row_bound));
         max_sl_cap = @min(vocab_size, bound);
     }
 
@@ -175,16 +182,20 @@ pub fn planBatchWork(view: TmntView, cfg: MarianBatchCfg) Error!BatchPlan {
     const max_dim = @max(d_model, d_ff);
     const num_enc: usize = @intCast(hdr.num_enc_layers);
     const num_dec: usize = @intCast(hdr.num_dec_layers);
+    const is_ssru = (hdr.model_flags & cont.flag_decoder_ssru) != 0;
     const cand_cap: usize = if (beam_k > 1) (if (use_shortlist) max_sl_cap else vocab_size) else 0;
 
     const enc_seq_elems = try checkedMul(max_src, d_model);
     const cross_slot_elems = try checkedMul(num_dec, enc_seq_elems);
-    const self_lane_elems = try checkedMul(num_dec, try checkedMul(max_tgt, d_model));
+    const self_lane_elems = if (is_ssru) 0 else try checkedMul(num_dec, try checkedMul(max_tgt, d_model));
+    const ssru_lane_elems = if (is_ssru) try checkedMul(num_dec, d_model) else 0;
+    const ssru_scratch_elems = if (is_ssru and beam_k > 1) try checkedMul(beam_k, ssru_lane_elems) else 0;
 
     var tf32: usize = 0;
     tf32 = try checkedAdd(tf32, try checkedMul(4, enc_seq_elems));
     tf32 = try checkedAdd(tf32, try checkedMul(2, try checkedMul(batch_size, cross_slot_elems)));
     tf32 = try checkedAdd(tf32, try checkedMul(2, try checkedMul(max_lanes, self_lane_elems)));
+    tf32 = try checkedAdd(tf32, try checkedAdd(try checkedMul(max_lanes, ssru_lane_elems), ssru_scratch_elems));
     tf32 = try checkedAdd(tf32, try checkedMul(7, try checkedMul(max_lanes, d_model)));
     tf32 = try checkedAdd(tf32, try checkedMul(max_lanes, d_ff));
     tf32 = try checkedAdd(tf32, try checkedAdd(max_lanes, max_dim));
@@ -220,6 +231,7 @@ pub fn planBatchWork(view: TmntView, cfg: MarianBatchCfg) Error!BatchPlan {
         .max_dim = max_dim,
         .num_enc = num_enc,
         .num_dec = num_dec,
+        .is_ssru = is_ssru,
         .vocab_size = vocab_size,
         .use_shortlist = use_shortlist,
         .max_sl_cap = max_sl_cap,
@@ -227,6 +239,8 @@ pub fn planBatchWork(view: TmntView, cfg: MarianBatchCfg) Error!BatchPlan {
         .enc_seq_elems = enc_seq_elems,
         .cross_slot_elems = cross_slot_elems,
         .self_lane_elems = self_lane_elems,
+        .ssru_lane_elems = ssru_lane_elems,
+        .ssru_scratch_elems = ssru_scratch_elems,
         .total_f32 = tf32,
         .total_u32 = tu32,
         .total_i32 = ti32,
@@ -271,6 +285,8 @@ pub fn bindBatchMem(work_buf: []u8, plan: BatchPlan) Error!BatchMem {
         .cross_v = takeSlice(f32, f_pool, &fc, plan.batch_size * plan.cross_slot_elems),
         .self_k = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.self_lane_elems),
         .self_v = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.self_lane_elems),
+        .ssru_cell = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.ssru_lane_elems),
+        .ssru_scratch = takeSlice(f32, f_pool, &fc, plan.ssru_scratch_elems),
         .bat_x = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.d_model),
         .bat_in = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.d_model),
         .bat_q = takeSlice(f32, f_pool, &fc, plan.max_lanes * plan.d_model),

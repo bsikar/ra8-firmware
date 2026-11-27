@@ -42,6 +42,7 @@ artifact, and only earns an entry here).
 | `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py`, `libs/ra8_board_ek_ra8d2/ld/ns_image.ld.in` | @ref md_docs_2formats_2NSR1 |
 | `RA8A` | `.ra8app` signed ThreadX module container | `libs/ra8_app` | `libs/ra8_app/tools/ra8app_pack.zig` | @ref md_docs_2formats_2RA8A |
 | `TRN1` | Per-chapter translation sidecar | `libs/ra8_translate` | `libs/ra8_translate` | @ref md_docs_2formats_2TRN1 |
+| `TMNT` / `TVOC` / `TSLT` | Marian NMT weights, SentencePiece vocab, and lexical shortlist | `libs/ra8_translate` | `tools/marian_conv` | @ref md_docs_2formats_2TMNT |
 
 Each has its own page in this section; they are also listed in the navigation
 sidebar under "Binary format specifications".
@@ -62,6 +63,8 @@ effort than the alphabetical sidebar suggests:
    TrustZone boundary.
 5. @ref md_docs_2formats_2NPU1 -- the same host-does-the-work philosophy applied
    to a neural network.
+6. @ref md_docs_2formats_2TMNT -- NMT weights, SentencePiece tables, and lexical
+   shortlists backed by the same host-side compilation model.
 
 ### Internal markers -- no separate specification
 

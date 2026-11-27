@@ -39,10 +39,12 @@ typedef enum : uint32_t {
 
 /** @brief Model normalization and weight-sharing bitmask flags in `TMNT` header. */
 typedef enum : uint16_t {
-  k_ra8_translate_marian_flag_none        = 0U,       /**< Post-norm default.   */
-  k_ra8_translate_marian_flag_pre_norm    = 1U << 0U, /**< Pre-block LayerNorm. */
-  k_ra8_translate_marian_flag_scale_embed = 1U << 1U, /**< Scale embed sqrt(d). */
-  k_ra8_translate_marian_flag_tied_embed  = 1U << 2U, /**< Shares embed_w.      */
+  k_ra8_translate_marian_flag_none         = 0U,       /**< Post-norm default.   */
+  k_ra8_translate_marian_flag_pre_norm     = 1U << 0U, /**< Pre-block LayerNorm. */
+  k_ra8_translate_marian_flag_scale_embed  = 1U << 1U, /**< Scale embed sqrt(d). */
+  k_ra8_translate_marian_flag_tied_embed   = 1U << 2U, /**< Shares embed_w.      */
+  k_ra8_translate_marian_flag_decoder_ssru = 1U << 3U, /**< SSRU recurrent dec.  */
+  k_ra8_translate_marian_flag_zero_bos     = 1U << 4U, /**< Zero step-0 embed.   */
 } ra8_translate_marian_model_flag_t;
 
 static_assert(sizeof(ra8_translate_marian_model_flag_t) == 2U,

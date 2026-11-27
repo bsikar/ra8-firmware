@@ -47,6 +47,10 @@ pub fn initSlot(
     bytes_read: *u64,
 ) Error!void {
     try encodeSingleToCross(view, plan, mem, slot_idx, src_ids, bytes_read);
+    if (plan.is_ssru) {
+        const base = slot_idx * plan.beam_k * plan.ssru_lane_elems;
+        @memset(mem.ssru_cell[base .. base + plan.beam_k * plan.ssru_lane_elems], 0.0);
+    }
     const sl_len = if (sl_view_opt) |slv|
         try buildSlotShortlist(
             view.header,
@@ -88,67 +92,149 @@ pub fn runBatchDecoderStep(
     const d_ff = plan.d_ff;
     const count = lanes.len;
     const pre_norm = (hdr.model_flags & cont.flag_pre_norm) != 0;
+    const zero_bos = (hdr.model_flags & cont.flag_zero_bos) != 0;
     const n_heads: usize = @intCast(hdr.num_heads);
     const dec_start = cont.global_tensor_count + plan.num_enc * cont.enc_layer_tensor_count;
+    const dec_stride = cont.decLayerStride(hdr.model_flags);
 
     for (lanes, 0..) |lr, m| {
         const sl = slots[lr.slot];
-        try embedInto(view, sl.cur_toks[lr.beam], sl.dec_pos, mem.bat_x[m * d ..][0..d], mem.f32_tmp_a[0..d], bytes_read);
+        if (zero_bos and sl.dec_pos == 0) {
+            try embedZeroInto(view, sl.dec_pos, mem.bat_x[m * d ..][0..d], mem.f32_tmp_a[0..d], bytes_read);
+        } else {
+            try embedInto(view, sl.cur_toks[lr.beam], sl.dec_pos, mem.bat_x[m * d ..][0..d], mem.f32_tmp_a[0..d], bytes_read);
+        }
         const g_lane = lr.slot * plan.beam_k + lr.beam;
         mem.kv_parent[g_lane * plan.max_tgt + sl.dec_pos] = sl.prev_lanes[lr.beam];
     }
 
     var dl: usize = 0;
     while (dl < plan.num_dec) : (dl += 1) {
-        const dec_base = dec_start + dl * cont.dec_layer_tensor_count;
-        const self_base = dec_base;
-        const cross_base = dec_base + 10;
-        const ffn_base = dec_base + 20;
+        const dec_base = dec_start + dl * dec_stride;
+        const cross_base = dec_base + (if (plan.is_ssru) @as(usize, 5) else @as(usize, 10));
+        const ffn_base = cross_base + 10;
 
-        // 1. Causal self-attention sublayer.
-        try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, self_base + 8, self_base + 9, mem, bytes_read);
-        try projBatch(view, self_base + 0, self_base + 1, mem.bat_in[0 .. count * d], count, d, d, mem.bat_q[0 .. count * d], mem, bytes_read);
-        try projBatch(view, self_base + 2, self_base + 3, mem.bat_in[0 .. count * d], count, d, d, mem.bat_kv_k[0 .. count * d], mem, bytes_read);
-        try projBatch(view, self_base + 4, self_base + 5, mem.bat_in[0 .. count * d], count, d, d, mem.bat_kv_v[0 .. count * d], mem, bytes_read);
-
-        for (lanes, 0..) |lr, m| {
-            const g_lane = lr.slot * plan.beam_k + lr.beam;
-            const pos = slots[lr.slot].dec_pos;
-            const dst_off = g_lane * plan.self_lane_elems + dl * plan.max_tgt * d + pos * d;
-            @memcpy(mem.self_k[dst_off .. dst_off + d], mem.bat_kv_k[m * d ..][0..d]);
-            @memcpy(mem.self_v[dst_off .. dst_off + d], mem.bat_kv_v[m * d ..][0..d]);
-            attendTracedSelf(plan, mem, lr, pos, dl, n_heads, mem.bat_q[m * d ..][0..d], mem.bat_ctx[m * d ..][0..d]);
+        if (plan.is_ssru) {
+            try runBatchSsruLayer(view, plan, mem, lanes, dec_base, dl, pre_norm, bytes_read);
+        } else {
+            try runBatchSelfAttnLayer(view, plan, mem, slots, lanes, dec_base, dl, n_heads, pre_norm, bytes_read);
         }
-
-        try projBatch(view, self_base + 6, self_base + 7, mem.bat_ctx[0 .. count * d], count, d, d, mem.bat_out[0 .. count * d], mem, bytes_read);
-        addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
-        if (!pre_norm) try applyBatchLn(view, self_base + 8, self_base + 9, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
-
-        // 2. Encoder-decoder cross-attention sublayer.
-        try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, cross_base + 8, cross_base + 9, mem, bytes_read);
-        try projBatch(view, cross_base + 0, cross_base + 1, mem.bat_in[0 .. count * d], count, d, d, mem.bat_q[0 .. count * d], mem, bytes_read);
-        for (lanes, 0..) |lr, m| {
-            const src_len = slots[lr.slot].src_len;
-            const coff = lr.slot * plan.cross_slot_elems + dl * plan.enc_seq_elems;
-            attendSeq(mem.bat_q[m * d ..][0..d], mem.cross_k[coff .. coff + src_len * d], mem.cross_v[coff .. coff + src_len * d], src_len, n_heads, d, mem.attn_scores[0..src_len], mem.bat_ctx[m * d ..][0..d]);
-        }
-        try projBatch(view, cross_base + 6, cross_base + 7, mem.bat_ctx[0 .. count * d], count, d, d, mem.bat_out[0 .. count * d], mem, bytes_read);
-        addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
-        if (!pre_norm) try applyBatchLn(view, cross_base + 8, cross_base + 9, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
-
-        // 3. Position-wise feed-forward sublayer.
-        try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, ffn_base + 4, ffn_base + 5, mem, bytes_read);
-        try projBatch(view, ffn_base + 0, ffn_base + 1, mem.bat_in[0 .. count * d], count, d_ff, d, mem.bat_ffn[0 .. count * d_ff], mem, bytes_read);
-        ops.reluInPlace(mem.bat_ffn[0 .. count * d_ff]);
-        try projBatch(view, ffn_base + 2, ffn_base + 3, mem.bat_ffn[0 .. count * d_ff], count, d, d_ff, mem.bat_out[0 .. count * d], mem, bytes_read);
-        addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
-        if (!pre_norm) try applyBatchLn(view, ffn_base + 4, ffn_base + 5, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
+        try runBatchCrossAttnLayer(view, plan, mem, slots, lanes, cross_base, dl, n_heads, pre_norm, bytes_read);
+        try runBatchDecFfnLayer(view, d, d_ff, count, mem, ffn_base, pre_norm, bytes_read);
     }
 
     const g6 = try view.tensorAt(6);
     if (g6.dtype == .f32) {
         try applyBatchLn(view, 6, 7, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
     }
+}
+
+fn runBatchSsruLayer(
+    view: TmntView,
+    plan: BatchPlan,
+    mem: *const BatchMem,
+    lanes: []const LaneRef,
+    dec_base: usize,
+    dl: usize,
+    pre_norm: bool,
+    bytes_read: *u64,
+) Error!void {
+    const d = plan.d_model;
+    const count = lanes.len;
+    try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, dec_base + 3, dec_base + 4, mem, bytes_read);
+    try projBatchOptBias(view, dec_base + 0, null, mem.bat_in[0 .. count * d], count, d, d, mem.bat_ctx[0 .. count * d], mem, bytes_read);
+    try projBatchOptBias(view, dec_base + 1, dec_base + 2, mem.bat_in[0 .. count * d], count, d, d, mem.bat_out[0 .. count * d], mem, bytes_read);
+
+    for (lanes, 0..) |lr, m| {
+        const g_lane = lr.slot * plan.beam_k + lr.beam;
+        const cell = mem.ssru_cell[g_lane * plan.ssru_lane_elems + dl * d ..][0..d];
+        const u_vec = mem.bat_ctx[m * d ..][0..d];
+        const f_vec = mem.bat_out[m * d ..][0..d];
+        const x_vec = mem.bat_x[m * d ..][0..d];
+        var i: usize = 0;
+        while (i < d) : (i += 1) {
+            const gate = ops.sigmoidF32(f_vec[i]);
+            const c_next = gate * cell[i] + (1.0 - gate) * u_vec[i];
+            cell[i] = c_next;
+            x_vec[i] += if (c_next > 0.0) c_next else 0.0;
+        }
+    }
+    if (!pre_norm) try applyBatchLn(view, dec_base + 3, dec_base + 4, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
+}
+
+fn runBatchSelfAttnLayer(
+    view: TmntView,
+    plan: BatchPlan,
+    mem: *const BatchMem,
+    slots: *const [bp.max_batch]SlotState,
+    lanes: []const LaneRef,
+    self_base: usize,
+    dl: usize,
+    n_heads: usize,
+    pre_norm: bool,
+    bytes_read: *u64,
+) Error!void {
+    const d = plan.d_model;
+    const count = lanes.len;
+    try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, self_base + 8, self_base + 9, mem, bytes_read);
+    try projBatch(view, self_base + 0, self_base + 1, mem.bat_in[0 .. count * d], count, d, d, mem.bat_q[0 .. count * d], mem, bytes_read);
+    try projBatch(view, self_base + 2, self_base + 3, mem.bat_in[0 .. count * d], count, d, d, mem.bat_kv_k[0 .. count * d], mem, bytes_read);
+    try projBatch(view, self_base + 4, self_base + 5, mem.bat_in[0 .. count * d], count, d, d, mem.bat_kv_v[0 .. count * d], mem, bytes_read);
+    for (lanes, 0..) |lr, m| {
+        const g_lane = lr.slot * plan.beam_k + lr.beam;
+        const pos = slots[lr.slot].dec_pos;
+        const dst_off = g_lane * plan.self_lane_elems + dl * plan.max_tgt * d + pos * d;
+        @memcpy(mem.self_k[dst_off .. dst_off + d], mem.bat_kv_k[m * d ..][0..d]);
+        @memcpy(mem.self_v[dst_off .. dst_off + d], mem.bat_kv_v[m * d ..][0..d]);
+        attendTracedSelf(plan, mem, lr, pos, dl, n_heads, mem.bat_q[m * d ..][0..d], mem.bat_ctx[m * d ..][0..d]);
+    }
+    try projBatch(view, self_base + 6, self_base + 7, mem.bat_ctx[0 .. count * d], count, d, d, mem.bat_out[0 .. count * d], mem, bytes_read);
+    addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
+    if (!pre_norm) try applyBatchLn(view, self_base + 8, self_base + 9, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
+}
+
+fn runBatchCrossAttnLayer(
+    view: TmntView,
+    plan: BatchPlan,
+    mem: *const BatchMem,
+    slots: *const [bp.max_batch]SlotState,
+    lanes: []const LaneRef,
+    cross_base: usize,
+    dl: usize,
+    n_heads: usize,
+    pre_norm: bool,
+    bytes_read: *u64,
+) Error!void {
+    const d = plan.d_model;
+    const count = lanes.len;
+    try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, cross_base + 8, cross_base + 9, mem, bytes_read);
+    try projBatch(view, cross_base + 0, cross_base + 1, mem.bat_in[0 .. count * d], count, d, d, mem.bat_q[0 .. count * d], mem, bytes_read);
+    for (lanes, 0..) |lr, m| {
+        const src_len = slots[lr.slot].src_len;
+        const coff = lr.slot * plan.cross_slot_elems + dl * plan.enc_seq_elems;
+        attendSeq(mem.bat_q[m * d ..][0..d], mem.cross_k[coff .. coff + src_len * d], mem.cross_v[coff .. coff + src_len * d], src_len, n_heads, d, mem.attn_scores[0..src_len], mem.bat_ctx[m * d ..][0..d]);
+    }
+    try projBatch(view, cross_base + 6, cross_base + 7, mem.bat_ctx[0 .. count * d], count, d, d, mem.bat_out[0 .. count * d], mem, bytes_read);
+    addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
+    if (!pre_norm) try applyBatchLn(view, cross_base + 8, cross_base + 9, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
+}
+
+fn runBatchDecFfnLayer(
+    view: TmntView,
+    d: usize,
+    d_ff: usize,
+    count: usize,
+    mem: *const BatchMem,
+    ffn_base: usize,
+    pre_norm: bool,
+    bytes_read: *u64,
+) Error!void {
+    try prepBatch(view, mem.bat_x[0 .. count * d], mem.bat_in[0 .. count * d], count, d, pre_norm, ffn_base + 4, ffn_base + 5, mem, bytes_read);
+    try projBatch(view, ffn_base + 0, ffn_base + 1, mem.bat_in[0 .. count * d], count, d_ff, d, mem.bat_ffn[0 .. count * d_ff], mem, bytes_read);
+    ops.reluInPlace(mem.bat_ffn[0 .. count * d_ff]);
+    try projBatch(view, ffn_base + 2, ffn_base + 3, mem.bat_ffn[0 .. count * d_ff], count, d, d_ff, mem.bat_out[0 .. count * d], mem, bytes_read);
+    addVec(mem.bat_x[0 .. count * d], mem.bat_out[0 .. count * d]);
+    if (!pre_norm) try applyBatchLn(view, ffn_base + 4, ffn_base + 5, mem.bat_x[0 .. count * d], count, d, mem, bytes_read);
 }
 
 /// Score full vocabulary rows streaming `lm_head` once across all active lanes.
@@ -358,12 +444,22 @@ pub fn advanceBeamSlot(
         const parent_row = mem.beam_hist[slotHistOff(plan, slot_idx, cand.parent)..];
         @memcpy(tmp_row[0..pos], parent_row[0..pos]);
         tmp_row[pos] = cand.tok;
+        if (plan.is_ssru) {
+            const p_cell = mem.ssru_cell[(slot_idx * plan.beam_k + cand.parent) * plan.ssru_lane_elems ..][0..plan.ssru_lane_elems];
+            const dst_sc = mem.ssru_scratch[nb * plan.ssru_lane_elems ..][0..plan.ssru_lane_elems];
+            @memcpy(dst_sc, p_cell);
+        }
     }
     nb = 0;
     while (nb < alive_n) : (nb += 1) {
         const dst = mem.beam_hist[slotHistOff(plan, slot_idx, nb)..];
         const tmp_row = mem.hist_scratch[nb * plan.max_tgt ..];
         @memcpy(dst[0..len], tmp_row[0..len]);
+        if (plan.is_ssru) {
+            const dst_cell = mem.ssru_cell[(slot_idx * plan.beam_k + nb) * plan.ssru_lane_elems ..][0..plan.ssru_lane_elems];
+            const src_sc = mem.ssru_scratch[nb * plan.ssru_lane_elems ..][0..plan.ssru_lane_elems];
+            @memcpy(dst_cell, src_sc);
+        }
         slot.cur_toks[nb] = best_alive[nb].tok;
         slot.beam_scores[nb] = best_alive[nb].score;
         slot.prev_lanes[nb] = @intCast(best_alive[nb].parent);
@@ -386,28 +482,46 @@ fn buildSlotShortlist(
     bytes_read: *u64,
 ) Error!usize {
     var count: usize = 0;
+    const seed_n = @min(@as(usize, hdr.vocab_size), @min(@as(usize, sl_view.first_k), out_ids.len));
+    var t: usize = 0;
+    while (t < seed_n) : (t += 1) {
+        out_ids[count] = @intCast(t);
+        count += 1;
+    }
     const specials = [4]u32{ hdr.unk_id, hdr.bos_id, hdr.eos_id, hdr.pad_id };
-    for (specials) |sp| appendUnique(&count, out_ids, sp);
+    for (specials) |sp| appendShortlistTok(&count, out_ids, sp);
     for (src_ids) |src_tok| {
         const range = try sl_view.rowRange(src_tok);
         bytes_read.* += @as(u64, range.end - range.start) * @sizeOf(u32);
         var idx = range.start;
         while (idx < range.end) : (idx += 1) {
-            appendUnique(&count, out_ids, sl_view.entryAt(idx));
+            appendShortlistTok(&count, out_ids, sl_view.entryAt(idx));
         }
     }
-    std.sort.pdq(u32, out_ids[0..count], {}, std.sort.asc(u32));
-    return count;
+    return compactSortedUnique(out_ids, count);
 }
 
-fn appendUnique(count: *usize, out_ids: []u32, tok: u32) void {
-    for (out_ids[0..count.*]) |existing| {
-        if (existing == tok) return;
+fn appendShortlistTok(count: *usize, out_ids: []u32, tok: u32) void {
+    if (count.* >= out_ids.len) {
+        count.* = compactSortedUnique(out_ids, count.*);
+        if (count.* >= out_ids.len) return;
     }
-    if (count.* < out_ids.len) {
-        out_ids[count.*] = tok;
-        count.* += 1;
+    out_ids[count.*] = tok;
+    count.* += 1;
+}
+
+fn compactSortedUnique(buf: []u32, n: usize) usize {
+    if (n <= 1) return n;
+    std.sort.pdq(u32, buf[0..n], {}, std.sort.asc(u32));
+    var w: usize = 1;
+    var r: usize = 1;
+    while (r < n) : (r += 1) {
+        if (buf[r] != buf[w - 1]) {
+            buf[w] = buf[r];
+            w += 1;
+        }
     }
+    return w;
 }
 
 fn encodeSingleToCross(
@@ -466,10 +580,12 @@ fn encodeSingleToCross(
     }
 
     const dec_start = cont.global_tensor_count + plan.num_enc * cont.enc_layer_tensor_count;
+    const dec_stride = cont.decLayerStride(hdr.model_flags);
+    const cross_off_in_layer: usize = if (plan.is_ssru) 5 else 10;
     const slot_base = slot_idx * plan.cross_slot_elems;
     var dl: usize = 0;
     while (dl < plan.num_dec) : (dl += 1) {
-        const cbase = dec_start + dl * cont.dec_layer_tensor_count + 10;
+        const cbase = dec_start + dl * dec_stride + cross_off_in_layer;
         const doff = slot_base + dl * plan.enc_seq_elems;
         s = 0;
         while (s < src_len) : (s += 1) {
@@ -603,6 +719,18 @@ fn embedInto(view: TmntView, tok: u32, pos: usize, out_vec: []f32, tmp: []f32, b
     }
 }
 
+fn embedZeroInto(view: TmntView, pos: usize, out_vec: []f32, tmp: []f32, bytes_read: *u64) Error!void {
+    const d: usize = @intCast(view.header.d_model);
+    const pos_ref = try view.tensorAt(1);
+    if (pos_ref.dtype == .f32) {
+        var i: usize = 0;
+        while (i < d) : (i += 1) tmp[i] = view.f32At(pos_ref, pos * d + i);
+        ops.embedZeroToken(0, tmp[0..d], d, out_vec, bytes_read);
+    } else {
+        ops.embedZeroToken(pos, null, d, out_vec, bytes_read);
+    }
+}
+
 fn prepTok(view: TmntView, src_x: []const f32, dst: []f32, pre_norm: bool, gs: usize, bs: usize, mem: *const BatchMem, br: *u64) Error!void {
     @memcpy(dst, src_x);
     if (pre_norm) try applyLn(view, gs, bs, dst, mem, br);
@@ -642,8 +770,12 @@ fn projSingle(view: TmntView, ws: usize, bs: usize, x: []const f32, out: []f32, 
 }
 
 fn projBatch(view: TmntView, ws: usize, bs: usize, xs: []const f32, count: usize, rows: usize, cols: usize, out: []f32, mem: *const BatchMem, br: *u64) Error!void {
+    return projBatchOptBias(view, ws, bs, xs, count, rows, cols, out, mem, br);
+}
+
+fn projBatchOptBias(view: TmntView, ws: usize, bs_opt: ?usize, xs: []const f32, count: usize, rows: usize, cols: usize, out: []f32, mem: *const BatchMem, br: *u64) Error!void {
     const wref = try view.tensorAt(ws);
-    const bopt = try readF32Opt(view, bs, mem.f32_tmp_a);
+    const bopt = if (bs_opt) |bs| try readF32Opt(view, bs, mem.f32_tmp_a) else null;
     ops.matVecI8Batch(xs, count, view.i8Slice(wref), rows, cols, wref.scale, wref.zero_point, bopt, mem.q_tmp_batch, mem.bat_scales, mem.bat_zp_corrs, out, br);
 }
 

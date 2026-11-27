@@ -581,6 +581,11 @@ test "pure IEEE math helpers and Vector vs Scalar dotI8 parity" {
     for (exp_inputs) |x| {
         try expectApproxEqAbs(std.math.exp(x), ops.expNegF32(x), 1e-4);
     }
+    const sig_inputs = [_]f32{ -20.0, -4.0, -1.0, 0.0, 1.0, 4.0, 20.0 };
+    for (sig_inputs) |x| {
+        const ref_sig: f32 = @floatCast(1.0 / (1.0 + std.math.exp(-@as(f64, x))));
+        try expectApproxEqAbs(ref_sig, ops.sigmoidF32(x), 1e-4);
+    }
     const trig_inputs = [_]f32{ -10.0, -3.14159, -0.7, 0.0, 0.5, 2.5, 12.34, 57.2 };
     for (trig_inputs) |x| {
         try expectApproxEqAbs(std.math.sin(x), ops.sinF32(x), 5e-4);

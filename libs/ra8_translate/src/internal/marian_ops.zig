@@ -299,6 +299,35 @@ pub fn embedToken(
     bytes_read.* += @as(u64, d_model);
 }
 
+/// Fill token embedding as all zeros (Marian delayed step 0) plus positional encoding.
+pub fn embedZeroToken(
+    pos: usize,
+    pos_embed_opt: ?[]const f32,
+    d_model: usize,
+    out_vec: []f32,
+    bytes_read: *u64,
+) void {
+    if (pos_embed_opt) |pos_tbl| {
+        const p_row = pos_tbl[pos * d_model .. (pos + 1) * d_model];
+        @memcpy(out_vec[0..d_model], p_row);
+        bytes_read.* += @as(u64, d_model) * @sizeOf(f32);
+        return;
+    }
+    const half_d = d_model / 2;
+    const pos_f: f32 = @floatFromInt(pos);
+    var i: usize = 0;
+    while (i < d_model) : (i += 1) {
+        var pval: f32 = 0.0;
+        if (half_d > 0) {
+            const pair_idx = if (i < half_d) i else i - half_d;
+            const exponent = -9.210340371976184 * @as(f32, @floatFromInt(pair_idx * 2)) / @as(f32, @floatFromInt(d_model));
+            const angle = pos_f * expNegF32(exponent);
+            pval = if (i < half_d) sinF32(angle) else cosF32(angle);
+        }
+        out_vec[i] = pval;
+    }
+}
+
 /// Pure IEEE-754 `sqrt(x)` for `x >= 0.0` avoiding external `libm` calls.
 pub fn sqrtF32(x: f32) f32 {
     if (x <= 0.0) return 0.0;
@@ -327,6 +356,15 @@ pub fn expNegF32(d: f32) f32 {
     const exp_bits: i32 = std.math.clamp(k + 127, 1, 254);
     const scale: f32 = @bitCast(@as(u32, @intCast(exp_bits)) << 23);
     return scale * poly;
+}
+
+/// Pure IEEE-754 sigmoid `1 / (1 + exp(-z))` avoiding overflow and `libm`.
+pub fn sigmoidF32(z: f32) f32 {
+    if (z >= 0.0) {
+        return 1.0 / (1.0 + expNegF32(-z));
+    }
+    const e = expNegF32(z);
+    return e / (1.0 + e);
 }
 
 /// Pure IEEE-754 `sin(x)` with quadrant reduction and Taylor polynomial (zero `libm`).
