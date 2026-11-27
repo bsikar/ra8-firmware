@@ -58,10 +58,22 @@ static ra8_err_t s_ip_ret;
 static ra8_wifi_lease_t s_ip_lease;
 /** @brief Optional facade the join mock invalidates before association settles. */
 static ra8_wifi_t* s_join_invalidation_target;
+/** @brief Configurable mock scan outcome and returned record fixtures. */
+static ra8_err_t     s_scan_ret;
+static ra8_wifi_ap_t s_scan_fixture[4];
+static uint16_t      s_scan_fixture_count;
+static uint32_t      s_close_calls;
 
 static ra8_err_t m_ok(void* ctx)
 {
   (void)ctx;
+  return k_ra8_ok;
+}
+
+static ra8_err_t m_close(void* ctx)
+{
+  (void)ctx;
+  s_close_calls++;
   return k_ra8_ok;
 }
 
@@ -104,9 +116,15 @@ static ra8_err_t m_get_ap(void* ctx, ra8_wifi_ap_t* out)
 static ra8_err_t m_scan(void* ctx, ra8_wifi_ap_t* out, uint16_t max, uint16_t* count)
 {
   (void)ctx;
-  (void)out;
-  (void)max;
-  *count = 0U;
+  if (s_scan_ret != k_ra8_ok) {
+    *count = 0U;
+    return s_scan_ret;
+  }
+  const uint16_t take = (s_scan_fixture_count < max) ? s_scan_fixture_count : max;
+  for (uint16_t i = 0U; i < take; i++) {
+    out[i] = s_scan_fixture[i];
+  }
+  *count = take;
   return k_ra8_ok;
 }
 
@@ -119,7 +137,7 @@ static void m_idle(void* ctx, uint16_t ms)
 /** @brief A backend that always succeeds and reports link per ::s_link_up. */
 static const ra8_wifi_backend_t k_mock = {
   .open       = m_ok,
-  .close      = m_ok,
+  .close      = m_close,
   .radio_up   = m_ok,
   .radio_down = m_ok,
   .join       = m_join,
@@ -151,6 +169,10 @@ static ra8_wifi_cfg_t t_reset(void)
   s_ip_lease.ip              = (uint32_t)k_t_ip;
   s_ip_lease.gateway         = (uint32_t)k_t_gw;
   s_join_invalidation_target = nullptr;
+  s_scan_ret                 = k_ra8_ok;
+  s_scan_fixture_count       = 0U;
+  s_close_calls              = 0U;
+  memset(s_scan_fixture, 0, sizeof(s_scan_fixture));
 
   ra8_wifi_cfg_t cfg = {};
   cfg.backend        = &k_mock;
@@ -391,6 +413,86 @@ static void test_app_null_guards(void)
  * @brief Run every wifi_hal_join example test; return non-zero on first failure.
  * @return 0 when all tests pass.
  */
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises scan -> teardown -> join reuse)
+ */
+static void test_app_scan_succeeds_and_clamps(void)
+{
+  TEST_BEGIN("wifi_hal_join scan runs through ra8_wifi_scan and tears down");
+  ra8_wifi_cfg_t cfg   = t_reset();
+  s_scan_fixture_count = 3U;
+  memcpy(s_scan_fixture[0].ssid, "bench-ap", 8U);
+  s_scan_fixture[0].ssid_len = 8U;
+  s_scan_fixture[0].channel  = 1U;
+  s_scan_fixture[0].rssi     = -42;
+  memcpy(s_scan_fixture[1].ssid, "neighbor", 8U);
+  s_scan_fixture[1].ssid_len = 8U;
+  s_scan_fixture[1].channel  = 6U;
+  s_scan_fixture[1].rssi     = -68;
+  memcpy(s_scan_fixture[2].ssid, "hidden", 6U);
+  s_scan_fixture[2].ssid_len = 6U;
+  s_scan_fixture[2].channel  = 11U;
+  s_scan_fixture[2].rssi     = -81;
+
+  ra8_wifi_t                wifi   = {};
+  ra8_wifi_ap_t             aps[2] = {};
+  const wifi_hal_scan_cfg_t scfg   = {
+    .wifi_cfg = &cfg,
+    .wifi     = &wifi,
+    .out_aps  = aps,
+    .max_aps  = 2U,
+  };
+  wifi_hal_scan_result_t sres = {};
+  TEST_ASSERT(wifi_hal_scan_run(&scfg, &sres));
+  TEST_ASSERT(sres.init_ok);
+  TEST_ASSERT(sres.scan_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, sres.scan_err);
+  TEST_ASSERT_EQ(2U, sres.count);
+  TEST_ASSERT_EQ(1U, s_close_calls);
+  TEST_ASSERT_EQ(0, memcmp(aps[0].ssid, "bench-ap", 8U));
+  TEST_ASSERT_EQ(-42, aps[0].rssi);
+  TEST_ASSERT_EQ(0, memcmp(aps[1].ssid, "neighbor", 8U));
+
+  /* Handle was cleanly closed so a subsequent join re-opens and passes. */
+  wifi_hal_run_cfg_t rcfg = t_run_cfg(&cfg, &wifi, "ra8-bench", "pw");
+  wifi_hal_result_t  jres = {};
+  TEST_ASSERT(wifi_hal_join_run(&rcfg, &jres));
+  TEST_ASSERT(jres.passed);
+  TEST_END("wifi_hal_join scan runs through ra8_wifi_scan and tears down");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises scan failure and null/zero guards)
+ */
+static void test_app_scan_failure_and_guards(void)
+{
+  TEST_BEGIN("wifi_hal_join scan failure and guards");
+  ra8_wifi_cfg_t cfg   = t_reset();
+  s_scan_ret           = k_ra8_err_timeout;
+  ra8_wifi_t    wifi   = {};
+  ra8_wifi_ap_t aps[2] = {};
+
+  wifi_hal_scan_cfg_t    scfg = {.wifi_cfg = &cfg, .wifi = &wifi, .out_aps = aps, .max_aps = 2U};
+  wifi_hal_scan_result_t sres = {};
+  TEST_ASSERT(!wifi_hal_scan_run(&scfg, &sres));
+  TEST_ASSERT(sres.init_ok);
+  TEST_ASSERT(!sres.scan_ok);
+  TEST_ASSERT_EQ(k_ra8_err_timeout, sres.scan_err);
+  TEST_ASSERT_EQ(0U, sres.count);
+  TEST_ASSERT_EQ(1U, s_close_calls);
+
+  TEST_ASSERT(!wifi_hal_scan_run(nullptr, &sres));
+  TEST_ASSERT(!wifi_hal_scan_run(&scfg, nullptr));
+  scfg.max_aps = 0U;
+  TEST_ASSERT(!wifi_hal_scan_run(&scfg, &sres));
+  scfg.max_aps = 2U;
+  scfg.out_aps = nullptr;
+  TEST_ASSERT(!wifi_hal_scan_run(&scfg, &sres));
+  TEST_END("wifi_hal_join scan failure and guards");
+}
+
 int main(void)
 {
   test_app_reaches_ip();
@@ -400,5 +502,7 @@ int main(void)
   test_app_association_fails();
   test_app_dhcp_fails();
   test_app_null_guards();
+  test_app_scan_succeeds_and_clamps();
+  test_app_scan_failure_and_guards();
   return 0;
 }

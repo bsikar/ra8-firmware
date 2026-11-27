@@ -102,3 +102,27 @@ target_include_directories(
                               ${FW_ROOT}/libs/ra8_hal/src ${FW_ROOT}/port/nimble/inc
 )
 add_test(NAME test_ra8_ble_c6link COMMAND test_ra8_ble_c6link)
+
+# test_app_c6_ble_hci: host integration tests for examples/ek_ra8d2/hw_pending/c6/c6_ble_hci
+# driving c6_ble_core.c -> ble_hci_c6link -> ra8_ble -> ra8_c6link over the C6 model.
+add_executable(
+  test_app_c6_ble_hci
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_app_c6_ble_hci.c
+  ${FW_ROOT}/examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/src/c6_ble_core.c
+  ${FW_ROOT}/port/nimble/src/ble_hci_c6link.c
+  ${RA8_C6LINK_TEST_SUPPORT}
+  ${RA8_C6LINK_TEST_MODEL}
+  ${RA8_C6LINK_SOURCES}
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_app_c6_ble_hci PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_app_c6_ble_hci PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_app_c6_ble_hci
+  PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/inc
+          ${RA8_C6LINK_INCLUDE_DIRS}
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/libs/ra8_hal/src
+          ${FW_ROOT}/port/nimble/inc
+)
+add_test(NAME test_app_c6_ble_hci COMMAND test_app_c6_ble_hci)

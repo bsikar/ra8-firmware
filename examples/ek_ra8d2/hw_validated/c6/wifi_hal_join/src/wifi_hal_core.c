@@ -109,3 +109,28 @@ bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out)
   out->passed   = true;
   return true;
 }
+
+bool wifi_hal_scan_run(const wifi_hal_scan_cfg_t* cfg, wifi_hal_scan_result_t* out)
+{
+  if (out == nullptr) {
+    return false;
+  }
+  *out          = (wifi_hal_scan_result_t){};
+  out->init_err = k_ra8_err_not_initialized;
+  out->scan_err = k_ra8_err_not_initialized;
+  if ((cfg == nullptr) || (cfg->wifi == nullptr) || (cfg->wifi_cfg == nullptr) ||
+      (cfg->out_aps == nullptr) || (cfg->max_aps == 0U)) {
+    return false;
+  }
+
+  out->init_err = ra8_wifi_init(cfg->wifi, cfg->wifi_cfg);
+  if (out->init_err != k_ra8_ok) {
+    return false;
+  }
+  out->init_ok  = true;
+  out->scan_err = ra8_wifi_scan(cfg->wifi, cfg->out_aps, cfg->max_aps, &out->count);
+  out->scan_ok  = (out->scan_err == k_ra8_ok);
+  (void)ra8_wifi_disconnect(cfg->wifi);
+  (void)ra8_wifi_deinit(cfg->wifi);
+  return out->scan_ok;
+}
