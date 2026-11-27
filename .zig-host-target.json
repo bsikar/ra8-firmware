@@ -1,0 +1,4 @@
+{
+  "rule": "exempt",
+  "reason": "Root build graph defaults to thumb-freestanding cross-compilation for RA8 hardware targets; host tools and host test runners specify native targets explicitly."
+}
