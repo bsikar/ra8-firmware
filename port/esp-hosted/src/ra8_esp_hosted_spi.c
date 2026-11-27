@@ -98,6 +98,23 @@ typedef enum : uint16_t {
   k_ra8_esp_hosted_spi_frame_bytes = MAX_TRANSPORT_BUFFER_SIZE,
 } ra8_esp_hosted_spi_frame_t;
 
+/**
+ * @enum ra8_esp_hosted_spi_timing_t
+ * @brief Chip-select setup margin before the first Mode-3 SCK falling edge.
+ *
+ * @details
+ * At 1 GHz core speed, writing SCI TDR right after driving chip select low
+ * puts the first SCK falling edge inside tens of nanoseconds. On the ESP32-C6
+ * SPI slave (built with ``CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`` and BLE modem
+ * sleep enabled), that races the CS falling-edge handshake ISR and slave
+ * wakeup/latch path, dropping bit 0 so every received byte shifts right by
+ * one bit (manifesting as checksum errors or ``rx_pkt len+offset[32779]``).
+ * Holding CS low for 25 us before clocking gives the slave margin cleanly.
+ */
+typedef enum : uint32_t {
+  k_ra8_esp_hosted_spi_cs_setup_us = 25U, /**< Microseconds CS stays low before SCK. */
+} ra8_esp_hosted_spi_timing_t;
+
 static_assert((uint8_t)k_ra8_esp_hosted_spi_mode == (uint8_t)k_ra8_spi_mode_3,
               "the co-processor image is built CONFIG_ESP_SPI_MODE=3");
 /*
@@ -463,6 +480,32 @@ static int internal_bus_deinit(void* bus_handle)
 }
 
 /**
+ * @brief Hold chip select low long enough for the C6 SPI slave to latch bit 0.
+ *
+ * @details
+ * Calls the bound ``_h_usleep`` slot for ::k_ra8_esp_hosted_spi_cs_setup_us
+ * after asserting chip select and before starting Mode-3 SCK edges. When no
+ * OSI sleep row is bound (for example, bare host fixture invocations before
+ * ``ra8_esp_hosted_port_init``), returns immediately without faulting.
+ *
+ * @pre Chip select has just been driven low.
+ * @post At least ::k_ra8_esp_hosted_spi_cs_setup_us has elapsed when ``_h_usleep``
+ *       is bound.
+ * @post No SPI or GPIO state is modified.
+ *
+ * @note Sub-millisecond requests spin cleanly via ``internal_spin_us`` without
+ *       yielding into ThreadX.
+ * @since 0.2.0
+ */
+RA8_INTERNAL
+static void internal_cs_setup_delay(void)
+{
+  if ((g_h.funcs != nullptr) && (g_h.funcs->_h_usleep != nullptr)) {
+    (void)g_h.funcs->_h_usleep((unsigned int)k_ra8_esp_hosted_spi_cs_setup_us);
+  }
+}
+
+/**
  * @brief ``_h_do_bus_transfer``: clock one full-duplex esp-hosted frame.
  *
  * @details
@@ -519,6 +562,7 @@ static int internal_do_bus_transfer(void* transfer_context)
   if (pin_if->write(pin_if->ctx, cs, k_ra8_level_low) != k_ra8_ok) {
     return RET_FAIL;
   }
+  internal_cs_setup_delay();
   const ra8_err_t err =
     ra8_io_spi_bus_write_read(bus, ctx->tx_buf, ctx->rx_buf, ctx->tx_buf_size, k_ra8_spi_width_8);
   const ra8_err_t cs_err = pin_if->write(pin_if->ctx, cs, k_ra8_level_high);
