@@ -30,12 +30,13 @@
  * @since 0.1.0
  */
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "epub.h"
 #include "epub_fs.h"
+#include "er_lowpower.h"
+#include "er_ns_nsc_guard.h"
 #include "er_pageturn.h"
 #include "er_panel.h"
 #include "figure_fixture.h"
@@ -86,8 +87,8 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ns_ui_thread_stack_size  = 4096U, /**< Stack size for UI thread.     */
-  k_ns_sys_thread_stack_size = 4096U, /**< Stack size for System thread. */
+  k_ns_ui_thread_stack_size  = 16384U, /**< Stack size for UI thread.     */
+  k_ns_sys_thread_stack_size = 16384U, /**< Stack size for System thread. */
 } ns_thread_stack_t;
 
 static TX_THREAD s_ui_thread;
@@ -160,49 +161,49 @@ static uint8_t s_sys_wdt_handle = (uint8_t)k_ra8_wdt_sup_handle_invalid;
  * @brief Frame geometry and styling metrics for the reader view.
  */
 typedef enum : uint32_t {
-  k_er_statusbar_h     = 64U,                 /**< Status bar height (pixels).         */
-  k_er_footer_h        = 56U,                 /**< Footer band height (pixels).        */
-  k_er_margin_x        = 64U,                 /**< Horizontal text margin (pixels).    */
-  k_er_body_gap        = 24U,                 /**< Vertical band-to-body gap (pixels). */
-  k_er_reflow_px       = 22U,                 /**< Body font size in pixels.           */
-  k_er_zoom_strip_rows = 16U,                 /**< Composited rows per zoom strip.     */
-  k_er_zoom_scale_max  = 4U,                  /**< Maximum figure zoom scale.          */
-  k_er_fig_gray8_cap   = 512U * 1024U,        /**< Decoded figure gray8 capacity.      */
-  k_er_img_arena       = 2U * 1024U * 1024U,  /**< SDRAM image decode arena.           */
-  k_er_reflow_ink      = 0xFF101010U,         /**< Reflow text color (near-black).     */
-  k_er_reflow_link     = 0xFF2A52BEU,         /**< Reflow link color (cerulean).       */
-  k_er_color_statusbar = 0x1A2530U,           /**< Status bar background color.        */
-  k_er_color_paper     = 0xFFFFFFU,           /**< Paper background color.             */
-  k_er_color_rule      = 0xAAAAAAU,           /**< Footer hairline rule color.         */
+  k_er_statusbar_h     = 64U,                /**< Status bar height (pixels).         */
+  k_er_footer_h        = 56U,                /**< Footer band height (pixels).        */
+  k_er_margin_x        = 64U,                /**< Horizontal text margin (pixels).    */
+  k_er_body_gap        = 24U,                /**< Vertical band-to-body gap (pixels). */
+  k_er_reflow_px       = 22U,                /**< Body font size in pixels.           */
+  k_er_zoom_strip_rows = 16U,                /**< Composited rows per zoom strip.     */
+  k_er_zoom_scale_max  = 4U,                 /**< Maximum figure zoom scale.          */
+  k_er_fig_gray8_cap   = 512U * 1024U,       /**< Decoded figure gray8 capacity.      */
+  k_er_img_arena       = 2U * 1024U * 1024U, /**< SDRAM image decode arena.           */
+  k_er_reflow_ink      = 0xFF101010U,        /**< Reflow text color (near-black).     */
+  k_er_reflow_link     = 0xFF2A52BEU,        /**< Reflow link color (cerulean).       */
+  k_er_color_statusbar = 0x1A2530U,          /**< Status bar background color.        */
+  k_er_color_paper     = 0xFFFFFFU,          /**< Paper background color.             */
+  k_er_color_rule      = 0xAAAAAAU,          /**< Footer hairline rule color.         */
 } er_reader_layout_t;
 
 /* Public telemetry globals for HIL and emulator inspection */
-volatile uint32_t g_ns_ui_frames            = 0U;
-volatile uint32_t g_ns_sys_ticks            = 0U;
-volatile uint32_t g_ns_backlight_state      = (uint32_t)k_display_backlight_state_off;
-volatile uint32_t g_ns_backlight_pct        = 0U;
-volatile uint32_t g_ns_backlight_transitions = 0U;
-volatile ra8_err_t g_ns_backlight_init_err  = k_ra8_ok;
-volatile uint32_t g_ns_panel_ready          = 0U;
-volatile ra8_err_t g_ns_panel_init_err      = k_ra8_ok;
-volatile uint32_t g_ns_refresh_mode         = (uint32_t)k_er_refresh_fast_clean;
-volatile uint32_t g_ns_refresh_hint         = (uint32_t)k_display_refresh_init;
-volatile uint32_t g_ns_frames_flushed       = 0U;
-volatile uint32_t g_ns_fb_crc               = 0U;
+volatile uint32_t  g_ns_ui_frames             = 0U;
+volatile uint32_t  g_ns_sys_ticks             = 0U;
+volatile uint32_t  g_ns_backlight_state       = (uint32_t)k_display_backlight_state_off;
+volatile uint32_t  g_ns_backlight_pct         = 0U;
+volatile uint32_t  g_ns_backlight_transitions = 0U;
+volatile ra8_err_t g_ns_backlight_init_err    = k_ra8_ok;
+volatile uint32_t  g_ns_panel_ready           = 0U;
+volatile ra8_err_t g_ns_panel_init_err        = k_ra8_ok;
+volatile uint32_t  g_ns_refresh_mode          = (uint32_t)k_er_refresh_fast_clean;
+volatile uint32_t  g_ns_refresh_hint          = (uint32_t)k_display_refresh_init;
+volatile uint32_t  g_ns_frames_flushed        = 0U;
+volatile uint32_t  g_ns_fb_crc                = 0U;
 
-volatile uint32_t g_ns_touch_ready          = 0U;
-volatile uint32_t g_ns_touch_events         = 0U;
-volatile uint32_t g_ns_sd_ready             = 0U;
-volatile uint32_t g_ns_book_ready           = 0U;
-volatile uint32_t g_ns_current_chapter      = 0U;
-volatile uint32_t g_ns_current_page         = 0U;
-volatile uint32_t g_ns_total_pages          = 1U;
-volatile uint32_t g_ns_total_chapters       = 2U;
-volatile uint32_t g_ns_page_turns           = 0U;
-volatile uint32_t g_ns_fig_active           = 0U;
-volatile uint32_t g_ns_fig_scale            = 0U;
-volatile uint32_t g_ns_manga_active         = 0U;
-volatile uint32_t g_ns_translate_active     = 0U;
+volatile uint32_t g_ns_touch_ready      = 0U;
+volatile uint32_t g_ns_touch_events     = 0U;
+volatile uint32_t g_ns_sd_ready         = 0U;
+volatile uint32_t g_ns_book_ready       = 0U;
+volatile uint32_t g_ns_current_chapter  = 0U;
+volatile uint32_t g_ns_current_page     = 0U;
+volatile uint32_t g_ns_total_pages      = 1U;
+volatile uint32_t g_ns_total_chapters   = 2U;
+volatile uint32_t g_ns_page_turns       = 0U;
+volatile uint32_t g_ns_fig_active       = 0U;
+volatile uint32_t g_ns_fig_scale        = 0U;
+volatile uint32_t g_ns_manga_active     = 0U;
+volatile uint32_t g_ns_translate_active = 0U;
 
 /** @brief 1024x600 RGB565 panel framebuffer placed in NOLOAD external SDRAM. */
 RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
@@ -211,11 +212,13 @@ RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 [[gnu::section(".sdram_data")]] static reflow_t s_reflow_engine;
 [[gnu::section(".sdram_data")]] static uint8_t  s_fig_gray8[k_er_fig_gray8_cap];
 [[gnu::section(".sdram_data")]] static uint8_t  s_zoom_row[k_panel_width_px];
-[[gnu::section(".sdram_data")]] static uint8_t  s_zoom_strip[(size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows];
-[[gnu::section(".sdram_data")]] static uint8_t  s_zoom_packed[((size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows) / 2U];
-[[gnu::section(".sdram_data")]] static uint8_t  s_img_arena_buf[k_er_img_arena];
-[[gnu::section(".sdram_data")]] static uint8_t  s_img_res_buf[128U * 1024U];
-[[gnu::section(".sdram_data")]] static uint8_t  s_chapter_xhtml[64U * 1024U];
+[[gnu::section(".sdram_data")]] static uint8_t
+  s_zoom_strip[(size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows];
+[[gnu::section(".sdram_data")]] static uint8_t
+  s_zoom_packed[((size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows) / 2U];
+[[gnu::section(".sdram_data")]] static uint8_t s_img_arena_buf[k_er_img_arena];
+[[gnu::section(".sdram_data")]] static uint8_t s_img_res_buf[128U * 1024U];
+[[gnu::section(".sdram_data")]] static uint8_t s_chapter_xhtml[64U * 1024U];
 
 static er_panel_state_t           s_ns_panel                   = {};
 static display_backlight_t        s_ns_backlight               = {};
@@ -224,17 +227,17 @@ static ra8_nsc_backlight_caps_t   s_ns_backlight_caps          = {};
 static bool                       s_ns_backlight_ready         = false;
 static volatile bool              s_backlight_activity_pending = false;
 
-static ra8_io_blockdev_t          s_sd_bd                      = {};
-static ra8_fs_backend_t           s_sd_be                      = {};
-static ra8_fs_mount_t*            s_sd_mount                   = nullptr;
-[[gnu::section(".sdram_data")]] static epub_stream_fs_ctx_t s_epub_io   = {};
-[[gnu::section(".sdram_data")]] static epub_book_t          s_epub_book = {};
-static bool                       s_book_loaded                = false;
+static ra8_io_blockdev_t                                    s_sd_bd       = {};
+static ra8_fs_backend_t                                     s_sd_be       = {};
+static ra8_fs_mount_t*                                      s_sd_mount    = nullptr;
+[[gnu::section(".sdram_data")]] static epub_stream_fs_ctx_t s_epub_io     = {};
+[[gnu::section(".sdram_data")]] static epub_book_t          s_epub_book   = {};
+static bool                                                 s_book_loaded = false;
 
-static zoom_mem_src_t             s_fig_mem                    = {};
-static zoom_popup_t               s_fig_popup                  = {};
-static ra8_img_arena_t            s_reflow_img_arena           = {};
-static bool                       s_reader_ready               = false;
+static zoom_mem_src_t  s_fig_mem          = {};
+static zoom_popup_t    s_fig_popup        = {};
+static ra8_img_arena_t s_reflow_img_arena = {};
+static bool            s_reader_ready     = false;
 
 typedef struct {
   const char* xhtml;
@@ -272,11 +275,27 @@ RA8_INTERNAL static uint32_t internal_ns_now_ms(void)
   return (uint32_t)(((uint64_t)tx_time_get() * 1000ULL) / (uint64_t)TX_TIMER_TICKS_PER_SECOND);
 }
 
+/** @brief Guarded NSC log helper preventing SysTick_NS preemption in Secure mode. */
+RA8_INTERNAL static ra8_err_t internal_ns_log_emit(const char* tag, const char* msg)
+{
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_log_emit(tag, msg));
+  return err;
+}
+
+/** @brief Guarded WDT refresh hook registered with ThreadX WDT supervisor. */
+RA8_INTERNAL static void internal_ns_wdt_refresh(void)
+{
+  ER_NS_NSC_VOID(ra8_nsc_wdt_refresh());
+}
+
 /** @brief Backlight enable callback bridged across TrustZone to Secure board GPIO. */
 RA8_INTERNAL static ra8_err_t internal_ns_backlight_set_cb(void* ctx, uint8_t on)
 {
   (void)ctx;
-  return ra8_nsc_backlight_set(on != 0U);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_backlight_set(on != 0U));
+  return err;
 }
 
 /** @brief Signal user or display activity to wake the NS backlight idle timer. */
@@ -309,10 +328,11 @@ RA8_INTERNAL static void internal_ns_panel_publish(void)
 /** @brief Initialize SDRAM + EK-RA8D2 GLCDC panel via display PAL and render first frame. */
 RA8_INTERNAL static void internal_ns_panel_setup(void)
 {
-  ra8_err_t err = ra8_nsc_sdramc_init();
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_sdramc_init());
   if (err != k_ra8_ok) {
     g_ns_panel_init_err = err;
-    (void)ra8_nsc_log_emit("UI", "Panel SDRAM init failed");
+    (void)internal_ns_log_emit("UI", "Panel SDRAM init failed");
     return;
   }
 
@@ -330,26 +350,27 @@ RA8_INTERNAL static void internal_ns_panel_setup(void)
                             (uint16_t)k_display_policy_clean_every_default);
   if (err != k_ra8_ok) {
     g_ns_panel_init_err = err;
-    (void)ra8_nsc_log_emit("UI", "Panel display PAL init failed");
+    (void)internal_ns_log_emit("UI", "Panel display PAL init failed");
     return;
   }
 
   g_ns_panel_init_err = k_ra8_ok;
   g_ns_panel_ready    = 1U;
   internal_ns_panel_publish();
-  (void)ra8_nsc_log_emit("UI", "Panel initialized via display PAL");
+  (void)internal_ns_log_emit("UI", "Panel initialized via display PAL");
 }
 
 /** @brief Bring up the NS backlight controller, 30s idle policy, and wake switches. */
 RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
 {
-  ra8_err_t err = ra8_nsc_backlight_get_caps(&s_ns_backlight_caps);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_backlight_get_caps(&s_ns_backlight_caps));
   if (err != k_ra8_ok) {
     g_ns_backlight_init_err = err;
     return;
   }
   if (g_ns_panel_ready == 0U) {
-    err = ra8_nsc_backlight_init(false);
+    ER_NS_NSC_CALL(err, ra8_nsc_backlight_init(false));
     if (err != k_ra8_ok) {
       g_ns_backlight_init_err = err;
       return;
@@ -388,8 +409,8 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
     return;
   }
 
-  (void)ra8_nsc_sw_init(0U);
-  (void)ra8_nsc_sw_init(1U);
+  ER_NS_NSC_VOID((void)ra8_nsc_sw_init(0U));
+  ER_NS_NSC_VOID((void)ra8_nsc_sw_init(1U));
 
   g_ns_backlight_init_err = k_ra8_ok;
   g_ns_backlight_state    = (uint32_t)s_ns_backlight_policy.state;
@@ -398,19 +419,25 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
 }
 
 /** @brief Pump user button edges and advance the 30s backlight idle policy. */
-RA8_INTERNAL static void
-internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2, bool* out_sw1_edge, bool* out_sw2_edge)
+RA8_INTERNAL static void internal_ns_backlight_tick(bool* prev_sw1,
+                                                    bool* prev_sw2,
+                                                    bool* out_sw1_edge,
+                                                    bool* out_sw2_edge,
+                                                    bool* out_sw1_down,
+                                                    bool* out_sw2_down)
 {
   *out_sw1_edge = false;
   *out_sw2_edge = false;
+  *out_sw1_down = false;
+  *out_sw2_down = false;
   if (!s_ns_backlight_ready) {
     return;
   }
 
   bool sw1_now = false;
   bool sw2_now = false;
-  (void)ra8_nsc_sw_read(0U, &sw1_now);
-  (void)ra8_nsc_sw_read(1U, &sw2_now);
+  ER_NS_NSC_VOID((void)ra8_nsc_sw_read(0U, &sw1_now));
+  ER_NS_NSC_VOID((void)ra8_nsc_sw_read(1U, &sw2_now));
 
   const bool sw1_edge = sw1_now && !(*prev_sw1);
   const bool sw2_edge = sw2_now && !(*prev_sw2);
@@ -419,6 +446,8 @@ internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2, bool* out_sw1_edge, b
   *prev_sw2           = sw2_now;
   *out_sw1_edge       = sw1_edge;
   *out_sw2_edge       = sw2_edge;
+  *out_sw1_down       = sw1_now;
+  *out_sw2_down       = sw2_now;
 
   const uint32_t                      now_ms = internal_ns_now_ms();
   display_backlight_policy_decision_t dec    = {};
@@ -551,7 +580,7 @@ RA8_INTERNAL static bool internal_ns_figure_open(uint32_t img_idx, int32_t tx, i
   g_ns_fig_active = 1U;
   g_ns_fig_scale  = (uint32_t)s_fig_popup.view.scale;
   internal_ns_figure_present();
-  (void)ra8_nsc_log_emit("UI", "Figure zoom opened");
+  (void)internal_ns_log_emit("UI", "Figure zoom opened");
   return true;
 }
 
@@ -574,7 +603,8 @@ RA8_INTERNAL static size_t internal_ns_append_uint(char* buf, size_t cap, size_t
 }
 
 /** @brief Format string literal into buffer. */
-RA8_INTERNAL static size_t internal_ns_append_str(char* buf, size_t cap, size_t pos, const char* str)
+RA8_INTERNAL static size_t
+internal_ns_append_str(char* buf, size_t cap, size_t pos, const char* str)
 {
   if (str == nullptr) {
     return pos;
@@ -612,7 +642,8 @@ RA8_INTERNAL static void internal_ns_render_page(void)
   if (g_ns_current_page >= g_ns_total_pages) {
     g_ns_current_page = (g_ns_total_pages > 0U) ? (g_ns_total_pages - 1U) : 0U;
   }
-  (void)reflow_render_page_at(&s_reflow_engine, g_ns_current_page, (int32_t)k_er_margin_x, body_top);
+  (void)
+    reflow_render_page_at(&s_reflow_engine, g_ns_current_page, (int32_t)k_er_margin_x, body_top);
 
   const int32_t footer_rule_y = h - (int32_t)k_er_footer_h;
   (void)ra8_gfx_line((int32_t)k_er_margin_x,
@@ -705,7 +736,7 @@ RA8_INTERNAL static void internal_ns_handle_page_turn(er_dir_t dir)
       g_ns_current_page = next_p;
     }
     internal_ns_render_page();
-    (void)ra8_nsc_log_emit("UI", "Page turn executed");
+    (void)internal_ns_log_emit("UI", "Page turn executed");
   }
 }
 
@@ -740,7 +771,7 @@ RA8_INTERNAL static void internal_ns_reader_setup(void)
                   (uint32_t)k_er_reflow_ink,
                   (uint32_t)k_er_reflow_link,
                   &s_reflow_engine) != k_ra8_ok) {
-    (void)ra8_nsc_log_emit("UI", "Reflow init failed");
+    (void)internal_ns_log_emit("UI", "Reflow init failed");
     return;
   }
 
@@ -750,7 +781,10 @@ RA8_INTERNAL static void internal_ns_reader_setup(void)
     .offset = 0U,
     .live   = 0U,
   };
-  (void)reflow_set_image_loader(&s_reflow_engine, internal_ns_image_loader, nullptr, &s_reflow_img_arena);
+  (void)reflow_set_image_loader(&s_reflow_engine,
+                                internal_ns_image_loader,
+                                nullptr,
+                                &s_reflow_img_arena);
 
   uint32_t pages = 1U;
   if (reflow_layout_chapter(&s_reflow_engine,
@@ -762,7 +796,7 @@ RA8_INTERNAL static void internal_ns_reader_setup(void)
     g_ns_current_chapter = 0U;
     g_ns_total_chapters  = 2U;
     s_reader_ready       = true;
-    (void)ra8_nsc_log_emit("UI", "Reader subsystem ready");
+    (void)internal_ns_log_emit("UI", "Reader subsystem ready");
   }
 }
 
@@ -782,17 +816,17 @@ RA8_INTERNAL static void internal_ns_open_sd_book(void)
         g_ns_total_chapters = (uint32_t)ch_count;
         g_ns_book_ready     = 1U;
         s_book_loaded       = true;
-        (void)ra8_nsc_log_emit("SYS", "EPUB book opened from SD library");
+        (void)internal_ns_log_emit("SYS", "EPUB book opened from SD library");
         return;
       }
     }
   }
-  (void)ra8_nsc_log_emit("SYS", "SD mounted; default reading library ready");
+  (void)internal_ns_log_emit("SYS", "SD mounted; default reading library ready");
 }
 
 /** @brief SysTick exception handler forwarding to ThreadX kernel timer. */
-extern void PendSV_Handler(void);
-extern void _tx_timer_interrupt(void);
+extern void              PendSV_Handler(void);
+extern void              _tx_timer_interrupt(void);
 extern volatile uint32_t g_ra8_threadx_systick_ready;
 
 RA8_INTERNAL static void internal_systick_handler(void)
@@ -810,97 +844,142 @@ RA8_INTERNAL [[noreturn]] static void internal_panic_halt(void)
   }
 }
 
-/**
- * @brief UI thread entry: runs touch polling, page turns, zoom, and frame rendering.
- */
-RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
+/** @brief Probe capacitive touch controller over TrustZone NSC. */
+RA8_INTERNAL static void internal_ns_touch_setup(void)
 {
-  (void)thread_input;
-  (void)ra8_nsc_log_emit("UI", "UI thread started");
-  internal_ns_panel_setup();
-  internal_ns_backlight_setup(internal_ns_now_ms());
-
-  /* Touch controller bring-up */
   const ra8_nsc_touch_cfg_t tcfg = {
     .max_points = 1U,
     .irq_pin    = 32U,
   };
-  if (ra8_nsc_board_touch_open(&tcfg) == k_ra8_ok) {
+  ra8_err_t touch_err = k_ra8_ok;
+  ER_NS_NSC_CALL(touch_err, ra8_nsc_board_touch_open(&tcfg));
+  if (touch_err == k_ra8_ok) {
     g_ns_touch_ready = 1U;
-    (void)ra8_nsc_log_emit("UI", "Touch controller open: OK");
+    (void)internal_ns_log_emit("UI", "Touch controller open: OK");
   } else {
     g_ns_touch_ready = 0U;
-    (void)ra8_nsc_log_emit("UI", "Touch controller open: skipped/unavailable");
+    (void)internal_ns_log_emit("UI", "Touch controller open: skipped/unavailable");
+  }
+}
+
+/** @brief Poll touchscreen, apply zoom/page-turn tap routing, and flag activity. */
+RA8_INTERNAL static void internal_ns_poll_touch(uint32_t now_ms, bool* io_activity)
+{
+  if (g_ns_touch_ready == 0U) {
+    return;
   }
 
-  /* Reader subsystem bring-up */
+  ra8_nsc_touch_point_t pt       = {};
+  uint8_t               got      = 0U;
+  ra8_err_t             read_err = k_ra8_ok;
+  ER_NS_NSC_CALL(read_err, ra8_nsc_touch_read(&pt, 1U, &got));
+  if ((read_err != k_ra8_ok) || (got == 0U)) {
+    return;
+  }
+
+  g_ns_touch_events++;
+  *io_activity = true;
+  ra8_ereader_backlight_notify_activity();
+
+  if (zoom_popup_active(&s_fig_popup)) {
+    zoom_popup_action_t act = k_zoom_popup_act_none;
+    if (zoom_popup_tap(&s_fig_popup, pt.x, pt.y, now_ms, &act) == k_ra8_ok) {
+      g_ns_fig_scale = (uint32_t)s_fig_popup.view.scale;
+      if (act == k_zoom_popup_act_redrawn) {
+        internal_ns_figure_present();
+      } else if (act == k_zoom_popup_act_closed) {
+        (void)zoom_popup_close(&s_fig_popup);
+        g_ns_fig_active = 0U;
+        g_ns_fig_scale  = 0U;
+        internal_ns_render_page();
+      }
+    }
+    return;
+  }
+
+  if (!internal_ns_try_figure_tap(pt.x, pt.y)) {
+    const er_dir_t dir = er_tap_to_dir(pt.x, (int32_t)k_panel_width_px);
+    if (dir != k_er_dir_none) {
+      internal_ns_handle_page_turn(dir);
+    }
+  }
+}
+
+/** @brief Step button/idle low-power logic and handle M33 hold/wake transitions. */
+RA8_INTERNAL static void internal_ns_handle_lp_step(bool  sw1_edge,
+                                                    bool  sw1_down,
+                                                    bool  sw2_down,
+                                                    bool* prev_sw1,
+                                                    bool* prev_sw2,
+                                                    bool  ui_activity)
+{
+  er_lp_input_action_t lp_action = k_er_lp_action_none;
+  er_lowpower_ns_tick(sw1_down, sw2_down, (uint32_t)k_ns_ui_frame_ticks, ui_activity, &lp_action);
+
+  const bool sw2_short = (lp_action == k_er_lp_action_sw2_short);
+  if (s_ns_panel.initialized && (sw1_edge || sw2_short)) {
+    const er_dir_t bdir = er_buttons_to_dir(sw1_edge, sw2_short);
+    if (bdir != k_er_dir_none) {
+      internal_ns_handle_page_turn(bdir);
+    }
+  }
+
+  if (lp_action != k_er_lp_action_enter_hold) {
+    return;
+  }
+
+  er_lp_wake_reason_t wake = k_er_lp_wake_none;
+  const ra8_err_t     err  = er_lowpower_ns_handle_hold(s_ns_panel.frame_count,
+                                                        (uint32_t)(uintptr_t)&s_framebuffer[0],
+                                                        g_ns_fb_crc,
+                                                        &wake);
+  *prev_sw1                = false;
+  *prev_sw2                = false;
+  if ((err == k_ra8_ok) && ((wake == k_er_lp_wake_next_page) || (wake == k_er_lp_wake_auto_test))) {
+    if (s_ns_panel.initialized) {
+      internal_ns_handle_page_turn(k_er_dir_next);
+    }
+    (void)internal_ns_log_emit("LP", "M85 wake -> page turn completed");
+  }
+}
+
+/** @brief UI thread entry: runs touch polling, page turns, zoom, and frame rendering. */
+RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
+{
+  (void)thread_input;
+  (void)internal_ns_log_emit("UI", "UI thread started");
+  internal_ns_panel_setup();
+  internal_ns_backlight_setup(internal_ns_now_ms());
+  internal_ns_touch_setup();
   internal_ns_reader_setup();
   internal_ns_render_page();
+  er_lowpower_ns_setup((uint32_t)(uintptr_t)&s_framebuffer[0]);
 
   uint32_t frame    = 0U;
   bool     prev_sw1 = false;
   bool     prev_sw2 = false;
   for (;;) {
     frame++;
-    g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
+    g_ns_ui_frames = frame;
 
     bool sw1_edge = false;
     bool sw2_edge = false;
-    internal_ns_backlight_tick(&prev_sw1, &prev_sw2, &sw1_edge, &sw2_edge);
+    bool sw1_down = false;
+    bool sw2_down = false;
+    internal_ns_backlight_tick(&prev_sw1, &prev_sw2, &sw1_edge, &sw2_edge, &sw1_down, &sw2_down);
 
-    const uint32_t now_ms = internal_ns_now_ms();
-
-    /* Figure popup tick / animated pan decay */
-    if (zoom_popup_active(&s_fig_popup)) {
-      if (zoom_popup_tick(&s_fig_popup, now_ms)) {
-        internal_ns_figure_present();
-      }
+    bool           ui_activity = sw1_edge || sw2_edge;
+    const uint32_t now_ms      = internal_ns_now_ms();
+    if (zoom_popup_active(&s_fig_popup) && zoom_popup_tick(&s_fig_popup, now_ms)) {
+      internal_ns_figure_present();
     }
 
-    /* Poll touchscreen inputs */
-    if (g_ns_touch_ready != 0U) {
-      ra8_nsc_touch_point_t pt  = {};
-      uint8_t               got = 0U;
-      if ((ra8_nsc_touch_read(&pt, 1U, &got) == k_ra8_ok) && (got > 0U)) {
-        g_ns_touch_events++;
-        ra8_ereader_backlight_notify_activity();
+    internal_ns_poll_touch(now_ms, &ui_activity);
+    internal_ns_handle_lp_step(sw1_edge, sw1_down, sw2_down, &prev_sw1, &prev_sw2, ui_activity);
 
-        if (zoom_popup_active(&s_fig_popup)) {
-          zoom_popup_action_t act = k_zoom_popup_act_none;
-          if (zoom_popup_tap(&s_fig_popup, pt.x, pt.y, now_ms, &act) == k_ra8_ok) {
-            g_ns_fig_scale = (uint32_t)s_fig_popup.view.scale;
-            if (act == k_zoom_popup_act_redrawn) {
-              internal_ns_figure_present();
-            } else if (act == k_zoom_popup_act_closed) {
-              (void)zoom_popup_close(&s_fig_popup);
-              g_ns_fig_active = 0U;
-              g_ns_fig_scale  = 0U;
-              internal_ns_render_page();
-            }
-          }
-        } else {
-          if (!internal_ns_try_figure_tap(pt.x, pt.y)) {
-            const er_dir_t dir = er_tap_to_dir(pt.x, (int32_t)k_panel_width_px);
-            if (dir != k_er_dir_none) {
-              internal_ns_handle_page_turn(dir);
-            }
-          }
-        }
-      }
-    }
-
-    /* User button fallbacks (SW1 = prev page, SW2 = next page) */
-    if (s_ns_panel.initialized && (sw1_edge || sw2_edge)) {
-      const er_dir_t bdir = er_buttons_to_dir(sw1_edge, sw2_edge);
-      if (bdir != k_er_dir_none) {
-        internal_ns_handle_page_turn(bdir);
-      }
-    }
-
-    /* Prove liveness to the watchdog supervisor once per frame. */
     (void)ra8_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {
-      (void)ra8_nsc_log_emit("UI", "UI loop: frame heartbeat");
+      (void)internal_ns_log_emit("UI", "UI loop: frame heartbeat");
     }
     tx_thread_sleep((uint32_t)k_ns_ui_frame_ticks);
   }
@@ -912,7 +991,7 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
 RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-  (void)ra8_nsc_log_emit("SYS", "System thread started (storage + supervisor)");
+  (void)internal_ns_log_emit("SYS", "System thread started (storage + supervisor)");
 
   /* Bring up SDHI pins and SD card */
   if (ra8_board_sdhi_pins_init() == k_ra8_ok) {
@@ -924,7 +1003,7 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
           (ra8_fs_mount(&s_sd_be, &s_sd_mount) == k_ra8_ok)) {
         (void)ra8_io_vfs_mount("sd", s_sd_mount);
         g_ns_sd_ready = 1U;
-        (void)ra8_nsc_log_emit("SYS", "SD storage mounted at sd:/");
+        (void)internal_ns_log_emit("SYS", "SD storage mounted at sd:/");
 
         /* Attempt to open candidate EPUB from SD */
         internal_ns_open_sd_book();
@@ -938,7 +1017,7 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
     g_ns_sys_ticks = tick;
     (void)ra8_wdt_supervisor_checkin(s_sys_wdt_handle);
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
-      (void)ra8_nsc_log_emit("SYS", "System heartbeat: supervisor loop");
+      (void)internal_ns_log_emit("SYS", "System heartbeat: supervisor loop");
     }
     tx_thread_sleep((uint32_t)k_ns_sys_poll_ticks);
   }
@@ -947,7 +1026,9 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
 /** @brief Arm the watchdog and start the ThreadX check-in supervisor. */
 RA8_INTERNAL static void internal_wdt_setup(void)
 {
-  if (ra8_nsc_wdt_start() != k_ra8_ok) {
+  ra8_err_t wdt_err = k_ra8_ok;
+  ER_NS_NSC_CALL(wdt_err, ra8_nsc_wdt_start());
+  if (wdt_err != k_ra8_ok) {
     internal_panic_halt();
   }
   const ra8_wdt_sup_cfg_t sup_cfg = {
@@ -959,7 +1040,7 @@ RA8_INTERNAL static void internal_wdt_setup(void)
   if (ra8_wdt_supervisor_init(&sup_cfg) != k_ra8_ok) {
     internal_panic_halt();
   }
-  if (ra8_wdt_supervisor_set_refresh_hook(ra8_nsc_wdt_refresh) != k_ra8_ok) {
+  if (ra8_wdt_supervisor_set_refresh_hook(internal_ns_wdt_refresh) != k_ra8_ok) {
     internal_panic_halt();
   }
   if (ra8_wdt_supervisor_register_thread("ui",
@@ -1035,7 +1116,7 @@ void tx_application_define(void* first_unused_memory)
     internal_panic_halt();
   }
 
-  (void)ra8_nsc_log_emit("BOOT", "ra8d2-ereader: Non-Secure world online");
+  (void)internal_ns_log_emit("BOOT", "ra8d2-ereader: Non-Secure world online");
   tx_kernel_enter();
   internal_panic_halt();
 }

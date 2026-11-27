@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 
+#include "er_ns_nsc_guard.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_cache.h"
 #include "ra8_err.h"
@@ -58,55 +59,69 @@ uint32_t ra8_time_ms(void)
 ra8_err_t ra8_board_lcd_panel_power_on(void)
 {
   constexpr uint32_t k_reset_pulse_ms = 50U;
-  ra8_err_t          err              = ra8_nsc_lcd_panel_reset_init(false);
+  ra8_err_t          err              = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_lcd_panel_reset_init(false));
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_delay_ms(k_reset_pulse_ms);
 
-  err = ra8_nsc_lcd_panel_reset_write(true);
+  ER_NS_NSC_CALL(err, ra8_nsc_lcd_panel_reset_write(true));
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_delay_ms(k_reset_pulse_ms);
 
-  return ra8_nsc_backlight_init(true);
+  ER_NS_NSC_CALL(err, ra8_nsc_backlight_init(true));
+  return err;
 }
 
 /** @brief NS adapter forwarding J1 GLCDC pin routing across the NSC boundary. */
 ra8_err_t ra8_board_glcdc_init(ra8_board_glcdc_fmt_t fmt)
 {
-  return ra8_nsc_board_glcdc_init((uint8_t)fmt);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_board_glcdc_init((uint8_t)fmt));
+  return err;
 }
 
 /** @brief NS adapter forwarding GLCDC config across the NSC boundary. */
 ra8_err_t ra8_glcdc_init(const ra8_glcdc_config_t* cfg)
 {
-  return ra8_nsc_glcdc_init(cfg);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_glcdc_init(cfg));
+  return err;
 }
 
 /** @brief NS adapter forwarding GLCDC background colour across the NSC boundary. */
 ra8_err_t ra8_glcdc_set_background_color(uint32_t argb)
 {
-  return ra8_nsc_glcdc_set_background_color(argb);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_glcdc_set_background_color(argb));
+  return err;
 }
 
 /** @brief NS adapter forwarding GLCDC scan start/stop across the NSC boundary. */
 ra8_err_t ra8_glcdc_start(bool enable)
 {
-  return ra8_nsc_glcdc_start(enable);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_glcdc_start(enable));
+  return err;
 }
 
 /** @brief NS adapter forwarding GLCDC layer 1 address across the NSC boundary. */
 ra8_err_t ra8_glcdc_layer1_show(uintptr_t fb_addr)
 {
-  return ra8_nsc_glcdc_layer1_show(fb_addr);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_glcdc_layer1_show(fb_addr));
+  return err;
 }
 
 /** @brief NS adapter forwarding GLCDC deinit across the NSC boundary. */
 ra8_err_t ra8_glcdc_deinit(void)
 {
-  return ra8_nsc_glcdc_deinit();
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_glcdc_deinit());
+  return err;
 }
 
 /** @brief NS adapter forwarding D-cache clean across the NSC boundary. */
@@ -115,7 +130,9 @@ ra8_err_t ra8_cache_dcache_clean_by_addr(const void* addr, uint32_t size)
   if (addr == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  return ra8_nsc_dcache_clean_by_addr(addr, size);
+  ra8_err_t err = k_ra8_ok;
+  ER_NS_NSC_CALL(err, ra8_nsc_dcache_clean_by_addr(addr, size));
+  return err;
 }
 
 /** @brief NS adapter for SDHI pin routing (Secure boot owns PFS). */
