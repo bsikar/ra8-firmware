@@ -171,7 +171,7 @@ void priv_byte_fill(uint8_t* dst, uint8_t value, uint32_t n);
  * @warning Writing through a cast pointer would corrupt every zero-fill.
  * @since 0.1.0
  */
-extern const uint8_t k_zero_sector[k_ra8_fs_sector_max];
+extern uint8_t k_zero_sector[k_ra8_fs_sector_max];
 
 /**
  * @brief Decode a little-endian uint16_t from a byte buffer.

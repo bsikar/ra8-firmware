@@ -574,6 +574,58 @@ ra8_nsc_backlight_get_caps(ra8_nsc_backlight_caps_t* out_caps);
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_reset_write(bool high);
 
 /**
+ * @struct ra8_nsc_touch_cfg_t
+ * @brief NSC touch configuration descriptor.
+ */
+typedef struct ra8_nsc_touch_cfg_s {
+  uint8_t max_points; /**< Cap on contacts (0 for board default). */
+  uint8_t irq_pin;    /**< Attention pin, or 32 for polled.        */
+} ra8_nsc_touch_cfg_t;
+
+/**
+ * @struct ra8_nsc_touch_point_t
+ * @brief NSC decoded touch contact record.
+ */
+typedef struct ra8_nsc_touch_point_s {
+  uint16_t x;        /**< Panel X coordinate.              */
+  uint16_t y;        /**< Panel Y coordinate.              */
+  uint8_t  track_id; /**< Persistent contact id (0..15).   */
+  uint8_t  pressure; /**< Approximate pressure, 0..255.    */
+} ra8_nsc_touch_point_t;
+
+/**
+ * @brief NSC veneer: bring up the on-board GT911 and open the touch driver.
+ *
+ * @param[in] cfg Pointer to configuration settings in NS memory.
+ *
+ * @retval k_ra8_ok                The GT911 answered and the driver is open.
+ * @retval k_ra8_err_null_ptr      @p cfg was null.
+ * @retval k_ra8_err_invalid_arg   @p cfg points outside NS memory.
+ * @retval k_ra8_err_not_supported Board lacks onboard touch or touch driver missing.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t
+ra8_nsc_board_touch_open(const ra8_nsc_touch_cfg_t* cfg);
+
+/**
+ * @brief NSC veneer: read decoded touch contacts into NS memory.
+ *
+ * @param[out] out_points     Destination buffer in NS memory (holds @p max_count records).
+ * @param[in]  max_count      Capacity of @p out_points buffer (must be > 0).
+ * @param[out] out_got_count  Number of valid contact records written; stored in NS memory.
+ *
+ * @retval k_ra8_ok                Contacts drained and written.
+ * @retval k_ra8_err_null_ptr      @p out_points or @p out_got_count is null.
+ * @retval k_ra8_err_invalid_arg   @p max_count is 0 or buffer outside NS memory.
+ * @retval k_ra8_err_not_supported Touch driver not available.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t
+ra8_nsc_touch_read(ra8_nsc_touch_point_t* out_points,
+                   uint8_t                max_count,
+                   uint8_t*               out_got_count);
+
+/**
  * @brief NSC veneer: route the EK-RA8D2 J1 GLCDC parallel-RGB pins.
  *
  * @param[in] fmt Parallel-RGB pin format code (matches ``ra8_board_glcdc_fmt_t``).

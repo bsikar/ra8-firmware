@@ -36,7 +36,7 @@ comptime {
 
 /// Backing store for all stb_truetype scratch. Aligned so every
 /// 16-byte-rounded offset yields a 16-byte-aligned pointer.
-var s_arena_buf: [arena_bytes]u8 align(align_bytes) = undefined;
+var s_arena_buf: [arena_bytes]u8 align(align_bytes) linksection(".sdram_data") = undefined;
 
 /// The arena, composed statically rather than through scratch init: the hooks
 /// are macros invoked by SOUP and have no bind point to run an init from, and

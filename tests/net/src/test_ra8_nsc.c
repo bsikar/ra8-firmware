@@ -422,6 +422,14 @@ static void internal_test_panel_and_switch_veneers(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_sw_read(2U, &pressed));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_sw_init(0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_sw_read(0U, &pressed));
+
+  /* Touch veneers */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_board_touch_open(nullptr));
+  ra8_nsc_touch_point_t pts[1]  = {};
+  uint8_t               got_pts = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_touch_read(nullptr, 1U, &got_pts));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_touch_read(pts, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_touch_read(pts, 0U, &got_pts));
   TEST_END("ra8_nsc panel backlight and switch veneers");
 }
 

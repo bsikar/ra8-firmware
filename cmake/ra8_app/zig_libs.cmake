@@ -469,7 +469,7 @@ function(ra8_zig_archive_for_cpu _out_archive)
   cmake_parse_arguments(
     ZA
     "NS_ALIAS"
-    "LIB;CPU;FLOAT"
+    "LIB;CPU;FLOAT;DIR"
     ""
     ${ARGN}
   )
@@ -496,11 +496,19 @@ function(ra8_zig_archive_for_cpu _out_archive)
     message(FATAL_ERROR "ra8_zig_archive_for_cpu(): FLOAT must be hard or soft, got '${ZA_FLOAT}'")
   endif()
 
-  set(_lib_path "${RA8_REPO_ROOT}/libs/${ZA_LIB}")
-  if(NOT EXISTS "${_lib_path}/build.zig")
-    message(FATAL_ERROR "ra8_zig_archive_for_cpu(): '${ZA_LIB}' has no build.zig at "
-                        "${_lib_path}; it is not a migrated Zig library."
-    )
+  if(ZA_DIR)
+    set(_lib_path "${RA8_REPO_ROOT}/${ZA_DIR}")
+  else()
+    set(_lib_path "${RA8_REPO_ROOT}/libs/${ZA_LIB}")
+    if(NOT EXISTS "${_lib_path}/build.zig")
+      if(EXISTS "${RA8_REPO_ROOT}/apps/shared_libs/${ZA_LIB}/build.zig")
+        set(_lib_path "${RA8_REPO_ROOT}/apps/shared_libs/${ZA_LIB}")
+      else()
+        message(FATAL_ERROR "ra8_zig_archive_for_cpu(): '${ZA_LIB}' has no build.zig at "
+                            "${_lib_path}; it is not a migrated Zig library."
+        )
+      endif()
+    endif()
   endif()
 
   set(_za_flags)
