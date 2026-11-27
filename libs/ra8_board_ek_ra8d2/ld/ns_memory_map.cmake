@@ -32,6 +32,10 @@ set(RA8_NS_OSPI_LENGTH 256K)
 set(RA8_NS_SRAM_ORIGIN 0x32100000)
 set(RA8_NS_SRAM_LENGTH 512K)
 
+# External SDRAM window (IDAU bit[28]=1 range >= 0x5000_0000 is Non-secure).
+set(RA8_NS_SDRAM_ORIGIN 0x68000000)
+set(RA8_NS_SDRAM_LENGTH 64M)
+
 # Put the NS memory map on a Secure target as compile definitions.
 #
 # The NS image is a separate ELF, so the Secure side has none of its linker

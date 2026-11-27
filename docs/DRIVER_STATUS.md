@@ -51,7 +51,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_ble` | 0 | 1 | 14 | 2 | 1 |
 | `ra8_bscan` | 0 | 1 | 6 | 1 | 1 |
 | `ra8_cac` | 0 | 1 | 9 | 1 | 1 |
-| `ra8_cache` | 0 | 1 | 11 | 3 | 8 |
+| `ra8_cache` | 0 | 1 | 11 | 3 | 9 |
 | `ra8_canfd` | 0 | 1 | 18 | 11 | 4 |
 | `ra8_ceu` | 1 | 3 | 27 | 4 | 0 |
 | `ra8_cgc` | 2 | 1 | 12 | 20 | 56 |
@@ -75,7 +75,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_flash` | 1 | 4 | 43 | 6 | 3 |
 | `ra8_fpu_probe` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_fuelgauge` | 0 | 1 | 3 | 1 | 2 |
-| `ra8_glcdc` | 1 | 1 | 21 | 3 | 1 |
+| `ra8_glcdc` | 1 | 1 | 21 | 3 | 2 |
 | `ra8_gpt` | 0 | 2 | 30 | 13 | 10 |
 | `ra8_hw_err` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_hw_intrinsics` | 0 | 1 | 0 | 0 | 0 |

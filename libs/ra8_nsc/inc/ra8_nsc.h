@@ -462,8 +462,8 @@ typedef enum : uint32_t {
  * @brief Non-Secure view of onboard panel backlight capabilities.
  */
 typedef struct ra8_nsc_backlight_caps_s {
-  uint8_t min_pct;      /**< Minimum valid brightness percent (0 = off). */
-  uint8_t max_pct;      /**< Maximum valid brightness percent (100 = full). */
+  uint8_t min_pct;      /**< Minimum valid brightness percent (0 = off).         */
+  uint8_t max_pct;      /**< Maximum valid brightness percent (100 = full).      */
   bool    supports_pwm; /**< True when hardware supports continuous PWM dimming. */
 } ra8_nsc_backlight_caps_t;
 
@@ -541,6 +541,49 @@ ra8_nsc_backlight_get_caps(ra8_nsc_backlight_caps_t* out_caps);
  * @since 0.1.0
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_sw_read(uint8_t sw_id, bool* out_pressed);
+
+/**
+ * @brief NSC veneer: reset and power on the EK-RA8D2 J1 LCD panel and BLEN.
+ *
+ * @retval k_ra8_ok                Panel reset released and BLEN asserted.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_power_on(void);
+
+/**
+ * @brief NSC veneer: configure EK-RA8D2 J1 RESET_L (P606) as output at initial level.
+ *
+ * @param[in] high True to drive RESET_L high (released), false for low (asserted).
+ *
+ * @retval k_ra8_ok                Pin configured and driven.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_reset_init(bool high);
+
+/**
+ * @brief NSC veneer: drive already-configured EK-RA8D2 J1 RESET_L (P606) level.
+ *
+ * @param[in] high True to release reset high, false to assert reset low.
+ *
+ * @retval k_ra8_ok                Pin level updated.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lcd_panel_reset_write(bool high);
+
+/**
+ * @brief NSC veneer: route the EK-RA8D2 J1 GLCDC parallel-RGB pins.
+ *
+ * @param[in] fmt Parallel-RGB pin format code (matches ``ra8_board_glcdc_fmt_t``).
+ *
+ * @retval k_ra8_ok                Pins routed.
+ * @retval k_ra8_err_invalid_arg   ``fmt`` out of range.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_board_glcdc_init(uint8_t fmt);
 
 #ifdef __cplusplus
 }

@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_cgc.h"
 #include "ra8_dma.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -28,6 +29,7 @@
 #include "ra8_nsc.h"
 #include "ra8_nsc_veneer.h"
 #include "ra8_pwr.h"
+#include "ra8_time.h"
 
 #ifdef RA8_APP_UART_LOG
 /* The e-reader product defines RA8_APP_UART_LOG to mirror ra8_log onto the SCI8
@@ -137,6 +139,14 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_periph_init(void)
   if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "ra8_dma_init", (uint32_t)err);
     return k_ra8_err_hw_init_failed;
+  }
+
+  /* Arm the Secure SysTick/DWT timebase so Secure NSC drivers (e.g. panel
+   * reset sequencing) that call ra8_delay_ms() have a ticking clock. */
+  uint32_t cpuclk0_hz = 0U;
+  if ((ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) == k_ra8_ok) &&
+      (cpuclk0_hz > 0U)) {
+    (void)ra8_time_init(cpuclk0_hz);
   }
 
 #ifdef RA8_APP_UART_LOG
