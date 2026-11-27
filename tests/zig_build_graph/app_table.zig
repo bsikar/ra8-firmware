@@ -2,19 +2,10 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The cross-build app table: every example app the root Zig build graph
-//! cross-compiles, and what each one is in the table FOR.
-//!
-//! Extracted from cross_sources.zig because that file reached the 1000-line
-//! ceiling scripts/checks/check_file_size.py holds every Zig source to, and
-//! the table is the coherent piece to lift out: cross_sources.zig keeps the
-//! source-set RULES, this file keeps the apps that exercise them. Both halves
-//! stay beside each other for the same reason they were together, so a new
-//! entry is written against the rules it takes an arm of.
-//!
-//! One app cannot tell a rule that generalises from a constant that happens
-//! to be right, which is the whole argument for a table rather than one
-//! app: each entry below names the arms of `ra8_add_app()` that no earlier
-//! entry takes, and the comment on it says which those are.
+//! cross-compiles, and what each one is in the table FOR. Extracted from
+//! cross_sources.zig to stay under the 1000-line ceiling: cross_sources.zig
+//! keeps source-set rules, while this file keeps the apps exercising them.
+//! Each entry names the arms of `ra8_add_app()` it exercises.
 
 const std = @import("std");
 const cpu1_image = @import("cpu1_image.zig");
@@ -64,6 +55,8 @@ pub const CrossApp = struct {
     /// which the image verifies and memory-loads (RA8FW-680). Null for every
     /// other app.
     ra8app_module: ?[]const u8 = null,
+    /// Carries signed `.ra8app` modules packed into `.txm_module` (RA8FW-1019).
+    ra8app_modules: []const []const u8 = &.{},
     /// The per-function stack-frame budget this app names in `STACK_BYTES`,
     /// which ra8_add_app() forwards to ra8_target_enable_project_warnings() as
     /// `STACK_USAGE_BYTES` and which becomes `-Wstack-usage=<n>` on every one

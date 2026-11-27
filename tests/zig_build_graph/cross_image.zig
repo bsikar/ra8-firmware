@@ -180,12 +180,24 @@ fn ra8appModuleObjects(b: *std.Build, step: *std.Build.Step, named: ?[]const u8,
         txm_ra8app.touch_led
     else if (std.mem.eql(u8, wanted, "txm_hello_m33"))
         txm_ra8app.hello
+    else if (std.mem.eql(u8, wanted, "txm_fault_m33"))
+        txm_ra8app.hello
     else if (std.mem.eql(u8, wanted, "txm_tour_m33"))
         txm_ra8app.tour
     else
         @panic("an image names a module txm_ra8app has no Identity for");
     const ra8app = txm_ra8app.add(b, step, module.name, built.bin, identity);
     return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, ra8app)}) catch @panic("OOM");
+}
+
+fn ra8appModulesObjects(b: *std.Build, step: *std.Build.Step, names: []const []const u8, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
+    for (names) |name| {
+        for (ra8appModuleObjects(b, step, name, tools, globals)) |blob| {
+            objects.append(b.allocator, blob) catch @panic("OOM");
+        }
+    }
+    return objects.items;
 }
 
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
@@ -543,7 +555,7 @@ pub fn addCrossAppWithExtra(
     const middlewares = m85_txm_manager.kernelFor(
         b.allocator,
         middleware.resolve(b.allocator, app.uses),
-        app.txm_module != null or app.txm_manager or app.ra8app_module != null,
+        app.txm_module != null or app.txm_manager or app.ra8app_module != null or app.ra8app_modules.len != 0,
     );
     // Most hand the app an archive. USBX hands it its objects, every one of
     // which joins the link (middleware.Middleware.link_objects).
@@ -727,6 +739,7 @@ pub fn addCrossAppWithExtra(
     // An image carrying a signed `.ra8app` (RA8FW-680) links it the same
     // way: objcopied into `.txm_module`, the image verifies and loads it.
     for (ra8appModuleObjects(b, arm_step, app.ra8app_module, tools, app_globals)) |blob| link.addFileArg(blob);
+    for (ra8appModulesObjects(b, arm_step, app.ra8app_modules, tools, app_globals)) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
     for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the

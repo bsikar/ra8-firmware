@@ -83,6 +83,7 @@ pub const apps = [_]CrossApp{
             .{ .name = "ra8_nsc_appimg_pubkey", .dep = "ra8_nsc", .module = "ra8_nsc_appimg_pubkey" },
         },
         .txm_manager = true,
+        .ra8app_modules = &.{ "txm_hello_m33", "txm_fault_m33" },
         .stack_bytes = 8192,
     },
     .{
