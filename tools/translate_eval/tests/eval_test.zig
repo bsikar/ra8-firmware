@@ -306,3 +306,97 @@ test "CLI --emu-results scores external emulator trace from disk" {
     try expect(std.mem.indexOf(u8, result.stdout, "| ko | emulator |") != null);
     try expect(std.mem.indexOf(u8, result.stdout, "| overall | emulator |") != null);
 }
+
+test "tpak builds valid aligned CRC-stamped bundle for default corpus" {
+    const parsed = try corpus.parseCorpus(std.testing.allocator, corpus.default_corpus_json);
+    defer parsed.deinit();
+
+    const pack = try eval.tpak.buildTpak(std.testing.allocator, parsed.value);
+    defer std.testing.allocator.free(pack);
+
+    try expectEqual(eval.tpak.magic, std.mem.readInt(u32, pack[0..4], .little));
+    try expectEqual(eval.tpak.version, std.mem.readInt(u32, pack[4..8], .little));
+    try expectEqual(@as(u32, 12), std.mem.readInt(u32, pack[8..12], .little));
+    try expectEqual(@as(u32, @intCast(pack.len)), std.mem.readInt(u32, pack[12..16], .little));
+    const stored_crc = std.mem.readInt(u32, pack[16..20], .little);
+    var copy = try std.testing.allocator.dupe(u8, pack);
+    defer std.testing.allocator.free(copy);
+    @memset(copy[16..20], 0);
+    try expectEqual(eval.fixtures.crc32Ieee(copy), stored_crc);
+}
+
+test "extractTraceFromLog validates PASS banner, strips console prefixes, and rejects faulted runs" {
+    const good_log =
+        "console> translate_eval_e2e: boot\n" ++
+        "console> EMU_TRACE_BEGIN\n" ++
+        "console> {\"schema\":1,\"pages\":[\n" ++
+        "console> ]}\n" ++
+        "console> EMU_TRACE_END\n" ++
+        "console> translate_eval_e2e: PASS ckpt=1\n";
+    const json_slice = try eval.tpak.extractTraceFromLog(std.testing.allocator, good_log);
+    defer std.testing.allocator.free(json_slice);
+    try std.testing.expectEqualStrings("{\"schema\":1,\"pages\":[]}", json_slice);
+
+    const fault_log = "translate_eval_e2e: PASS\nzig core: BKPT halted\n";
+    try std.testing.expectError(
+        error.EmulatorReportedFailure,
+        eval.tpak.extractTraceFromLog(std.testing.allocator, fault_log),
+    );
+
+    const no_pass = "EMU_TRACE_BEGIN\n{}\nEMU_TRACE_END\n";
+    try std.testing.expectError(
+        error.EmulatorMissingPassBanner,
+        eval.tpak.extractTraceFromLog(std.testing.allocator, no_pass),
+    );
+}
+
+test "CLI --emit-tpak and --emu-log end-to-end" {
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const tpak_path = try std.fs.path.join(std.testing.allocator, &.{ ".zig-cache", "tmp", &tmp.sub_path, "out.tpak" });
+    defer std.testing.allocator.free(tpak_path);
+    const corpus_path = try std.fs.path.join(std.testing.allocator, &.{ ".zig-cache", "tmp", &tmp.sub_path, "c.json" });
+    defer std.testing.allocator.free(corpus_path);
+    const log_path = try std.fs.path.join(std.testing.allocator, &.{ ".zig-cache", "tmp", &tmp.sub_path, "emu.log" });
+    defer std.testing.allocator.free(log_path);
+
+    const corpus_str =
+        \\{
+        \\  "schema": 1, "license": "MIT", "provenance": "cli-test", "languages": ["ko"],
+        \\  "pages": [{
+        \\    "page_id": "k0", "lang": "ko", "layout": "webtoon_ttb",
+        \\    "page_width": 640, "page_height": 960, "det_map_width": 64, "det_map_height": 96,
+        \\    "det_regions": [{ "x": 10, "y": 10, "w": 10, "h": 10, "prob": 0.9, "is_furigana": false }],
+        \\    "bubbles": [{
+        \\      "x": 100, "y": 100, "w": 100, "h": 100, "orientation": "horizontal",
+        \\      "source_text": "hi", "english_ref": "Hello!", "ocr_margin": 0.3,
+        \\      "ocr_distractor_sub": "", "nmt_quant_margin": 0.3, "nmt_alt_token": ""
+        \\    }]
+        \\  }]
+        \\}
+    ;
+    const log_str =
+        "translate_eval_e2e: job ok\r\n" ++
+        "EMU_TRACE_BEGIN\r\n" ++
+        "{\"schema\":1,\"pages\":[{\"page_id\":\"k0\",\"boxes\":[{\"x\":100,\"y\":100,\"w\":100,\"h\":100}],\"bubbles\":[{\"source_text\":\"hi\",\"english_text\":\"Hello!\"}],\"furigana_dropped\":1,\"weight_bytes\":1234}]}\r\n" ++
+        "EMU_TRACE_END\r\n" ++
+        "translate_eval_e2e: PASS ckpt_match=1\r\n";
+
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "c.json", .data = corpus_str });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "emu.log", .data = log_str });
+
+    const emit_res = try runTool(&.{ tool_options.tool_exe, "--emit-tpak", tpak_path });
+    defer freeResult(emit_res);
+    try expectEqual(@as(u8, 0), emit_res.term.exited);
+
+    const eval_res = try runTool(&.{ tool_options.tool_exe, "--corpus", corpus_path, "--emu-log", log_path });
+    defer freeResult(eval_res);
+    try expectEqual(@as(u8, 0), eval_res.term.exited);
+    try expect(std.mem.indexOf(u8, eval_res.stdout, "| ko | emulator |") != null);
+    try expect(std.mem.indexOf(u8, eval_res.stdout, "1234 |") != null);
+
+    const bad_combo = try runTool(&.{ tool_options.tool_exe, "--emu-bin", "only_bin" });
+    defer freeResult(bad_combo);
+    try expectEqual(@as(u8, 2), bad_combo.term.exited);
+}

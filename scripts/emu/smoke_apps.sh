@@ -150,6 +150,7 @@ uart_banner_apps="
   ereader_chrome ereader_image ereader_link ereader_align ereader_table
   reflow_content ereader_input ereader_cover ereader_svg ereader_imgfmt
   ereader_jpeg ereader_longstrip ereader_manga ereader_zoom epub_parse epub_stress
+  translate_eval_e2e
   widget_app widget_app_demo glcdc_render bscan_selftest keyboard
   smbus_demo crc_demo adc_b_demo agt_periodic i2c_loopback eth_loopback
   eth_gptp_timestamp_demo

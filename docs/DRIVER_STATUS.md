@@ -108,9 +108,9 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |
 | `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_sci` | 1 | 3 | 42 | 15 | 28 |
-| `ra8_sdcard` | 0 | 1 | 6 | 3 | 3 |
+| `ra8_sdcard` | 0 | 1 | 6 | 3 | 4 |
 | `ra8_sdhi` | 1 | 1 | 16 | 5 | 0 |
-| `ra8_sdramc` | 0 | 1 | 8 | 3 | 14 |
+| `ra8_sdramc` | 0 | 1 | 8 | 3 | 15 |
 | `ra8_smbus` | 0 | 1 | 11 | 2 | 1 |
 | `ra8_spi` | 0 | 2 | 20 | 10 | 2 |
 | `ra8_sram` | 0 | 1 | 20 | 5 | 2 |

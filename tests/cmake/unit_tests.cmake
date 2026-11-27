@@ -58,6 +58,10 @@ function(ra8_add_test name src_file)
     )
   elseif(name STREQUAL "test_app_ereader_manga" OR name STREQUAL "test_app_ereader_manga_translate")
     list(APPEND _ra8_test_include_dirs ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc)
+  elseif(name STREQUAL "test_app_translate_eval_e2e")
+    list(APPEND _ra8_test_include_dirs
+         ${FW_ROOT}/examples/ek_ra8d2/hw_pending/translate_eval_e2e/inc
+    )
   elseif(name STREQUAL "test_app_usb_printer_vendor")
     list(APPEND _ra8_test_include_dirs
          ${FW_ROOT}/examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc
@@ -589,6 +593,18 @@ if(TARGET test_app_ereader_manga_translate)
   target_include_directories(
     test_app_ereader_manga_translate
     PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc
+  )
+endif()
+
+if(TARGET test_app_translate_eval_e2e)
+  target_sources(
+    test_app_translate_eval_e2e
+    PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/translate_eval_e2e/src/translate_e2e_core.c
+            ${FW_ROOT}/examples/ek_ra8d2/hw_pending/translate_eval_e2e/src/translate_e2e_fixture.c
+  )
+  target_include_directories(
+    test_app_translate_eval_e2e
+    PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/translate_eval_e2e/inc
   )
 endif()
 

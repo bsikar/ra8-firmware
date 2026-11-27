@@ -36,8 +36,13 @@ Additional CLI flags:
 
 - `--json` -- emit machine-readable JSON metrics
 - `--corpus <path>` -- evaluate an external corpus JSON matching schema 1
-- `--emu-results <path>` -- score target emulator trace JSON alongside `float`
-  and `host_i8`
+- `--emu-bin <bin>` + `--emu-elf <elf>` -- build a `TPAK.BIN` SD pack, boot
+  `translate_eval_e2e.elf` on `ra8_emulator`, and score the live target output
+- `--emu-log <path>` -- extract `EMU_TRACE_BEGIN..EMU_TRACE_END` JSON from a
+  saved `ra8_emulator` UART capture and score `emulator` metrics
+- `--emu-results <path>` -- score pre-extracted emulator trace JSON alongside
+  `float` and `host_i8`
+- `--emit-tpak <path>` -- write the deterministic `TPAK` v1 bundle for a corpus
 
 Host test suite:
 
@@ -57,8 +62,13 @@ zig build --build-file tools/translate_eval/build.zig test --summary all
 | `zh` | `host_i8` | 4 | 8 | 1.000 | 0.875 | 0.933 | 0.0278 | 95.05 | 0 | 147772 |
 | `ko` | `host_i8` | 4 | 8 | 1.000 | 0.875 | 0.933 | 0.0185 | 93.97 | 0 | 206680 |
 | `overall` | `host_i8` | 12 | 24 | 1.000 | 0.875 | 0.933 | 0.0234 | 95.31 | 2 | 493948 |
+| `ja` | `emulator` | 4 | 8 | 1.000 | 0.875 | 0.933 | 0.0263 | 96.94 | 2 | 139496 |
+| `zh` | `emulator` | 4 | 8 | 1.000 | 0.875 | 0.933 | 0.0278 | 95.05 | 0 | 147772 |
+| `ko` | `emulator` | 4 | 8 | 1.000 | 0.875 | 0.933 | 0.0185 | 93.97 | 0 | 206680 |
+| `overall` | `emulator` | 12 | 24 | 1.000 | 0.875 | 0.933 | 0.0234 | 95.31 | 2 | 493948 |
 
-Note: physical `.npub` / trained Bergamot NMT weights await separate model
-conversion/training slices (`RA8FW-661..670`), so default runs report measured
-`float` vs `host_i8` C ABI metrics over deterministic synthetic `TCHR`/`TVOC`/
-`TMNT` fixtures and mark `emulator` as `n/a` unless `--emu-results` is passed.
+Note: standalone `translate_eval` runs (without `--emu-bin`, `--emu-log`, or
+`--emu-results`) report `Emulator: n/a` with `has_emulator=false`; passing
+`--emu-bin <ra8_emulator> --emu-elf <translate_eval_e2e.elf>` executes the full
+Cortex-M85 quantized pipeline over `TPAK` and matches `host_i8` metrics
+identically.
