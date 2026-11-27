@@ -20,7 +20,7 @@ versa) -- the cause is almost always a version skew documented below.
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + full CI through the devcontainer | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git, and the gate suite (ra8ci) | Run the low-address host unit tests / coverage natively (macOS arm64 rejects the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); use the devcontainer for their Linux execution |
 | **Linux verification host** (x86-64 Debian 12) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 under `/opt`) | Everything host-side + cross-build -- the native gate list runs every gate with no container | no Docker required on Linux |
-| **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer image the runners boot, cross toolchain included | -- |
+| **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 26.04 devcontainer image the runners boot, cross toolchain included | -- |
 | **HIL rig** (Linux controller + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
 **Golden rule:** use the devcontainer gates on the **Mac**, the native gate list on the
@@ -36,7 +36,7 @@ Every gate body lives in the ra8ci repo's gate registry and each
 CI step is a thin driver over the same body, so a local run and
 the runner execute the *same functions*. The native gate list runs them natively --
 the supported path on Linux, no container required. The container gate wraps the same
-suite in the Ubuntu 24.04 devcontainer (`.devcontainer/Dockerfile`, image
+suite in the Ubuntu 26.04 devcontainer (`.devcontainer/Dockerfile`, image
 `ra8-ci`), which is what macOS needs and what the Mac cannot do without. See
 section 4 for the fast pre-push recipe.
 
@@ -82,7 +82,7 @@ target; the "status" column flags the known skews.
 | Tool | Target (CI) | Mac | dev box | Status |
 |------|-------------|-----|---------|--------|
 | `arm-none-eabi-gcc` (ship binaries) | **15.2.rel1** (`/opt/arm-gnu-toolchain-15.2`: runner + devcontainer, latter by URL+sha256; 13.3 fallback) | **15.2.1** (`~/opt/arm-gnu-toolchain-15.2`) | **15.2.1** (`/opt/arm-gnu-toolchain-15.2`) | **CONVERGED** -- pinned 15.2.rel1 (13.3 fallback), enforced; see 3.1 |
-| host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
+| host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 26.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
 | `just` | **1.58.0** (`JUST_VERSION`, devcontainer) | 1.58.0 | 1.58.0 (`/usr/local/bin`) | Mac may run recipes, but CI formatting/reference checks use the pinned devcontainer release |
 | GitHub Actions runner | n/a (no runner pool) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | SINGLE PATH -- only the HIL listener runs it |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.8 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | CONVERGED -- see 3.2 |
