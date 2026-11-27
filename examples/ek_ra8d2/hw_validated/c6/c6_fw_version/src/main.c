@@ -199,6 +199,8 @@ static void c6_fwver_setup_or_halt(void)
   if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     c6_fwver_panic_halt();
   }
+  s_c6_fwver_cpuclk_hz = bringup_out.cpuclk0_hz;
+  s_c6_fwver_pclka_hz  = bringup_out.pclka_hz;
 }
 
 /**

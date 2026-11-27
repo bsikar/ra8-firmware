@@ -111,6 +111,8 @@ static void wifi_hal_setup_or_halt(void)
   if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     wifi_hal_panic_halt();
   }
+  s_cpuclk_hz = bringup_out.cpuclk0_hz;
+  s_pclka_hz  = bringup_out.pclka_hz;
 }
 
 /**
