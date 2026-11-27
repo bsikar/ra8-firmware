@@ -54,10 +54,11 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_pp_demo_baud       = 115200U, /**< Pp demo baud.       */
-  k_pp_demo_period_ms  = 1000U,   /**< Pp demo period ms.  */
-  k_pp_demo_busy_iters = 100000U, /**< Pp demo busy iters. */
-  k_pp_demo_us_per_ms  = 1000U,   /**< Pp demo us per ms.  */
+  k_pp_demo_baud       = 115200U, /**< Pp demo baud.                                 */
+  k_pp_demo_period_ms  = 1000U,   /**< Pp demo period ms.                            */
+  k_pp_demo_standby_ms = 50U,     /**< Software Standby ULPT0 self-wake duration ms. */
+  k_pp_demo_busy_iters = 100000U, /**< Pp demo busy iters.                           */
+  k_pp_demo_us_per_ms  = 1000U,   /**< Pp demo us per ms.                            */
 } pp_demo_const_t;
 
 /** @brief Single-byte ASCII conversion constants. */
@@ -140,6 +141,13 @@ static void pp_demo_modules_or_halt(void)
   if (lpm_err != k_ra8_ok) {
     pp_demo_panic_halt();
   }
+  if (ra8_isr_init() != k_ra8_ok) {
+    pp_demo_panic_halt();
+  }
+  if (ra8_lpm_ulpt_wake_prepare(nullptr, nullptr, (uint8_t)k_ra8_lpm_ulpt_default_isr_prio) !=
+      k_ra8_ok) {
+    pp_demo_panic_halt();
+  }
   const ra8_power_profile_config_t pp_cfg = {
     .pulse         = nullptr,
     .now_us        = pp_demo_now_us,
@@ -213,12 +221,19 @@ static bool pp_demo_cycle_modes(void)
     return false;
   }
 
-  /* Deep Sleep and Software Standby skipped: in both modes the CPU
-   * clock (and therefore SysTick) is gated, so the demo has no wake
-   * source and ra8_lpm_enter_sleep hangs WFI indefinitely.  Configuring
-   * AGT/RTC as a wake source would require deeper board-specific
-   * setup.  The "pp: a=" stats line still prints with deep_standby and
-   * software_standby region times = 0. */
+  /* Deep Sleep (LPMD=0, SLEEPDEEP=1) remains skipped because it resets the
+   * same SysTick timebase without a standby wake circuit; Software Standby is
+   * profiled using crystal-free ULPT0 self-wake (LOCO-clocked). */
+  if (ra8_power_profile_mark_enter(k_ra8_power_profile_region_software_standby) != k_ra8_ok) {
+    return false;
+  }
+  const ra8_err_t standby_err = ra8_lpm_ulpt_standby_ms((uint32_t)k_pp_demo_standby_ms);
+  const ra8_err_t st_exit_err =
+    ra8_power_profile_mark_exit(k_ra8_power_profile_region_software_standby);
+  if ((standby_err != k_ra8_ok) || (st_exit_err != k_ra8_ok)) {
+    return false;
+  }
+
   return true;
 }
 

@@ -585,6 +585,124 @@ ra8_nsc_backlight_get_caps(ra8_nsc_backlight_caps_t* out_caps);
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_board_glcdc_init(uint8_t fmt);
 
+/* =============================================================================
+ * Low-Power Mode (ULPT0 deep-idle / Software Standby) veneers
+ * =============================================================================
+ */
+
+/**
+ * @brief NSC veneer: prepare Secure ULPT0 self-wake Software Standby state.
+ *
+ * @details
+ * Configures the Secure LPM policy (cold-reset-safe standby settings via
+ * ``ra8_lpm_init``) and arms ULPT0 underflow self-wake (LOCO keep-alive,
+ * Secure IELSR/NVIC route, and ``WUPEN1.ULP0U`` via
+ * ``ra8_lpm_ulpt_wake_prepare``). Idempotent: calls after the first return
+ * ``k_ra8_ok`` until ::ra8_nsc_lpm_idle_disarm is invoked.
+ *
+ * @return ``ra8_err_t`` outcome.
+ * @retval k_ra8_ok  Secure LPM + ULPT0 wake path ready.
+ * @retval (other)   First failing HAL initialization or arm error.
+ *
+ * @pre ::ra8_nsc_periph_init succeeded (MSTP + ISR substrate initialized).
+ * @pre Global interrupts are unmasked before standby entry.
+ * @post On ``k_ra8_ok``, ``ra8_nsc_lpm_standby_ms`` can immediately enter
+ *       ULPT0-timed Software Standby.
+ * @post ``PRCR.PRC1`` is relocked before returning to Non-Secure state.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** nothing -- parameterless scalar call.
+ * - **Trusts:** Secure ``ra8_lpm`` and ``ra8_ulpt`` HAL drivers.
+ * - **Denies:** Direct NS access to Secure SYSC, PRCR, and WUPEN registers.
+ * @note Thread safety: not thread-safe; call from serialized NS thread context.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lpm_idle_prepare(void);
+
+/**
+ * @brief NSC veneer: sleep in ULPT0-timed Software Standby for ``period_ms``.
+ *
+ * @details
+ * Converts ``period_ms`` to ULPT0 LOCO ticks, lazily calls
+ * ::ra8_nsc_lpm_idle_prepare if not already prepared, drains the optional
+ * SCI8 UART console TX path, drops the MCU into Software Standby
+ * (``LPSCR.LPMD = 0x5``) until the ULPT0 underflow cancels standby, cleans up
+ * ``ULPT0`` and ``PRCR.PRC1``, increments the internal wake counter, and
+ * returns control to the Non-Secure caller.
+ *
+ * @param[in] period_ms Non-zero deep-idle duration in milliseconds
+ *                      (``1 .. 131071999``).
+ *
+ * @return ``ra8_err_t`` outcome.
+ * @retval k_ra8_ok              Completed one standby/wake cycle cleanly.
+ * @retval k_ra8_err_invalid_arg ``period_ms`` was 0 or exceeded 32-bit ULPT range.
+ * @retval k_ra8_err_hw_timeout  ULPT0 start or stop confirmation timed out.
+ *
+ * @pre ::ra8_nsc_periph_init succeeded.
+ * @pre Caller has accounted for peripheral/SysTick clock gating during standby.
+ * @post ``PRCR.PRC1`` is relocked and ``LPSCR.LPMD`` is reset to active sleep.
+ * @post Internal wake counter increments by 1 on ``k_ra8_ok``.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** ``period_ms`` bounds before touching Secure hardware or state.
+ * - **Trusts:** Fixed Secure ULPT0 self-wake policy (denies arbitrary LPMD values).
+ * - **Denies:** Unbounded or un-woken Software/Deep Standby initiated from NS.
+ * @note Thread safety: not thread-safe; intended for serialized idle thread.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lpm_standby_ms(uint32_t period_ms);
+
+/**
+ * @brief NSC veneer: disarm Secure ULPT0 deep-idle wake state.
+ *
+ * @details
+ * Stops ULPT0, clears ``WUPEN1.ULP0U``, releases the Secure ULPT0 ISR slot via
+ * ``ra8_lpm_ulpt_wake_disarm``, and resets Secure preparation state so a future
+ * prepare/standby call re-arms cleanly from scratch.
+ *
+ * @return ``ra8_err_t`` outcome from ``ra8_lpm_ulpt_wake_disarm``.
+ * @retval k_ra8_ok ULPT0 wake path stopped and disarmed.
+ * @retval (other)  First HAL error observed during teardown.
+ *
+ * @pre Secure substrate initialized.
+ * @pre No standby cycle is currently executing concurrently.
+ * @post Ready flag is cleared regardless of peripheral teardown outcome.
+ * @post ULPT0 timer is stopped and ``WUPEN1.ULP0U`` is clear on success.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** nothing -- parameterless scalar call.
+ * - **Trusts:** Secure ``ra8_lpm_ulpt_wake_disarm`` sequence.
+ * - **Denies:** Direct NS manipulation of ICU WUPEN or Secure NVIC lines.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lpm_idle_disarm(void);
+
+/**
+ * @brief NSC veneer: read completed ULPT0 standby wake count into NS memory.
+ *
+ * @param[out] out_count Destination ``uint32_t`` in Non-Secure memory.
+ *
+ * @return ``ra8_err_t`` outcome.
+ * @retval k_ra8_ok            ``*out_count`` populated.
+ * @retval k_ra8_err_null_ptr  ``out_count`` was nullptr.
+ * @retval k_ra8_err_invalid_arg ``out_count`` lies outside Non-Secure RAM.
+ *
+ * @pre ``out_count`` points to writable Non-Secure memory.
+ * @pre Callers accept single-word read semantics.
+ * @post ``*out_count`` holds completed ::ra8_nsc_lpm_standby_ms wakes.
+ * @post No Secure hardware state is modified.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** ``out_count`` via ``RA8_CHECK_NULL_PTR`` and
+ *   ``RA8_NSC_CHECK_NS_RANGE_RW`` before dereference.
+ * - **Trusts:** Internal monotonic wake counter maintained by this module.
+ * - **Denies:** Writing into Secure RAM addresses supplied by an NS caller.
+ * @note Thread safety: safe after initialization (single 32-bit read).
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_lpm_get_wake_count(uint32_t* out_count);
+
 #ifdef __cplusplus
 }
 #endif

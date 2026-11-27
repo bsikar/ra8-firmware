@@ -98,6 +98,7 @@
     "tests/layer3_switch_test.zig",
     "tests/lpm_graphics_test.zig",
     "tests/lpm_test.zig",
+    "tests/lpm_ulpt_test.zig",
     "tests/lvd_events_test.zig",
     "tests/lvd_runtime_test.zig",
     "tests/lvd_test.zig",
@@ -368,6 +369,7 @@
     "src/internal/layer3_switch.zig",
     "src/internal/lpm.zig",
     "src/internal/lpm_graphics.zig",
+    "src/internal/lpm_ulpt.zig",
     "src/internal/lvd.zig",
     "src/internal/lvd_events.zig",
     "src/internal/lvd_runtime.zig",
@@ -454,6 +456,7 @@
     "src/layer3_switch_abi.zig",
     "src/lpm_abi.zig",
     "src/lpm_graphics_abi.zig",
+    "src/lpm_ulpt_abi.zig",
     "src/lvd_abi.zig",
     "src/lvd_events_abi.zig",
     "src/lvd_runtime_abi.zig",
@@ -632,6 +635,7 @@
     "tests/layer3_switch_test.zig",
     "tests/lpm_graphics_test.zig",
     "tests/lpm_test.zig",
+    "tests/lpm_ulpt_test.zig",
     "tests/lvd_events_test.zig",
     "tests/lvd_runtime_test.zig",
     "tests/lvd_test.zig",
@@ -727,5 +731,5 @@
       "-Mra8_hal_options=src/standalone_ra8_hal_options.zig"
     ]
   },
-  "minimum_tests": 1145
+  "minimum_tests": 1150
 }

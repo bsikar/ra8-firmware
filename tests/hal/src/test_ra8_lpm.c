@@ -16,10 +16,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_elc_regs.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_isr.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
+#include "ra8_mstp.h"
+#include "ra8_ulpt_regs.h"
 #include "unity_minimal.h"
 
 /**
@@ -772,6 +777,113 @@ static void test_deinit_resets_registers(void)
   TEST_END("lpm deinit resets registers");
 }
 
+typedef enum : uint32_t {
+  k_lpm_ulpt_test_bad_prio     = 16U,
+  k_lpm_ulpt_test_standby_ms   = 250U,
+  k_lpm_ulpt_test_500ms        = 500U,
+  k_lpm_ulpt_test_100ms        = 100U,
+  k_lpm_ulpt_test_exp_250ms    = 8192U,
+  k_lpm_ulpt_test_exp_500ms    = 16384U,
+  k_lpm_ulpt_test_raw_ticks    = 1024U,
+  k_lpm_ulpt_test_overflow_ms  = 131072000U,
+  k_lpm_ulpt_test_loco_stop_bm = 0x01U,
+} lpm_ulpt_test_const_t;
+
+static uint32_t s_lpm_ulpt_cb_calls = 0U;
+
+static void test_ulpt_wake_cb(void* ctx)
+{
+  uint32_t* count = (uint32_t*)ctx;
+  if (count != nullptr) {
+    (*count)++;
+  }
+  s_lpm_ulpt_cb_calls++;
+}
+
+/**
+ * @par MC/DC:
+ * Tests null out-pointer, zero duration, legal duration, and u32 overflow.
+ */
+static void test_ulpt_ms_to_ticks(void)
+{
+  TEST_BEGIN("lpm ulpt ms_to_ticks conversions and bounds");
+  uint32_t ticks = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lpm_ulpt_ms_to_ticks((uint32_t)k_lpm_ulpt_test_100ms, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lpm_ulpt_ms_to_ticks(0U, &ticks));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_ulpt_ms_to_ticks((uint32_t)k_lpm_ulpt_test_500ms, &ticks));
+  TEST_ASSERT_EQ((uint32_t)k_lpm_ulpt_test_exp_500ms, ticks);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_lpm_ulpt_ms_to_ticks((uint32_t)k_lpm_ulpt_test_overflow_ms, &ticks));
+  TEST_END("lpm ulpt ms_to_ticks conversions and bounds");
+}
+
+/**
+ * @par MC/DC:
+ * Exercises prepare (null vs custom callback, priority bounds, idempotent re-arm),
+ * standby_ticks / standby_ms happy path, TCSTF timeout leg via fake_mmio, and disarm.
+ */
+static void test_ulpt_standby_and_disarm(void)
+{
+  TEST_BEGIN("lpm ulpt prepare, standby cycle, timeout guard, and disarm");
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
+
+  /* Bad priority rejected before touching ISR table or WUPEN1. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_lpm_ulpt_wake_prepare(nullptr, nullptr, (uint8_t)k_lpm_ulpt_test_bad_prio));
+
+  /* Null callback succeeds; subsequent custom callback replaces the slot cleanly. */
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_lpm_ulpt_wake_prepare(nullptr, nullptr, (uint8_t)k_ra8_lpm_ulpt_default_isr_prio));
+  uint32_t ctx_count  = 0U;
+  s_lpm_ulpt_cb_calls = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_lpm_ulpt_wake_prepare(test_ulpt_wake_cb,
+                                           &ctx_count,
+                                           (uint8_t)k_ra8_lpm_ulpt_default_isr_prio));
+
+  uint16_t slot = (uint16_t)k_ra8_isr_slot_count;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_lookup_slot(k_ra8_elc_event_ulpt0_ulpti, &slot));
+  TEST_ASSERT(slot != (uint16_t)k_ra8_isr_slot_none);
+  TEST_ASSERT((*ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off) & (uint32_t)k_ra8_lpm_wupen1_ulpt0u) != 0U);
+  TEST_ASSERT_EQ(
+    0U,
+    (*ra8_lpm_sysc_reg8(k_ra8_lpm_lococr_off) & (uint8_t)k_lpm_ulpt_test_loco_stop_bm));
+
+  ra8_isr_dispatch(slot);
+  TEST_ASSERT_EQ(1U, ctx_count);
+  TEST_ASSERT_EQ(1U, s_lpm_ulpt_cb_calls);
+
+  /* Bad durations rejected cleanly. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lpm_ulpt_standby_ticks(0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lpm_ulpt_standby_ms(0U));
+
+  /* Happy standby cycle configures ULPT0, returns cleanly, stops timer, relocks PRCR. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_ulpt_standby_ms((uint32_t)k_lpm_ulpt_test_standby_ms));
+  volatile r_ulpt_regs_t* reg = ra8_ulpt(0U);
+  TEST_ASSERT_EQ((uint32_t)k_lpm_ulpt_test_exp_250ms, reg->ULPTCNT);
+  TEST_ASSERT_EQ(0U, reg->ULPTCR);
+  TEST_ASSERT_EQ(0U, (*ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off) & (uint16_t)k_ra8_lpm_prcr_prc1_msk));
+
+  /* Fault-injected TCSTF stall returns timeout cleanly with PRCR relocked. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&reg->ULPTCR, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_lpm_ulpt_standby_ticks((uint32_t)k_lpm_ulpt_test_raw_ticks));
+  TEST_ASSERT_EQ(0U, (*ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off) & (uint16_t)k_ra8_lpm_prcr_prc1_msk));
+
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_ulpt_wake_disarm());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_lookup_slot(k_ra8_elc_event_ulpt0_ulpti, &slot));
+  TEST_ASSERT_EQ((uint16_t)k_ra8_isr_slot_none, slot);
+  TEST_ASSERT_EQ(0U,
+                 (*ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off) & (uint32_t)k_ra8_lpm_wupen1_ulpt0u));
+  TEST_END("lpm ulpt prepare, standby cycle, timeout guard, and disarm");
+}
+
 /**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
@@ -808,6 +920,8 @@ static void (*const s_test_roster[])(void) = {
   test_get_exit_cause_packs_wupen,
   test_get_dpsi_state,
   test_deinit_resets_registers,
+  test_ulpt_ms_to_ticks,
+  test_ulpt_standby_and_disarm,
 };
 
 int main(void)
