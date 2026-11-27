@@ -74,10 +74,11 @@
  *     slot, A on tie) and checks `boot_state`.
  *  2. If `preferred` is unconfirmed and `tries_left > 0`, the bootloader
  *     persists the decremented `tries_left - 1` into the alternate ping-pong
- *     page BEFORE branching, arms WDT0 (1024 cycles, CLKDIV /4, reset on
+ *     page BEFORE branching, arms WDT0 (16384 cycles, CLKDIV /8192, reset on
  *     expiry, keep counting during WFI/sleep), and boots `preferred` as a trial.
  *  3. If a trial image hangs, faults, or crashes before confirming, WDT0
- *     underflows (~25.6 s at default clocks), resets the chip via `RSTSR1.WDTRF`,
+ *     underflows (~2.15 s at 62.5 MHz PCLKB per HUM Ch 27.2.2 Table 27.2 p 1259),
+ *     resets the chip via `RSTSR1.WDTRF`,
  *     and repeats until `tries_left == 0`, at which point the bootloader reverts
  *     to the alternate valid confirmed slot (or enters DFU mode if none exists)
  *     with WDT0 disarmed.
@@ -98,7 +99,7 @@
  *  1. Call `ra8_flash_init()` (or keep bootloader MRAM clocks active) and link
  *     `libra8_dfu_boot.a` in SRAM so ::ra8_dfu_confirm() can update MRAM.
  *  2. Feed WDT0 via `ra8_wdt_refresh()` / `ra8_wdt_refresh_for(k_ra8_wdt0)` if
- *     startup or post-boot self-tests approach ~25.6 s, and note that once WDT0
+ *     startup or post-boot self-tests approach ~2.15 s, and note that once WDT0
  *     is armed on the trial boot it stays running until the next reset (either
  *     keep kicking WDT0 for the rest of that boot or soft-reset after confirm).
  *  3. Call ::ra8_dfu_confirm() once self-tests pass. It idempotently writes
@@ -950,7 +951,7 @@ bool ra8_dfu_boot_state_valid(const ra8_dfu_boot_state_t* state);
  * extra MRAM write). Accepts `tries_left == 0` so an image running its final
  * allowed attempt can still confirm itself before the next reset.
  *
- * A trial payload that runs longer than the bootloader's ~25.6 s trial WDT0
+ * A trial payload that runs longer than the bootloader's ~2.15 s trial WDT0
  * window must also refresh WDT0 periodically while running in that trial boot
  * (WDT0 remains latched until reset once started) or soft-reset after
  * ::ra8_dfu_confirm() returns `k_ra8_ok`.
