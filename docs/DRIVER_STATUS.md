@@ -54,7 +54,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_cache` | 0 | 1 | 11 | 3 | 9 |
 | `ra8_canfd` | 0 | 1 | 18 | 11 | 4 |
 | `ra8_ceu` | 1 | 3 | 27 | 4 | 0 |
-| `ra8_cgc` | 2 | 1 | 12 | 20 | 56 |
+| `ra8_cgc` | 2 | 1 | 12 | 20 | 57 |
 | `ra8_cnecc` | 0 | 1 | 25 | 4 | 0 |
 | `ra8_crc` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_dac_b` | 0 | 1 | 12 | 3 | 2 |
@@ -84,7 +84,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_i3c` | 1 | 3 | 50 | 15 | 7 |
 | `ra8_icu` | 0 | 1 | 7 | 7 | 3 |
 | `ra8_ipc` | 1 | 4 | 43 | 6 | 2 |
-| `ra8_isr` | 0 | 1 | 9 | 14 | 190 |
+| `ra8_isr` | 0 | 1 | 9 | 14 | 191 |
 | `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
 | `ra8_lpm` | 0 | 3 | 32 | 10 | 11 |
@@ -93,7 +93,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_mipi_dsi` | 0 | 3 | 40 | 5 | 0 |
 | `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
 | `ra8_mpc` | 0 | 1 | 7 | 1 | 2 |
-| `ra8_mstp` | 0 | 1 | 5 | 160 | 6 |
+| `ra8_mstp` | 0 | 1 | 5 | 161 | 6 |
 | `ra8_npu` | 2 | 5 | 23 | 3 | 3 |
 | `ra8_ofs` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_pcntr` | 0 | 1 | 2 | 1 | 2 |
@@ -120,7 +120,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_touch` | 0 | 1 | 7 | 6 | 9 |
 | `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 0 | 1 | 10 | 5 | 1 |
-| `ra8_usb` | 12 | 16 | 149 | 47 | 31 |
+| `ra8_usb` | 12 | 16 | 149 | 48 | 32 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 0 | 1 | 17 | 1 | 0 |
 | `ra8_wdt` | 0 | 1 | 22 | 9 | 6 |

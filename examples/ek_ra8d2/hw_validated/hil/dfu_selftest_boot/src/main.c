@@ -55,6 +55,7 @@
 #include "ra8_isr.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
+#include "ra8_rot.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
 #include "ra8_usb_compose.h"
@@ -642,6 +643,22 @@ typedef enum : uint32_t {
   if (!ra8_dfu_slot_valid(k_ra8_dfu_slot_a)) {
     (void)dfu_print_fail("Slot A not bootable after commit", k_ra8_err_crc_mismatch);
     return k_ra8_err_crc_mismatch;
+  }
+
+  /* If Slot A carries an authenticated root-of-trust trailer, verify it. */
+  const uintptr_t          slot_a_base = ra8_dfu_slot_base(k_ra8_dfu_slot_a);
+  const ra8_rot_trailer_t* trailer     = ra8_rot_trailer_after((const void*)slot_a_base,
+                                                           (uint32_t)sizeof(s_boot_payload));
+  if (trailer != nullptr &&
+      trailer->magic == (uint32_t)k_ra8_rot_trailer_magic &&
+      trailer->version == (uint32_t)k_ra8_rot_version) {
+    const ra8_err_t rot_err = ra8_rot_verify_image((const uint8_t*)slot_a_base,
+                                                   (uint32_t)sizeof(s_boot_payload),
+                                                   trailer);
+    if (rot_err != k_ra8_ok) {
+      (void)dfu_print_fail("Slot A RoT signature verify", rot_err);
+      return rot_err;
+    }
   }
 
   s_dbg_phase = (uint32_t)k_dfu_phase_pass;

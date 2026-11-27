@@ -68,6 +68,11 @@ function(ra8_add_test name src_file)
     )
   elseif(name STREQUAL "test_ra8p1_ereader_budget")
     list(APPEND _ra8_test_include_dirs ${FW_ROOT}/libs/ra8_board_ra8p1/inc)
+  elseif(name STREQUAL "test_ra8_usb_role_flip")
+    list(APPEND _ra8_test_include_dirs
+         ${FW_ROOT}/examples/ek_ra8d2/hw_pending/usb_role_flip/inc
+         ${FW_ROOT}/examples/ek_ra8d2/hw_pending/usb_role_flip/src
+    )
   endif()
 
   add_executable(${name} ${src_file} $<TARGET_OBJECTS:ra8_core_hal>)

@@ -101,6 +101,7 @@ app	tls_client	examples/ek_ra8d2/hw_pending/tls_client/CMakeLists.txt	ek_ra8d2	m
 app	touch_cal_matrix_demo	examples/ek_ra8d2/hw_pending/touch_cal_matrix_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	translate_eval_e2e	examples/ek_ra8d2/hw_pending/translate_eval_e2e/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	tz_threadx_demo	examples/ek_ra8d2/hw_pending/tz_threadx_demo/CMakeLists.txt	ek_ra8d2	-	aux_srcs,mram_length,boot_profile	2200
+app	usb_role_flip	examples/ek_ra8d2/hw_pending/usb_role_flip/CMakeLists.txt	ek_ra8d2	threadx,usbx	threadx_heap	4000
 app	vfs_port_demo	examples/ek_ra8d2/hw_pending/vfs_port_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	webp_decode_demo	examples/ek_ra8d2/hw_pending/webp_decode_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	widget_keyboard_demo	examples/ek_ra8d2/hw_pending/widget_keyboard_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
