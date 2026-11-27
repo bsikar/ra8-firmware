@@ -109,6 +109,24 @@ pub fn admitted(bytes: []const u8) bool {
     return true;
 }
 
+/// True when the gate refuses `bytes` with an all-zero (unsigned) signature
+/// before invoking the crypto backend. The signature field is restored before
+/// returning, so an admitted image stays admitted (RA8FW-291).
+pub fn refusesUnsigned(bytes: []u8) bool {
+    const header = appimg_verify.image.parse(bytes) catch return false;
+    const sig_off = header.signatureOffset();
+    const sig_len = appimg_verify.image.Width.signature;
+    if (bytes.len < sig_off + sig_len) return false;
+    var saved: [sig_len]u8 = undefined;
+    @memcpy(&saved, bytes[sig_off..][0..sig_len]);
+    defer @memcpy(bytes[sig_off..][0..sig_len], &saved);
+    @memset(bytes[sig_off..][0..sig_len], 0);
+    _ = appimg_verify.verify(backend, bytes) catch |err| {
+        return err == appimg_verify.image.Error.Validation;
+    };
+    return false;
+}
+
 /// True when the gate refuses `bytes` with its last payload byte flipped.
 /// The byte is restored before returning, so an admitted image stays
 /// admitted (RA8FW-831).

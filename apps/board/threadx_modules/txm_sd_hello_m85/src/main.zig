@@ -26,6 +26,7 @@ pub const trustzone_nsc_active: bool = false;
 
 pub const baud: u32 = 115_200;
 pub const pass_line = "txm_sd_hello_m85: signed module loaded, ran, exited PASS\r\n";
+pub const unsigned_line = "txm_sd_hello_m85: unsigned image refused PASS\r\n";
 pub const tamper_line = "txm_sd_hello_m85: tampered image refused PASS\r\n";
 pub const fault_line = "txm_sd_hello_m85: faulting module killed, firmware ran on PASS\r\n";
 pub const reload_line = "txm_sd_hello_m85: unloaded and reloaded the same image PASS\r\n";
@@ -80,11 +81,13 @@ fn fail(err: anyerror) void {
 }
 
 /// Reads and admits both modules before the kernel starts, and proves the
-/// gate refuses a copy of the hello module with one payload byte flipped
-/// (RA8FW-831).
+/// gate refuses both an unsigned copy (all-zero signature, RA8FW-291) and
+/// a copy with one payload byte flipped (RA8FW-831).
 fn admit() anyerror!Lengths {
     const len = try card.readApp(card.hello_name, &image);
     if (!verify.admitted(image[0..len])) return error.signature;
+    if (!verify.refusesUnsigned(image[0..len])) return error.unsigned;
+    say(unsigned_line);
     if (!verify.refusesTamper(image[0..len])) return error.tamper;
     say(tamper_line);
     const fault_len = try card.readApp(card.fault_name, &fault_image);
