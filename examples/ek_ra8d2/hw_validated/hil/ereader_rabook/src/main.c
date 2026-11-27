@@ -75,9 +75,9 @@ typedef enum : uint32_t {
  * @brief RGB565 framebuffer in DTCM (no panel attached).
  * @details 40,960 B, placed in the otherwise unused 64 KiB DTCM because SRAM
  *          cannot hold it beside ::s_engine, the image-decode arena, and the
- *          16 KiB stack (RA8FW-1393). `.dtcm_bss` is NOLOAD / not zeroed at
- *          reset, which is safe here because erb_render_all() and
- *          erb_render_image() both call ra8_gfx_clear() before rendering.
+ *          16 KiB stack (RA8FW-1393). `.dtcm_bss` is NOLOAD in MRAM and zeroed
+ *          in 64-bit stores by `Reset_Handler()` so 64-bit DTCM ECC is valid
+ *          before `ra8_gfx_clear()` performs sub-width RGB565 writes.
  */
 [[gnu::section(
   ".dtcm_bss")]] static uint16_t s_framebuffer[(size_t)k_erb_fb_h * (size_t)k_erb_fb_w];
