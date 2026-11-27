@@ -48,6 +48,10 @@ default RA8D2 profile leaves that window unmapped.
 | Option-setting | `0x02C9F040`.. (+ `0x12C9F4C0` NS aliases, BPS `0x02C9F200`, OTP `0x02E07400`) | | identical on both parts, OFS0..OFS3 (see correction below) |
 | **NPU regs** | **`0x40140000`** | 4 KB | **RA8P1 only** (Ethos-U55) |
 
+For the full concurrent workload profile and memory placement budget for the
+RA8P1 e-reader (render, decode, storage, inference across all tiers), see
+[`ra8p1_ereader_memory_budget.md`](ra8p1_ereader_memory_budget.md).
+
 ## Register-base additions on RA8P1 (all shared bases are identical)
 
 | Peripheral | Base | Event / MSTP |

@@ -90,3 +90,20 @@ test "RA8P1 system_init removes stale cacheless M33 claim and cites HUM geometry
     try std.testing.expect(std.mem.indexOf(u8, sys_init, "16 KiB C-Cache + 16 KiB S-Cache") != null);
     try std.testing.expect(std.mem.indexOf(u8, sys_init, "16 KiB I-cache + 16 KiB D-cache") != null);
 }
+
+test "RA8P1 concurrent workload header pins memory tiers and headroom" {
+    const workloads = try readLocal("inc/ra8_board_ra8p1_workloads.h");
+    defer std.testing.allocator.free(workloads);
+
+    try expectAssigned(workloads, "k_ra8p1_mem_m85_itcm_floor_bytes", "0x00010000UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_m85_dtcm_floor_bytes", "0x00010000UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_sram0_limit_bytes", "0x000FFF00UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_noinit_bytes", "0x00000100UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_sram1_limit_bytes", "0x000A0000UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_sdram_ek_base_bytes", "0x04000000UL");
+    try expectAssigned(workloads, "k_ra8p1_mem_sdram_max_cap_bytes", "0x08000000UL");
+    try expectAssigned(workloads, "k_ra8p1_itcm_allocated_bytes", "0x00008000UL");
+    try expectAssigned(workloads, "k_ra8p1_dtcm_allocated_bytes", "0x00008000UL");
+    try expectAssigned(workloads, "k_ra8p1_sram1_allocated_bytes", "0x000A0000UL");
+    try expectAssigned(workloads, "k_ra8p1_sdram_allocated_bytes", "0x04000000UL");
+}

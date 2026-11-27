@@ -66,6 +66,8 @@ function(ra8_add_test name src_file)
     list(APPEND _ra8_test_include_dirs
          ${FW_ROOT}/examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc
     )
+  elseif(name STREQUAL "test_ra8p1_ereader_budget")
+    list(APPEND _ra8_test_include_dirs ${FW_ROOT}/libs/ra8_board_ra8p1/inc)
   endif()
 
   add_executable(${name} ${src_file} $<TARGET_OBJECTS:ra8_core_hal>)
