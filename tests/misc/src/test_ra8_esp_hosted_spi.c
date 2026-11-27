@@ -67,6 +67,7 @@ typedef enum : uint32_t {
   k_spi_test_tx_stamp    = 0xA5U,      /**< Byte pattern the test transmits.  */
   k_spi_test_rx_stamp    = 0x5AU,      /**< Byte pattern the backend replies. */
   k_spi_test_alien       = 0xDEADU,    /**< A handle the slice never issued.  */
+  k_spi_test_cs_setup_us = 25U,        /**< Expected CS-low setup delay (us). */
 } spi_test_const_t;
 
 /**
@@ -80,12 +81,15 @@ typedef enum : uint8_t {
   k_spi_test_event_xfer    = 3U, /**< A full-duplex frame was clocked.    */
   k_spi_test_event_cs_init = 4U, /**< Chip select configured as output.   */
   k_spi_test_event_cs_free = 5U, /**< Chip select handed back.            */
+  k_spi_test_event_usleep  = 6U, /**< Microsecond setup delay after CS.   */
 } spi_test_event_t;
 
 /** @brief Ordered log of chip-select transitions and bus transfers. */
 static uint8_t s_events[k_spi_test_events_max];
 /** @brief Number of rows used in ::s_events. */
 static uint32_t s_event_count;
+/** @brief Last microsecond argument passed to the mock ``_h_usleep`` row. */
+static unsigned int s_seen_cs_setup_us;
 /** @brief Frame length the recording backend was last handed. */
 static uint32_t s_seen_len;
 /** @brief Frame width the recording backend was last handed. */
@@ -326,6 +330,23 @@ RA8_INTERNAL static ra8_err_t internal_mock_set_clock(void* ctx, uint32_t baud_h
   return k_ra8_ok;
 }
 
+/** @brief Recording ``_h_usleep`` spy proving CS-low -> delay -> xfer order.
+ * @details Records ::k_spi_test_event_cs_setup_delay and captures @p usec.
+ * @param[in] usec Requested delay in microseconds.
+ * @return Always echoes @p usec.
+ * @retval usec Delay acknowledged.
+ * @pre Host mock storage is initialized.
+ * @post ::s_seen_cs_setup_us equals @p usec.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.2.0
+ */
+RA8_INTERNAL static unsigned int internal_mock_usleep(unsigned int usec)
+{
+  s_seen_cs_setup_us = usec;
+  internal_log_event(k_spi_test_event_usleep);
+  return usec;
+}
+
 /** @brief The recording backend vtable standing in for SCI Simple-SPI. */
 static const ra8_io_spi_bus_iface_t s_mock_iface = {
   .xfer8      = internal_mock_xfer8,
@@ -391,11 +412,12 @@ RA8_INTERNAL static void internal_reset_state(void)
   for (uint32_t i = 0U; i < (uint32_t)k_spi_test_events_max; i++) {
     s_events[i] = (uint8_t)k_spi_test_event_none;
   }
-  s_event_count = 0U;
-  s_seen_len    = 0U;
-  s_seen_width  = 0U;
-  s_seen_tx     = nullptr;
-  s_bus_result  = k_ra8_ok;
+  s_event_count      = 0U;
+  s_seen_cs_setup_us = 0U;
+  s_seen_len         = 0U;
+  s_seen_width       = 0U;
+  s_seen_tx          = nullptr;
+  s_bus_result       = k_ra8_ok;
   for (uint32_t i = 0U; i < (uint32_t)k_spi_test_frame_bytes; i++) {
     s_tx_frame[i] = (uint8_t)k_spi_test_tx_stamp;
     s_rx_frame[i] = 0U;
@@ -738,6 +760,66 @@ RA8_INTERNAL static void internal_test_pin_interface_seam(void)
   TEST_END("esp_hosted spi: the chip-select seam falls back on the HAL");
 }
 
+/**
+ * @par MC/DC:
+ * Decision: `if ((g_h.funcs != nullptr) && (g_h.funcs->_h_usleep != nullptr))`
+ * in `port/esp-hosted/src/ra8_esp_hosted_spi.c@internal_cs_setup_delay`
+ * (2 conditions).
+ * - Vector 1: (T,T) ``g_h.funcs`` and ``_h_usleep`` bound -> delay invoked
+ *   between CS-low and frame xfer
+ * - Vector 2: (F,-) ``g_h.funcs`` null -> delay skipped without faulting
+ * - Vector 3: (T,F) ``g_h.funcs`` set, ``_h_usleep`` null -> delay skipped
+ * @brief Verify chip-select setup delay ordering and fallback arms.
+ * @details Installs a recording ``_h_usleep`` in a temporary OSI table and asserts
+ *          the microsecond setup delay runs between ``cs_low`` and ``xfer``, then
+ *          exercises both skipped arms when ``g_h.funcs`` or ``_h_usleep`` is null.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post ``g_h.funcs`` is restored cleanly.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.2.0
+ */
+RA8_INTERNAL static void internal_test_transfer_cs_setup_delay(void)
+{
+  TEST_BEGIN("esp_hosted spi: CS setup delay runs between CS-low and SCK xfer");
+  internal_reset_state();
+  const hosted_osi_funcs_t          f   = internal_bound_vtable();
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
+
+  hosted_osi_funcs_t* const saved_funcs = g_h.funcs;
+  TEST_ASSERT(saved_funcs != nullptr);
+
+  /* Vector 1 (T,T): bound _h_usleep fires strictly between cs_low and xfer. */
+  hosted_osi_funcs_t spy_funcs = *saved_funcs;
+  spy_funcs._h_usleep          = internal_mock_usleep;
+  g_h.funcs                    = &spy_funcs;
+
+  TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
+  TEST_ASSERT_EQ(4U, s_event_count);
+  TEST_ASSERT_EQ(k_spi_test_event_cs_low, s_events[0]);
+  TEST_ASSERT_EQ(k_spi_test_event_usleep, s_events[1]);
+  TEST_ASSERT_EQ(k_spi_test_event_xfer, s_events[2]);
+  TEST_ASSERT_EQ(k_spi_test_event_cs_high, s_events[3]);
+  TEST_ASSERT_EQ((unsigned int)k_spi_test_cs_setup_us, s_seen_cs_setup_us);
+
+  /* Vector 2 (F,-): null g_h.funcs skips cleanly without faulting. */
+  internal_reset_state();
+  g_h.funcs = nullptr;
+  TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
+  TEST_ASSERT_EQ(3U, s_event_count);
+  TEST_ASSERT_EQ(0U, s_seen_cs_setup_us);
+
+  /* Vector 3 (T,F): bound table with null _h_usleep skips cleanly. */
+  internal_reset_state();
+  spy_funcs._h_usleep = nullptr;
+  g_h.funcs           = &spy_funcs;
+  TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
+  TEST_ASSERT_EQ(3U, s_event_count);
+  TEST_ASSERT_EQ(0U, s_seen_cs_setup_us);
+
+  g_h.funcs = saved_funcs;
+  TEST_END("esp_hosted spi: CS setup delay runs between CS-low and SCK xfer");
+}
+
 /** @brief Every case in this translation unit, in execution order. */
 static void (*const s_test_roster[])(void) = {
   internal_test_bind,
@@ -749,6 +831,7 @@ static void (*const s_test_roster[])(void) = {
   internal_test_open_rejections,
   internal_test_open_close_cycle,
   internal_test_pin_interface_seam,
+  internal_test_transfer_cs_setup_delay,
 };
 
 int main(void)
