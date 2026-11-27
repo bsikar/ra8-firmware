@@ -21,7 +21,10 @@ test "ra8_box_pair_rs matches ra8_box_pair_c board, linker script, stack, and Zi
     const c_peer = findCrossAppByName("ra8_box_pair_c") orelse return error.MissingPeerApp;
 
     try std.testing.expectEqualStrings("ra8_box_pair_rs", rs.cross.name);
-    try std.testing.expectEqualStrings("examples/ek_ra8d2/hw_pending/ra8_box_pair_rs", rs.cross.dir);
+    try std.testing.expectEqualStrings(
+        "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs",
+        rs.cross.dir,
+    );
     try std.testing.expectEqualStrings("thumbv8m.main-none-eabihf", rs.rust_target);
     try std.testing.expectEqualStrings("libra8_box_pair_rs.a", rs.archive_name);
 

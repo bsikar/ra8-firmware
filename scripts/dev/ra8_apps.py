@@ -55,12 +55,19 @@ EREADER_UI_REL_DIR = "examples/ek_ra8d2/hw_validated/hil/ereader_ui"
 
 
 def _parse_desc(dirpath: str | Path) -> str:
-    """Extract DESCRIPTION text from CMakeLists.txt or src/main.c @brief."""
+    """Extract DESCRIPTION text from CMakeLists.txt, Cargo.toml, or src/main.c @brief."""
     app_dir = Path(dirpath)
     cmake_path = app_dir / "CMakeLists.txt"
     if cmake_path.is_file():
         content = cmake_path.read_text(encoding="utf-8", errors="ignore")
         match = re.search(r'DESCRIPTION\s+"([^"]+)"', content, re.MULTILINE)
+        if match:
+            return match.group(1).strip()
+
+    cargo_path = app_dir / "Cargo.toml"
+    if cargo_path.is_file():
+        content = cargo_path.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(r'^\s*description\s*=\s*"([^"]+)"', content, re.MULTILINE)
         if match:
             return match.group(1).strip()
 
@@ -81,6 +88,16 @@ def _relative_group(app_dir: Path, root: Path) -> str:
     return "" if parent == Path() else parent.as_posix()
 
 
+def _iter_manifest_dirs(
+    root: Path, manifest_name: str, skip_dirs: tuple[str, ...]
+) -> Iterator[Path]:
+    """Yield every directory under ``root`` holding ``manifest_name`` outside ``skip_dirs``."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
+        if manifest_name in filenames:
+            yield Path(dirpath)
+
+
 def _iter_cmake_dirs(root: Path) -> Iterator[Path]:
     """Yield every directory under ``root`` that holds a ``CMakeLists.txt``.
 
@@ -95,10 +112,22 @@ def _iter_cmake_dirs(root: Path) -> Iterator[Path]:
 
     Directory names are sorted so the walk order is stable across runs.
     """
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(name for name in dirnames if name != "build")
-        if "CMakeLists.txt" in filenames:
-            yield Path(dirpath)
+    return _iter_manifest_dirs(root, "CMakeLists.txt", ("build",))
+
+
+def _build_example_record(app_dir: Path, examples_dir: Path, toolchain: str) -> AppRecord | None:
+    """Construct one example ``AppRecord`` if ``app_dir`` belongs to an app tier."""
+    group = _relative_group(app_dir, examples_dir)
+    if group.startswith("shared") or not group:
+        return None
+    return {
+        "name": app_dir.name,
+        "group": group,
+        "dir": str(app_dir),
+        "rel_dir": str(app_dir.relative_to(REPO_ROOT)),
+        "desc": _parse_desc(app_dir),
+        "toolchain": toolchain,
+    }
 
 
 def _get_example_apps() -> list[AppRecord]:
@@ -111,21 +140,27 @@ def _get_example_apps() -> list[AppRecord]:
         if not (app_dir / "src" / "main.c").is_file():
             continue
         group = _relative_group(app_dir, examples_dir)
-        if group.startswith("shared") or not group:
-            continue
         toolchain = (
             "cmake/toolchain-ra8p1.cmake" if "ra8p1" in group else "cmake/toolchain-ra8d2.cmake"
         )
-        apps.append(
-            {
-                "name": app_dir.name,
-                "group": group,
-                "dir": str(app_dir),
-                "rel_dir": str(app_dir.relative_to(REPO_ROOT)),
-                "desc": _parse_desc(app_dir),
-                "toolchain": toolchain,
-            }
-        )
+        record = _build_example_record(app_dir, examples_dir, toolchain)
+        if record is not None:
+            apps.append(record)
+    return apps
+
+
+def _get_rust_example_apps() -> list[AppRecord]:
+    """Discover bare-metal Rust firmware examples built through Zig ``rust-arm``."""
+    apps: list[AppRecord] = []
+    examples_dir = REPO_ROOT / "examples"
+    if not examples_dir.is_dir():
+        return apps
+    for app_dir in _iter_manifest_dirs(examples_dir, "Cargo.toml", ("build", "target")):
+        if not (app_dir / "src" / "lib.rs").is_file():
+            continue
+        record = _build_example_record(app_dir, examples_dir, "zig-rust")
+        if record is not None:
+            apps.append(record)
     return apps
 
 
@@ -153,8 +188,15 @@ def _get_board_apps() -> list[AppRecord]:
 
 
 def get_apps() -> list[AppRecord]:
-    """Discover all firmware applications in examples/ and apps/board/."""
+    """Discover all CMake firmware applications in examples/ and apps/board/."""
     apps = _get_example_apps() + _get_board_apps()
+    apps.sort(key=lambda app: (app["group"], app["name"]))
+    return apps
+
+
+def _get_all_apps() -> list[AppRecord]:
+    """Discover CMake and Zig/Rust firmware applications in examples/ and apps/board/."""
+    apps = get_apps() + _get_rust_example_apps()
     apps.sort(key=lambda app: (app["group"], app["name"]))
     return apps
 
@@ -235,7 +277,7 @@ def find_app(name: str) -> AppRecord | None:
     caller must then use the namespaced identifier; silently choosing the first
     walk result would build or flash the wrong firmware.
     """
-    apps = get_apps()
+    apps = _get_all_apps()
     query = name.replace("/", "::")
     exact_ids = [app for app in apps if app_id(app) == query]
     if len(exact_ids) == 1:
@@ -338,7 +380,7 @@ def _print_category_summary(apps: list[AppRecord]) -> None:
 
 def cmd_list(args: argparse.Namespace) -> int:
     """List all applications or a filtered selection."""
-    apps = get_apps()
+    apps = _get_all_apps()
     query = (args.query or args.filter or "").strip()
     if query and query.lower() == "all":
         args.all = True
@@ -447,9 +489,23 @@ def _selftest_write_app(root: Path, relative: str, *, main: bool = True) -> None
         (src / "main.c").write_text("int main(void) { return 0; }\n", encoding="ascii")
 
 
+def _selftest_write_rust_app(root: Path, relative: str) -> None:
+    """Create one minimal discoverable Zig/Rust application fixture."""
+    app_dir = root / relative
+    app_dir.mkdir(parents=True, exist_ok=True)
+    (app_dir / "Cargo.toml").write_text(
+        '[package]\nname = "fixture_rs"\ndescription = "Fixture Rust app"\n',
+        encoding="ascii",
+    )
+    src = app_dir / "src"
+    src.mkdir()
+    (src / "lib.rs").write_text("#![no_std]\n", encoding="ascii")
+
+
 def _selftest_discovery(root: Path, failures: list[str]) -> None:
     """Check complete discovery, build variants, and ignored partial trees."""
     _selftest_write_app(root, "examples/tier/alpha")
+    _selftest_write_rust_app(root, "examples/tier/beta_rs")
     _selftest_write_app(root, "examples/tier/partial", main=False)
     _selftest_write_app(root, "examples/tier/alpha/build/ghost")
     _selftest_write_app(root, "apps/board/stand_alone/ereader")
@@ -462,6 +518,9 @@ def _selftest_discovery(root: Path, failures: list[str]) -> None:
     ]
     if identifiers != expected:
         failures.append(f"discovery returned {identifiers!r}, expected {expected!r}")
+    rust_cfg = find_build_config("ek_ra8d2/tier/beta_rs".replace("ek_ra8d2/", ""))
+    if rust_cfg is None or rust_cfg["app"]["toolchain"] != "zig-rust":
+        failures.append("Zig/Rust app did not resolve via find_build_config")
     configs = [config["id"] for config in get_build_configs()]
     expected_configs = [
         "board::stand_alone::ra8d2-ereader",

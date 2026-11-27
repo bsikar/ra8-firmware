@@ -89,7 +89,6 @@ app	mpu_boot_map_hal	examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/CMakeLists.tx
 app	net_pal_frame_demo	examples/ek_ra8d2/hw_pending/net_pal_frame_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	ota_ab_orchestration	examples/ek_ra8d2/hw_pending/ota_ab_orchestration/CMakeLists.txt	ek_ra8d2	-	sram_text	3072
 app	power_profile_stats_demo	examples/ek_ra8d2/hw_pending/power_profile_stats_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
-app	ra8_box_pair_c	examples/ek_ra8d2/hw_pending/ra8_box_pair_c/CMakeLists.txt	ek_ra8d2	-	extra_srcs	4096
 app	ra8_ftl_demo	examples/ek_ra8d2/hw_pending/ra8_ftl_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	ra8_io_mram_demo	examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	ra8_io_sdhi_demo	examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/CMakeLists.txt	ek_ra8d2	-	-	4096
@@ -191,6 +190,7 @@ app	keyboard	examples/ek_ra8d2/hw_validated/hil/keyboard/CMakeLists.txt	ek_ra8d2
 app	kint_demo	examples/ek_ra8d2/hw_validated/hil/kint_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
 app	lpm_deep_sleep_demo	examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
 app	pdm_mic_demo	examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo/CMakeLists.txt	ek_ra8d2	-	-	2400
+app	ra8_box_pair_c	examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_c/CMakeLists.txt	ek_ra8d2	-	extra_srcs	4096
 app	reflow_tofu_demo	examples/ek_ra8d2/hw_validated/hil/reflow_tofu_demo/CMakeLists.txt	ek_ra8d2	-	-	8192
 app	reflow_webp_demo	examples/ek_ra8d2/hw_validated/hil/reflow_webp_demo/CMakeLists.txt	ek_ra8d2	-	-	8192
 app	rtt_log_demo	examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
