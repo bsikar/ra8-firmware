@@ -295,10 +295,35 @@ def _selftest_migrated_zig_archive_provenance() -> list[str]:
                 failures.append(f"FPU-suffixed Zig archive provenance not recognized ({fpu_cpu})")
 
         failures.extend(_selftest_wrapped_zig_map_sections(build, root, outside, expected))
+        failures.extend(_selftest_shared_libs_zig_archive_provenance(build, root))
 
         recipe.unlink()
         if core.parse_map_file(map_content, map_dir=build, repo_root=root)["project_zig_archives"]:
             failures.append("Zig archive without a first-party recipe gained approval")
+    return failures
+
+
+def _selftest_shared_libs_zig_archive_provenance(
+    build: pathlib.Path,
+    root: pathlib.Path,
+) -> list[str]:
+    """Verify apps/shared_libs Zig archives require a first-party build.zig recipe."""
+    failures: list[str] = []
+    shared_lib = root / "apps" / "shared_libs" / "longstrip"
+    shared_lib.mkdir(parents=True)
+    shared_recipe = shared_lib / "build.zig"
+    shared_recipe.write_text("// first-party shared_libs recipe\n", encoding="ascii")
+    shared_arch = build / "zig" / "longstrip" / "cortex_m85+fp_armv8d16sp" / "lib"
+    shared_arch.mkdir(parents=True)
+    (shared_arch / "liblongstrip.a").write_bytes(b"archive")
+    shared_member = "zig/longstrip/cortex_m85+fp_armv8d16sp/lib/liblongstrip.a(longstrip_zcu.o)"
+    shared_map = f"Memory Map\n .text.zig 0x02000000 0x10 {shared_member}\n"
+    parsed = core.parse_map_file(shared_map, map_dir=build, repo_root=root)
+    if parsed["project_zig_archives"] != {"liblongstrip.a"}:
+        failures.append("apps/shared_libs Zig archive provenance not recognized")
+    shared_recipe.unlink()
+    if core.parse_map_file(shared_map, map_dir=build, repo_root=root)["project_zig_archives"]:
+        failures.append("apps/shared_libs Zig archive without recipe gained approval")
     return failures
 
 

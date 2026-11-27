@@ -65,7 +65,6 @@ app	epaper_refresh	examples/ek_ra8d2/hw_pending/epaper_refresh/CMakeLists.txt	ek
 app	epub_stress	examples/ek_ra8d2/hw_pending/epub_stress/CMakeLists.txt	ek_ra8d2	-	-	16384
 app	ereader_comic	examples/ek_ra8d2/hw_pending/ereader_comic/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_cover	examples/ek_ra8d2/hw_pending/ereader_cover/CMakeLists.txt	ek_ra8d2	-	-	16384
-app	ereader_longstrip	examples/ek_ra8d2/hw_pending/ereader_longstrip/CMakeLists.txt	ek_ra8d2	-	-	16384
 app	ereader_m33	examples/ek_ra8d2/hw_pending/ereader_m33/CMakeLists.txt	ek_ra8d2	-	aux_srcs,cpu1_image,mram_length	2200
 app	ereader_manga	examples/ek_ra8d2/hw_pending/ereader_manga/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_zoom	examples/ek_ra8d2/hw_pending/ereader_zoom/CMakeLists.txt	ek_ra8d2	-	-	32768
@@ -161,6 +160,7 @@ app	ereader_imgfmt	examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/CMakeLists.
 app	ereader_input	examples/ek_ra8d2/hw_validated/hil/ereader_input/CMakeLists.txt	ek_ra8d2	-	-	4096
 app	ereader_jpeg	examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_link	examples/ek_ra8d2/hw_validated/hil/ereader_link/CMakeLists.txt	ek_ra8d2	-	-	16384
+app	ereader_longstrip	examples/ek_ra8d2/hw_validated/hil/ereader_longstrip/CMakeLists.txt	ek_ra8d2	-	-	16384
 app	ereader_rabook	examples/ek_ra8d2/hw_validated/hil/ereader_rabook/CMakeLists.txt	ek_ra8d2	-	-	16384
 app	ereader_svg	examples/ek_ra8d2/hw_validated/hil/ereader_svg/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_table	examples/ek_ra8d2/hw_validated/hil/ereader_table/CMakeLists.txt	ek_ra8d2	-	-	16384
