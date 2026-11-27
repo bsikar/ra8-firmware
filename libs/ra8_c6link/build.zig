@@ -280,6 +280,7 @@ pub fn build(b: *std.Build) void {
     addHeaderAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_hci_abi.zig", "tests/hci_abi_test.zig", "hci_abi");
     addHeaderAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_capture_abi.zig", "tests/capture_abi_test.zig", "capture_abi");
     addCodecAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_fw_abi.zig", "tests/fw_abi_test.zig", "fw_abi");
+    addCodecAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_bt_abi.zig", "tests/bt_abi_test.zig", "bt_abi");
     addCodecAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_wifi_abi.zig", "tests/wifi_abi_test.zig", "wifi_abi");
     addCodecAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_bare_abi.zig", "tests/bare_abi_test.zig", "bare_abi");
     addCodecAbiTest(b, test_step, target, optimize, headers, "src/ra8_c6link_take_abi.zig", "tests/take_abi_test.zig", "take_abi");

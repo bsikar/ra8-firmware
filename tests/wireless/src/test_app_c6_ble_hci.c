@@ -1,6 +1,6 @@
 /**
  * @file test_app_c6_ble_hci.c
- * @brief Host integration tests for `examples/ek_ra8d2/hw_pending/c6/c6_ble_hci`.
+ * @brief Host integration tests for `examples/ek_ra8d2/hw_validated/c6/c6_ble_hci`.
  * @details Drives `c6_ble_hci_run()` end-to-end through `ble_hci_c6link`,
  *          `ra8_ble`, and `ra8_c6link` against the deterministic `ra8_c6_model`
  *          co-processor, verifying happy-path HCI bring-up, controller status

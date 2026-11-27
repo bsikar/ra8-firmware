@@ -33,6 +33,7 @@ fn verdictFor(msg: *const c.Rpc) i32 {
         c.RPC_ID__Resp_WifiDeinit => verdict(msg, "resp_wifi_deinit"),
         c.RPC_ID__Resp_WifiConnect => verdict(msg, "resp_wifi_connect"),
         c.RPC_ID__Resp_WifiDisconnect => verdict(msg, "resp_wifi_disconnect"),
+        c.RPC_ID__Resp_FeatureControl => verdict(msg, "resp_feature_control"),
         else => no_verdict,
     };
 }

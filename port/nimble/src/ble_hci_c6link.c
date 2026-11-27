@@ -87,9 +87,15 @@ ra8_err_t ble_hci_c6link_init(ra8_c6link_t* link)
   }
   if ((s_c6link != nullptr) && (s_c6link != link) && ra8_c6link_is_open(s_c6link)) {
     (void)ra8_c6link_set_hci_rx(s_c6link, nullptr, nullptr);
+    (void)ra8_c6link_bt_stop(s_c6link);
+  }
+  const ra8_err_t bt_err = ra8_c6link_bt_start(link);
+  if (bt_err != k_ra8_ok) {
+    return bt_err;
   }
   const ra8_err_t rx_err = ra8_c6link_set_hci_rx(link, internal_c6link_hci_rx, link);
   if (rx_err != k_ra8_ok) {
+    (void)ra8_c6link_bt_stop(link);
     return rx_err;
   }
   const ra8_ble_transport_t transport = {
@@ -100,6 +106,7 @@ ra8_err_t ble_hci_c6link_init(ra8_c6link_t* link)
   const ra8_err_t bind_err = ra8_ble_bind_transport(&transport);
   if (bind_err != k_ra8_ok) {
     (void)ra8_c6link_set_hci_rx(link, nullptr, nullptr);
+    (void)ra8_c6link_bt_stop(link);
     return bind_err;
   }
   s_c6link = link;
@@ -112,6 +119,7 @@ ra8_err_t ble_hci_c6link_deinit(void)
   const ra8_err_t unbind_err = ra8_ble_unbind_transport();
   if ((s_c6link != nullptr) && ra8_c6link_is_open(s_c6link)) {
     (void)ra8_c6link_set_hci_rx(s_c6link, nullptr, nullptr);
+    (void)ra8_c6link_bt_stop(s_c6link);
   }
   s_c6link = nullptr;
   return unbind_err;

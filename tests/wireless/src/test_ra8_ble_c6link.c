@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "ble_hci_c6link.h"
+#include "esp_hosted_rpc.pb-c.h"
 #include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_ble_internal.h"
@@ -102,6 +103,26 @@ RA8_INTERNAL static void test_init_guards(void)
   ra8_c6link_t closed_link = {};
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ble_hci_c6link_init(&closed_link));
   TEST_ASSERT(!ble_hci_c6link_is_bound());
+
+  priv_c6link_test_bringup();
+  ra8_c6_model()->fail_req = (uint32_t)RPC_ID__Req_FeatureControl;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ble_hci_c6link_init(priv_c6link_test_link()));
+  TEST_ASSERT(!ble_hci_c6link_is_bound());
+  TEST_ASSERT(!ra8_c6_model()->bt_inited);
+  TEST_ASSERT(!ra8_c6_model()->bt_enabled);
+
+  ra8_c6_model()->fail_req          = 0U;
+  ra8_c6_model()->bt_already_inited = true;
+  const ra8_ble_config_t cfg        = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ble_hci_c6link_init(priv_c6link_test_link()));
+  TEST_ASSERT(ble_hci_c6link_is_bound());
+  TEST_ASSERT(ra8_c6_model()->bt_inited);
+  TEST_ASSERT(ra8_c6_model()->bt_enabled);
+  TEST_ASSERT_EQ(k_ra8_ok, ble_hci_c6link_deinit());
+  TEST_ASSERT(!ra8_c6_model()->bt_inited);
+  TEST_ASSERT(!ra8_c6_model()->bt_enabled);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
   TEST_END("ble_hci_c6link init/deinit guards");
 }
 
@@ -127,8 +148,12 @@ RA8_INTERNAL static void test_ble_tx_over_c6link(void)
   const uint8_t adv_payload[3] = {0x02U, 0x01U, 0x06U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_set_advertising_data(adv_payload, (uint8_t)sizeof adv_payload));
   TEST_ASSERT_EQ(0x01U, ra8_c6_model()->hci_tx_pkt_type);
+  TEST_ASSERT_EQ(35U, ra8_c6_model()->hci_tx_len);
   TEST_ASSERT_EQ(0x08U, ra8_c6_model()->hci_tx[0]);
   TEST_ASSERT_EQ(0x20U, ra8_c6_model()->hci_tx[1]);
+  TEST_ASSERT_EQ(32U, ra8_c6_model()->hci_tx[2]);
+  TEST_ASSERT_EQ(3U, ra8_c6_model()->hci_tx[3]);
+  TEST_ASSERT_EQ(0x00U, ra8_c6_model()->hci_tx[34]);
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_scan_start(1U, (uint16_t)k_t_scan_interval, (uint16_t)k_t_scan_window));

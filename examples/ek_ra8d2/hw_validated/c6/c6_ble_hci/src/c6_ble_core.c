@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/src/c6_ble_core.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_ble_hci/src/c6_ble_core.c
  * @brief Hardware-free BLE HCI bring-up orchestration over `ble_hci_c6link`.
  *
  * @par Tag

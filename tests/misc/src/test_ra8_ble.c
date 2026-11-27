@@ -307,13 +307,14 @@ static void test_set_advertising_data(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_set_advertising_data(data, (uint8_t)sizeof(data)));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra8_ble_test_tx_capture(&cap_len);
-  /* HCI cmd: 1+2+1 framing + (1 length-prefix + 5 payload) = 10. */
-  TEST_ASSERT_EQ(10, cap_len);
+  /* HCI cmd: 1+2+1 framing + (1 length-prefix + 31 zero-padded payload) = 36. */
+  TEST_ASSERT_EQ(36, cap_len);
   TEST_ASSERT_EQ(0x08U, cap[1]);
   TEST_ASSERT_EQ(0x20U, cap[2]);
-  TEST_ASSERT_EQ(6U, cap[3]);
+  TEST_ASSERT_EQ(32U, cap[3]);
   TEST_ASSERT_EQ(5U, cap[4]); /* spec length prefix */
   TEST_ASSERT_EQ(0x02U, cap[5]);
+  TEST_ASSERT_EQ(0x00U, cap[35]);
 
   /* Oversized adv data rejected. */
   uint8_t big[k_ra8_ble_adv_data_max + 1U] = {};

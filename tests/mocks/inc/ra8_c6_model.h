@@ -96,7 +96,8 @@ the rest descend from it.                   */
  * @since 0.1.0
  */
 typedef enum : int32_t {
-  k_c6m_esp_fail = -1, /**< The refusal code the model reports. */
+  k_c6m_esp_fail          = -1,    /**< The refusal code the model reports.     */
+  k_c6m_esp_invalid_state = 0x103, /**< `ESP_ERR_INVALID_STATE` for stale init. */
 } ra8_c6_model_err_t;
 
 /**
@@ -136,6 +137,12 @@ typedef struct ra8_c6_model {
   uint16_t last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
   uint32_t seen[k_c6m_seen]; /**< Request ids observed, in order.            */
   uint8_t  seen_n;           /**< Entries in `seen`.                         */
+  /** Simulate stale BT controller on next init. */
+  bool bt_already_inited;
+  /** Modelled BT controller initialised state. */
+  bool bt_inited;
+  /** Modelled BT controller enabled state. */
+  bool bt_enabled;
   /** SSID the host configured. */
   char    ssid[k_ra8_c6link_ssid_max + 1U];
   uint8_t ssid_len; /**< Its length as received. */

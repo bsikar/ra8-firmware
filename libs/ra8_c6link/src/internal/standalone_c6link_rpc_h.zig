@@ -34,6 +34,19 @@ pub const RPC_TYPE__Req: c_int = 1;
 pub const RPC_TYPE__Resp: c_int = 2;
 pub const RPC_TYPE__Event: c_int = 3;
 
+pub const RpcFeature = c_uint;
+pub const RpcFeatureCommand = c_uint;
+pub const RpcFeatureOption = c_uint;
+
+pub const RPC_FEATURE__Feature_None: RpcFeature = 0;
+pub const RPC_FEATURE__Feature_Bluetooth: RpcFeature = 1;
+pub const RPC_FEATURE_COMMAND__Feature_Command_None: RpcFeatureCommand = 0;
+pub const RPC_FEATURE_COMMAND__Feature_Command_BT_Init: RpcFeatureCommand = 1;
+pub const RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit: RpcFeatureCommand = 2;
+pub const RPC_FEATURE_COMMAND__Feature_Command_BT_Enable: RpcFeatureCommand = 3;
+pub const RPC_FEATURE_COMMAND__Feature_Command_BT_Disable: RpcFeatureCommand = 4;
+pub const RPC_FEATURE_OPTION__Feature_Option_None: RpcFeatureOption = 0;
+
 pub const RPC_ID__Req_GetMACAddress: c_int = 257;
 pub const RPC_ID__Req_SetWifiMode: c_int = 260;
 pub const RPC_ID__Req_WifiInit: c_int = 278;
@@ -48,6 +61,7 @@ pub const RPC_ID__Req_WifiScanGetApNum: c_int = 288;
 pub const RPC_ID__Req_WifiScanGetApRecords: c_int = 289;
 pub const RPC_ID__Req_WifiStaGetApInfo: c_int = 294;
 pub const RPC_ID__Req_GetCoprocessorFwVersion: c_int = 350;
+pub const RPC_ID__Req_FeatureControl: c_int = 387;
 
 pub const RPC_ID__Resp_GetMACAddress: c_int = 513;
 pub const RPC_ID__Resp_SetWifiMode: c_int = 516;
@@ -63,6 +77,7 @@ pub const RPC_ID__Resp_WifiScanGetApNum: c_int = 544;
 pub const RPC_ID__Resp_WifiScanGetApRecords: c_int = 545;
 pub const RPC_ID__Resp_WifiStaGetApInfo: c_int = 550;
 pub const RPC_ID__Resp_GetCoprocessorFwVersion: c_int = 606;
+pub const RPC_ID__Resp_FeatureControl: c_int = 643;
 
 pub const RPC_ID__Event_ESPInit: c_int = 769;
 pub const RPC_ID__Event_WifiEventNoArgs: c_int = 773;
@@ -84,6 +99,7 @@ pub const RPC__PAYLOAD_REQ_WIFI_SCAN_GET_AP_NUM: c_int = 288;
 pub const RPC__PAYLOAD_REQ_WIFI_SCAN_GET_AP_RECORDS: c_int = 289;
 pub const RPC__PAYLOAD_REQ_WIFI_STA_GET_AP_INFO: c_int = 294;
 pub const RPC__PAYLOAD_REQ_GET_COPROCESSOR_FWVERSION: c_int = 350;
+pub const RPC__PAYLOAD_REQ_FEATURE_CONTROL: c_int = 387;
 
 pub const protobuf_c_boolean = c_int;
 pub const ProtobufCMessageDescriptor = opaque {};
@@ -292,10 +308,23 @@ pub const RpcReqWifiStart = extern struct {
 pub const RpcReqWifiStop = extern struct {
     base: ProtobufCMessage = std.mem.zeroes(ProtobufCMessage),
 };
+pub const RpcReqFeatureControl = extern struct {
+    base: ProtobufCMessage = std.mem.zeroes(ProtobufCMessage),
+    feature: RpcFeature = 0,
+    command: RpcFeatureCommand = 0,
+    option: RpcFeatureOption = 0,
+};
 
 pub const RpcRespStatus = extern struct {
     base: ProtobufCMessage = std.mem.zeroes(ProtobufCMessage),
     resp: i32 = 0,
+};
+pub const RpcRespFeatureControl = extern struct {
+    base: ProtobufCMessage = std.mem.zeroes(ProtobufCMessage),
+    resp: i32 = 0,
+    feature: RpcFeature = 0,
+    command: RpcFeatureCommand = 0,
+    option: RpcFeatureOption = 0,
 };
 
 pub const RpcRespGetCoprocessorFwVersion = extern struct {
@@ -375,6 +404,7 @@ pub const RpcPayload = extern union {
     req_wifi_scan_get_ap_records: [*c]RpcReqWifiScanGetApRecords,
     req_wifi_sta_get_ap_info: [*c]RpcReqWifiStaGetApInfo,
     req_get_coprocessor_fwversion: [*c]RpcReqGetCoprocessorFwVersion,
+    req_feature_control: [*c]RpcReqFeatureControl,
     resp_set_wifi_mode: [*c]RpcRespStatus,
     resp_wifi_init: [*c]RpcRespStatus,
     resp_wifi_deinit: [*c]RpcRespStatus,
@@ -389,6 +419,7 @@ pub const RpcPayload = extern union {
     resp_wifi_scan_get_ap_records: [*c]RpcRespWifiScanGetApRecords,
     resp_wifi_sta_get_ap_info: [*c]RpcRespWifiStaGetApInfo,
     resp_get_coprocessor_fwversion: [*c]RpcRespGetCoprocessorFwVersion,
+    resp_feature_control: [*c]RpcRespFeatureControl,
     event_esp_init: [*c]RpcEventESPInit,
     event_wifi_event_no_args: [*c]RpcEventWifiEventNoArgs,
     event_sta_scan_done: [*c]RpcEventStaScanDone,
@@ -424,6 +455,7 @@ pub extern fn rpc__free_unpacked(message: [*c]Rpc, allocator: [*c]ProtobufCAlloc
 pub extern fn rpc__get_packed_size(message: [*c]const Rpc) usize;
 pub extern fn rpc__init(message: [*c]Rpc) void;
 pub extern fn rpc__pack(message: [*c]const Rpc, out: [*c]u8) usize;
+pub extern fn rpc__req__feature_control__init(message: [*c]RpcReqFeatureControl) void;
 pub extern fn rpc__req__get_coprocessor_fw_version__init(message: [*c]RpcReqGetCoprocessorFwVersion) void;
 pub extern fn rpc__req__get_mac_address__init(message: [*c]RpcReqGetMacAddress) void;
 pub extern fn rpc__req__set_mode__init(message: [*c]RpcReqSetMode) void;

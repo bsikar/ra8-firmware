@@ -1,6 +1,6 @@
 # c6_ble_hci
 
-Pending C6 HIL bring-up application.
+Silicon-validated C6 BLE HCI bring-up application.
 
 Binds `ra8_ble` (`libs/ra8_hal/inc/ra8_ble.h`) onto `ra8_c6link` (`ESP_HCI_IF`)
 via `port/nimble/src/ble_hci_c6link.c`, probes ESP32-C6 co-processor readiness,

@@ -61,6 +61,7 @@ test "each Wi-Fi answer reports its own body's verdict, -1 without a body" {
     try expectReported(c.RpcRespWifiDeinit, "resp_wifi_deinit", c.RPC_ID__Resp_WifiDeinit);
     try expectReported(c.RpcRespWifiConnect, "resp_wifi_connect", c.RPC_ID__Resp_WifiConnect);
     try expectReported(c.RpcRespWifiDisconnect, "resp_wifi_disconnect", c.RPC_ID__Resp_WifiDisconnect);
+    try expectReported(c.RpcRespFeatureControl, "resp_feature_control", c.RPC_ID__Resp_FeatureControl);
 }
 
 test "an answer that is not a Wi-Fi answer reports -1" {

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/src/c6_ble_console.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_ble_hci/src/c6_ble_console.c
  * @brief Bounded UART console formatters for the C6 BLE HCI example.
  *
  * @par Tag

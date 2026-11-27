@@ -146,7 +146,7 @@ export fn ra8_ble_set_advertising_data(data: ?[*]const u8, len: u8) u16 {
     var buf: [1 + ble.adv_data_max]u8 = @splat(0);
     buf[0] = len;
     @memcpy(buf[1 .. 1 + len], bytes(data, len));
-    return ra8_ble_hci_send_command(ble.op_adv_data, &buf, 1 + len);
+    return ra8_ble_hci_send_command(ble.op_adv_data, &buf, 1 + ble.adv_data_max);
 }
 
 export fn ra8_ble_set_advertising_enable(enable: u8) u16 {

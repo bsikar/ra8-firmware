@@ -413,6 +413,7 @@ typedef struct c6m_rich {
   RpcRespGetMacAddress           mac; /**< `Resp_GetMACAddress` body.           */
   RpcRespWifiStaGetApInfo        ap;  /**< `Resp_WifiStaGetApInfo` body.        */
   WifiApRecord                   rec; /**< The AP record inside that answer.    */
+  RpcRespFeatureControl          feature_ctl;
   RpcRespWifiScanStart           scan_start;
   RpcRespWifiScanGetApNum        scan_num;
   RpcRespWifiScanGetApRecords    scan_recs;
@@ -617,6 +618,85 @@ RA8_INTERNAL static bool internal_c6m_scan_answer(Rpc* out, const Rpc* req, int3
   return true;
 }
 
+/**
+ * @brief Model Bluetooth controller state transitions under `Req_FeatureControl`.
+ * @param[in] command Requested feature command from the host.
+ * @return ESP-IDF style status code (`0`, `0x103`, or `-1`).
+ */
+RA8_INTERNAL static int32_t internal_c6m_bt_feature(RpcFeatureCommand command)
+{
+  if (command == RPC_FEATURE_COMMAND__Feature_Command_BT_Init) {
+    if (s_c6.bt_already_inited) {
+      s_c6.bt_already_inited = false;
+      s_c6.bt_inited         = true;
+      s_c6.bt_enabled        = true;
+      return (int32_t)k_c6m_esp_invalid_state;
+    }
+    if (s_c6.bt_inited) {
+      return (int32_t)k_c6m_esp_invalid_state;
+    }
+    s_c6.bt_inited  = true;
+    s_c6.bt_enabled = false;
+    return 0;
+  }
+  if (command == RPC_FEATURE_COMMAND__Feature_Command_BT_Enable) {
+    if (!s_c6.bt_inited || s_c6.bt_enabled) {
+      return (int32_t)k_c6m_esp_fail;
+    }
+    s_c6.bt_enabled = true;
+    return 0;
+  }
+  if (command == RPC_FEATURE_COMMAND__Feature_Command_BT_Disable) {
+    if (!s_c6.bt_enabled) {
+      return (int32_t)k_c6m_esp_fail;
+    }
+    s_c6.bt_enabled = false;
+    return 0;
+  }
+  if (command == RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit) {
+    if (!s_c6.bt_inited || s_c6.bt_enabled) {
+      return (int32_t)k_c6m_esp_fail;
+    }
+    s_c6.bt_inited = false;
+    return 0;
+  }
+  return (int32_t)k_c6m_esp_fail;
+}
+
+/**
+ * @brief Build `Resp_FeatureControl` echoing the request and controller status.
+ * @param[in,out] out  Response envelope initialised by `rpc__init()`.
+ * @param[in]     req  Decoded request message from the host.
+ * @param[in]     resp Pre-scripted error code from `fail_req`, or zero.
+ * @return true when @p req is `Req_FeatureControl`; false otherwise.
+ */
+RA8_INTERNAL static bool internal_c6m_feature_answer(Rpc* out, const Rpc* req, int32_t resp)
+{
+  if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_FeatureControl) {
+    return false;
+  }
+  rpc__resp__feature_control__init(&s_rich.feature_ctl);
+  const RpcReqFeatureControl* body    = req->req_feature_control;
+  int32_t                     verdict = resp;
+  if (body == nullptr) {
+    verdict = (int32_t)k_c6m_esp_fail;
+  } else {
+    s_rich.feature_ctl.feature = body->feature;
+    s_rich.feature_ctl.command = body->command;
+    s_rich.feature_ctl.option  = body->option;
+    if (verdict == 0) {
+      verdict = (body->feature == RPC_FEATURE__Feature_Bluetooth)
+                  ? internal_c6m_bt_feature(body->command)
+                  : (int32_t)k_c6m_esp_fail;
+    }
+  }
+  s_rich.feature_ctl.resp   = verdict;
+  out->msg_id               = RPC_ID__Resp_FeatureControl;
+  out->payload_case         = RPC__PAYLOAD_RESP_FEATURE_CONTROL;
+  out->resp_feature_control = &s_rich.feature_ctl;
+  return true;
+}
+
 RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
 {
   const uint32_t req_id = (uint32_t)req->msg_id;
@@ -644,6 +724,7 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
 
   RpcRespWifiStart bare;
   if (!internal_c6m_rich_answer(&out, req_id, resp) && !internal_c6m_scan_answer(&out, req, resp) &&
+      !internal_c6m_feature_answer(&out, req, resp) &&
       !internal_c6m_bare(&out, req_id, &bare, resp)) {
     return;
   }

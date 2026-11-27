@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6/c6_ble_hci/src/main.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_ble_hci/src/main.c
  * @brief Exercise `ra8_ble` over `ra8_c6link` ESP32-C6 SPI (`ble_hci_c6link`).
  *
  * @par Tag
