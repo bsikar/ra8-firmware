@@ -54,6 +54,28 @@ build app="" build_type="RelWithDebInfo":
     while IFS= read -r -d '' argument; do
         cmake_args+=("$argument")
     done < <(python3 scripts/dev/ra8_apps.py cmake-args "{{ app }}")
+    if [ "$toolchain" = "zig-rust" ]; then
+        app_name="$(python3 scripts/dev/ra8_apps.py name "{{ app }}")"
+        if ! command -v cargo >/dev/null 2>&1 && [ -x "${HOME:-}/.cargo/bin/cargo" ]; then
+            export PATH="${HOME}/.cargo/bin:${PATH}"
+        fi
+        if [ -z "${RA8_ZIG:-}" ] || ! command -v "${RA8_ZIG}" >/dev/null 2>&1 || ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then
+            # shellcheck source=scripts/builders/find_tools.sh
+            . scripts/builders/find_tools.sh
+            ra8_find_tools_activate
+        fi
+        "${RA8_ZIG:-zig}" build rust-arm
+        mkdir -p "$build_dir"
+        cp -f "zig-out/arm/${app_name}.elf" "$build_dir/${app_name}.elf"
+        cp -f "zig-out/arm/${app_name}.hex" "$build_dir/${app_name}.hex"
+        if [ -f "zig-out/arm/${app_name}.bin" ]; then
+            cp -f "zig-out/arm/${app_name}.bin" "$build_dir/${app_name}.bin"
+        fi
+        if [ -f "zig-out/arm/${app_name}.map" ]; then
+            cp -f "zig-out/arm/${app_name}.map" "$build_dir/${app_name}.map"
+        fi
+        exit 0
+    fi
     # CMake caches absolute source paths; discard only an incompatible cache
     # when switching between native macOS and the /workspace devcontainer.
     # shellcheck source=scripts/builders/select_host_compiler.sh

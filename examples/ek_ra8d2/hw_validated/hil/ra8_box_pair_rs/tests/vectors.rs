@@ -14,7 +14,7 @@ use ra8_box_pair_rs::{
 };
 
 const CANONICAL_JSON: &str =
-    include_str!("../../../../../tests/zig_abi_pairs/ra8_box_pair/vectors.json");
+    include_str!("../../../../../../tests/zig_abi_pairs/ra8_box_pair/vectors.json");
 
 static LOG_ERRORS: AtomicUsize = AtomicUsize::new(0);
 

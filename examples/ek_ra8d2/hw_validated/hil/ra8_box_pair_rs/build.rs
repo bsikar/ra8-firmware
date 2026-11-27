@@ -11,11 +11,15 @@ use std::process::Command;
 
 const LIB_DIR_ENV: &str = "RA8_BOX_LIB_DIR";
 
-fn build_zig_box_library(manifest_dir: &Path, output_dir: &Path) -> PathBuf {
-    let repo_root = manifest_dir
+fn find_repo_root(manifest_dir: &Path) -> &Path {
+    manifest_dir
         .ancestors()
-        .nth(4)
-        .expect("ra8_box_pair_rs must stay under examples/ek_ra8d2/<tier>/");
+        .find(|dir| dir.join("libs").join("ra8_box").join("build.zig").is_file())
+        .expect("ra8_box_pair_rs must stay within the ra8-firmware repository")
+}
+
+fn build_zig_box_library(manifest_dir: &Path, output_dir: &Path) -> PathBuf {
+    let repo_root = find_repo_root(manifest_dir);
     let box_dir = repo_root.join("libs").join("ra8_box");
     let prefix = output_dir.join("zig-prefix");
     let cache = output_dir.join("zig-cache");
@@ -35,18 +39,22 @@ fn build_zig_box_library(manifest_dir: &Path, output_dir: &Path) -> PathBuf {
 }
 
 fn main() {
+    let manifest_dir =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("Cargo manifest dir"));
+    let box_dir = find_repo_root(&manifest_dir).join("libs").join("ra8_box");
     println!("cargo:rerun-if-env-changed={LIB_DIR_ENV}");
     println!("cargo:rerun-if-env-changed=ZIG");
-    println!("cargo:rerun-if-changed=../../../../libs/ra8_box/build.zig");
-    println!("cargo:rerun-if-changed=../../../../libs/ra8_box/src");
-    println!("cargo:rerun-if-changed=../../../../libs/ra8_box/inc");
+    println!(
+        "cargo:rerun-if-changed={}",
+        box_dir.join("build.zig").display()
+    );
+    println!("cargo:rerun-if-changed={}", box_dir.join("src").display());
+    println!("cargo:rerun-if-changed={}", box_dir.join("inc").display());
 
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("none") {
         return;
     }
 
-    let manifest_dir =
-        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("Cargo manifest dir"));
     let output_dir = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo output dir"));
     let library_dir = env::var_os(LIB_DIR_ENV).map_or_else(
         || build_zig_box_library(&manifest_dir, &output_dir),

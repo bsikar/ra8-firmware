@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra8_box_pair_c/src/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_c/src/main.c
  * @brief Paired C client verifying `ra8_box` Zig C ABI vectors on EK-RA8D2.
  *
  * @par Tag

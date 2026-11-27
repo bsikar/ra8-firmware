@@ -20,5 +20,5 @@ Executes all shared error and layout vectors defined in
 - CMake build: `just apps::build ra8_box_pair_c`
 - Flash (J-Link): `just apps::hardware::flash ra8_box_pair_c`
 
-Currently staged in `examples/ek_ra8d2/hw_pending/` pending physical EK-RA8D2
-bench validation alongside its peer Rust client.
+Validated on EK-RA8D2 silicon (`RA8_BOX_PAIR_C PASS 18/18`) alongside
+`examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/`.

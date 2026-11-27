@@ -26,25 +26,25 @@ pub const RustApp = struct {
 pub const rust_apps = [_]RustApp{
     .{
         // RA8FW-994: Rust client of the ra8_box Zig C ABI executing the shared
-        // vectors matching examples/ek_ra8d2/hw_pending/ra8_box_pair_c.
+        // vectors matching examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_c.
         .cross = .{
             .name = "ra8_box_pair_rs",
-            .dir = "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs",
+            .dir = "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs",
             .board = "libs/ra8_board_ek_ra8d2",
             .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
             .libraries = &.{"ra8_box"},
             .zig_libraries = &.{"ra8_box"},
             .stack_bytes = 4096,
         },
-        .manifest_path = "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/Cargo.toml",
+        .manifest_path = "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/Cargo.toml",
         .archive_name = "libra8_box_pair_rs.a",
         .watch_inputs = &.{
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/Cargo.lock",
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/build.rs",
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/src/lib.rs",
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/src/ffi.rs",
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/src/vectors.rs",
-            "examples/ek_ra8d2/hw_pending/ra8_box_pair_rs/src/firmware.rs",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/Cargo.lock",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/build.rs",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/src/lib.rs",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/src/ffi.rs",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/src/vectors.rs",
+            "examples/ek_ra8d2/hw_validated/hil/ra8_box_pair_rs/src/firmware.rs",
         },
     },
 };
