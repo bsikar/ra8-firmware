@@ -60,7 +60,6 @@
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_isr.h"
-#include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_sdmmc_spi.h"
@@ -101,22 +100,6 @@ void SysTick_Handler(void)
   }
 }
 #endif
-
-/* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
-/* -------------------------------------------------------------------------- */
-
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = usb_fs). */
-static const ra8_port_pin_t k_sdmsc_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_sdmsc_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-
-/** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_sdmsc_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-
-/** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_sdmsc_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes + the cross-TU capacity latch */
@@ -264,8 +247,8 @@ static void sdmsc_panic_halt(void)
 /**
  * @brief Route the four USB-FS pins for the device role.
  *
- * @details P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (else peripheral
- * routing forces host VBUSEN and blocks device enum), P8_14/P8_15 data.
+ * @details Delegates to ::ra8_board_usb_port_init: routes P4_07 VBUS sense,
+ * P5_00 VBUSEN GPIO LOW (device role), and P8_14/P8_15 data lines.
  *
  * @pre IOPORT module is reachable.
  * @pre Called once from ::sdmsc_setup_or_halt.
@@ -277,18 +260,7 @@ static void sdmsc_panic_halt(void)
  */
 static void sdmsc_route_usb_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_vbus, k_ra8_psel_usb_fs, "sdmsc.fs_vbus") !=
-      k_ra8_ok) {
-    sdmsc_panic_halt();
-  }
-  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
-  if (pins->output_init(pins->ctx, k_sdmsc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
-    sdmsc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_dp, k_ra8_psel_usb_fs, "sdmsc.fs_dp") != k_ra8_ok) {
-    sdmsc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_dm, k_ra8_psel_usb_fs, "sdmsc.fs_dm") != k_ra8_ok) {
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
 }
