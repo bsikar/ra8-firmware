@@ -230,7 +230,8 @@ RA8_INTERNAL static er_lp_wake_reason_t internal_lp_finish_wake(er_lp_ctx_t* ctx
   }
 
   if (sw1_down || user_activity) {
-    ctx->idle_ms = 0U;
+    ctx->idle_ms           = 0U;
+    ctx->handoff_requested = false;
     return k_ra8_ok;
   }
 

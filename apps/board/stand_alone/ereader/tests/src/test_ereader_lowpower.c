@@ -229,10 +229,55 @@ RA8_INTERNAL static void test_repeated_handoffs_and_m33_toggle(void)
   TEST_END("er_lowpower: repeated handoffs and M33 toggle");
 }
 
+/** @brief Verify screen-off idle handoff request, input activity cancellation, and wake. */
+RA8_INTERNAL static void test_screen_off_idle_handoff_and_wake(void)
+{
+  TEST_BEGIN("er_lowpower: screen-off idle handoff request and wake");
+  reset_sim(true);
+  er_lp_ctx_t          ctx = {};
+  er_lp_config_t       cfg = default_cfg(true);
+  er_lp_input_action_t act = k_er_lp_action_none;
+  er_lp_wake_reason_t  wk  = k_er_lp_wake_none;
+
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_init(&ctx, &cfg));
+  TEST_ASSERT(er_lowpower_is_enabled(&ctx));
+
+  /* Calling request_handoff directly triggers enter_hold on the very next tick. */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_request_handoff(&ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_tick_inputs(&ctx, false, false, 16U, false, &act));
+  TEST_ASSERT_EQ(k_er_lp_action_enter_hold, act);
+
+  /* Enter hold and verify clean wake by M33. */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_enter_hold(&ctx, 2U, 0x68000000UL, 0xBEEFU, &wk));
+  TEST_ASSERT_EQ(k_er_lp_wake_next_page, wk);
+  TEST_ASSERT_EQ(1U, er_lowpower_handoff_count(&ctx));
+
+  /* Request handoff, but cancel it via touch/user activity before enter_hold runs. */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_request_handoff(&ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_tick_inputs(&ctx, false, false, 16U, true, &act));
+  TEST_ASSERT_EQ(k_er_lp_action_none, act);
+
+  /* Next tick without activity must not enter hold because handoff was cancelled and idle < threshold. */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_tick_inputs(&ctx, false, false, 16U, false, &act));
+  TEST_ASSERT_EQ(k_er_lp_action_none, act);
+
+  /* Request handoff, but cancel it via button down (SW1). */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_request_handoff(&ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_tick_inputs(&ctx, true, false, 16U, false, &act));
+  TEST_ASSERT_EQ(k_er_lp_action_none, act);
+
+  /* Disable low-power mode and verify request_handoff is rejected. */
+  TEST_ASSERT_EQ(k_ra8_ok, er_lowpower_set_enabled(&ctx, false));
+  TEST_ASSERT(!er_lowpower_is_enabled(&ctx));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, er_lowpower_request_handoff(&ctx));
+  TEST_END("er_lowpower: screen-off idle handoff request and wake");
+}
+
 int main(void)
 {
   test_init_and_guards();
   test_sw2_short_vs_long_and_idle();
   test_repeated_handoffs_and_m33_toggle();
+  test_screen_off_idle_handoff_and_wake();
   return 0;
 }

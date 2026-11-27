@@ -182,3 +182,13 @@ ra8_err_t er_lowpower_ns_handle_hold(uint32_t             held_page,
   }
   return k_ra8_ok;
 }
+
+ra8_err_t er_lowpower_ns_request_handoff(void)
+{
+  return er_lowpower_request_handoff(&s_ns_lp_ctx);
+}
+
+bool er_lowpower_ns_is_enabled(void)
+{
+  return er_lowpower_is_enabled(&s_ns_lp_ctx);
+}
