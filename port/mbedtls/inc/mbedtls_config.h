@@ -141,7 +141,7 @@
 #define MBEDTLS_X509_CHECK_EXTENDED_KEY_USAGE
 
 /* =============================================================================
- * Timing -- we provide our own (TIMING_ALT) since there is no POSIX clock.
+ * Timing -- POSIX timing helpers disabled (MBEDTLS_TIMING_C / MBEDTLS_TIMING_ALT)
  * =============================================================================
  *
  * The project does not yet wire ra8_time into Mbed TLS, so for now

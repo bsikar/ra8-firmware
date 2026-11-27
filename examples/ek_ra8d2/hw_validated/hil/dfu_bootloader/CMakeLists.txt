@@ -49,58 +49,18 @@ ra8_add_app(
 # the anti-rollback counter are Zig and arrive as the ra8_rot
 # archive named in LIBS above; the gate itself is Zig too and arrives
 # as ra8_rot_launch, and ra8_rsip (software SHA-256) via ra8_hal. This block
-# links the real
-# tf-psa-crypto backend (the exact recipe secure_boot_hil uses to prove the
-# mechanism on silicon) and turns the gate on. The bootloader's src/psa_verify_rng.c
-# provides a FAIL-CLOSED external-RNG hook (verify draws no randomness).
-include(${_d}/cmake/zig_package.cmake)
-ra8_zig_package_dir(tf_psa_crypto _TF)
-ra8_zig_package_dir(mbedtls _MBEDTLS)
-set(_PORT "${_d}/port/mbedtls/inc")
-file(
-  GLOB
-  _TF_SRC
-  CONFIGURE_DEPENDS
-  ${_TF}/core/*.c
-  ${_TF}/drivers/builtin/src/*.c
-  ${_TF}/drivers/p256-m/*.c
-  ${_TF}/drivers/p256-m/p256-m/*.c
-  ${_TF}/platform/*.c
-  ${_TF}/utilities/*.c
-  ${_TF}/extras/*.c
-)
-add_library(tfpsa_dfu STATIC ${_TF_SRC})
-target_include_directories(
-  tfpsa_dfu SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
-         ${_TF}/include
-         ${_TF}/drivers/builtin/include
-         ${_TF}/drivers/p256-m
-         ${_TF}/drivers/p256-m/p256-m
-         ${_TF}/core
-         ${_TF}/dispatch
-         ${_TF}/drivers/builtin/src
-         ${_TF}/platform
-         ${_TF}/utilities
-         ${_TF}/extras
-         ${_MBEDTLS}/include
-         ${_PORT}
-)
-target_compile_definitions(
+# links the real tf-psa-crypto backend through the shared recipe in
+# cmake/tf_psa_crypto.cmake (the one secure_boot_hil uses to prove the
+# mechanism on silicon), adds the p256-m ECDSA driver, and turns the gate on.
+# The bootloader's src/psa_verify_rng.c provides a FAIL-CLOSED external-RNG
+# hook (verify draws no randomness).
+include(${_d}/cmake/tf_psa_crypto.cmake)
+ra8_add_tf_psa_crypto(
   tfpsa_dfu
-  PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_config.h"
-         TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config_dfu.h"
-         MBEDTLS_PLATFORM_MEMORY MBEDTLS_MEMORY_BUFFER_ALLOC_C
+  CONFIG "tf_psa_crypto_config_dfu.h"
+  CONFIG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  P256M
 )
-# No warning suppression: this OBJECT library has no warning profile to suppress.
-# ra8_add_app() applies the project profile to the app target, not to this
-# separately-declared tf-psa-crypto object library, so its compile line is the
-# toolchain flags plus this one. Compiling all 77 tf-psa-crypto TUs with
-# -Wno-attributes and -Wno-redundant-decls removed, under arm-none-eabi-gcc
-# 13.3.1 at -O0, emits nothing at all: neither -Wattributes nor
-# -Wredundant-decls is ever enabled here. Both are deleted; -fno-strict-aliasing
-# stays because it changes code generation, not diagnostics.
-target_compile_options(tfpsa_dfu PRIVATE -fno-strict-aliasing)
 
 target_link_libraries(dfu_bootloader.elf PRIVATE tfpsa_dfu)
 target_compile_definitions(dfu_bootloader.elf PRIVATE RA8_ENABLE_ROOT_OF_TRUST)
