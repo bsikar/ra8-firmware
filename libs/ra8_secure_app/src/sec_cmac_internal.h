@@ -14,23 +14,14 @@
  * via ``ra8_key_vault_load_mac_key``, so the CMAC key never originates from
  * anything the Non-Secure world can reach.
  *
- * This module is a *dependency-inversion seam* with two interchangeable
- * (Liskov-substitutable) backends selected at compile time. Both compute
- * the identical, standard AES-CMAC, so a blob authenticated by one verifies
- * under the other:
+ * This module is a *dependency-inversion seam* backed by the self-contained
+ * in-tree constant-time AES-128 / AES-256 + CMAC implementation (FIPS 197 +
+ * SP 800-38B, ADR-0022). It is *real* cryptography, not a forgeable
+ * placeholder: the host suite pins it to the published NIST SP 800-38B
+ * known-answer vectors.
  *
- * - ``RA8_KEY_IMPORT_PSA_CMAC`` defined -- routes to the vendored
- *   TF-PSA-Crypto (``psa_mac_compute`` / ``psa_mac_verify`` with
- *   ``PSA_ALG_CMAC`` over ``PSA_KEY_TYPE_AES``). **No build defines this
- *   flag**, so this backend is not compiled anywhere today (RA8FW-283).
- * - otherwise -- the path every build actually takes, host and firmware
- *   alike: a self-contained in-tree AES-128 / AES-256 +
- *   CMAC reference (FIPS 197 + SP 800-38B). It is *real* cryptography, not a
- *   forgeable placeholder: the host suite pins it to the published NIST
- *   SP 800-38B known-answer vectors.
- *
- * Unlike the forgeable length-tagged XOR fold it replaces, neither backend
- * is guarded by the ``RA8_INSECURE_STUB_CRYPTO`` fail-closed fence: an
+ * Unlike the forgeable length-tagged XOR fold it replaces, this implementation
+ * is not guarded by the ``RA8_INSECURE_STUB_CRYPTO`` fail-closed fence: an
  * AES-CMAC forgery requires recovering the KAK, so there is no insecure
  * placeholder to hide behind a production stub.
  *
