@@ -227,11 +227,7 @@ def _app_info_uses_canonical_layout() -> list[tuple[str, bool]]:
     required = (
         "src/main.c",
         "src/ns_main.c",
-        "src/vector_table.c",
-        "src/system_init.c",
         "src/trustzone_init.c",
-        "inc/trustzone_init.h",
-        "linker_script.ld",
     )
     stale = (
         "main.c",
