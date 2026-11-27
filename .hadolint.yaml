@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# hadolint configuration -- hadolint 2.14.0, the pin the lint-devcontainer
+# hadolint configuration -- hadolint 2.15.1, the pin the lint-devcontainer
 # gate, the devcontainer image and the CI runners all install.
 #
 # Scope is the single first-party Dockerfile, .devcontainer/Dockerfile. That
@@ -41,3 +41,15 @@ ignored:
   # archive (nix, or a pinned snapshot mirror); until then the rule's intent
   # is met by stronger mechanisms than the one it checks for.
   - DL3008
+
+  # DL3064 -- "Potentially sensitive data should not be used in the ARG or ENV commands".
+  #
+  # Hadolint 2.15+ flags ARG names matching generic credential keywords.
+  # ARG USERNAME=vscode is the standard devcontainer non-root user name, not a secret.
+  - DL3064
+
+  # DL3066 -- "Non-numeric user-id may not be resolvable by host system".
+  #
+  # Devcontainer uses named accounts (vscode and root) for clarity across host
+  # bind-mount and build-step transitions.
+  - DL3066

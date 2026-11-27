@@ -406,9 +406,9 @@ RUN set -eux; \
     cargo fmt --version
 
 # just -- command runner for CI gates and repository recipes.
-ARG JUST_VERSION=1.40.0
-ARG JUST_SHA256_X86_64=181b91d0ceebe8a57723fb648ed2ce1a44d849438ce2e658339df4f8db5f1263
-ARG JUST_SHA256_AARCH64=d065d0df1a1f99529869fba8a5b3e0a25c1795b9007099b00dfabe29c7c1f7b6
+ARG JUST_VERSION=1.58.0
+ARG JUST_SHA256_X86_64=4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d
+ARG JUST_SHA256_AARCH64=748237128c4c40cbdabc65e841d05ceba13cc23a91eaba395495894c1d9764df
 RUN set -eux; \
     case "$(uname -m)" in \
       x86_64)  justarch=x86_64; justsha="${JUST_SHA256_X86_64}" ;; \
@@ -434,9 +434,9 @@ RUN set -eux; \
 #
 # zsh needs no block here: it is already installed above for the interactive
 # shell, and `zsh -n` is all the zshrc check requires.
-ARG HADOLINT_VERSION=2.14.0
-ARG HADOLINT_SHA256_X86_64=6bf226944684f56c84dd014e8b979d27425c0148f61b3bd99bcc6f39e9dc5a47
-ARG HADOLINT_SHA256_ARM64=331f1d3511b84a4f1e3d18d52fec284723e4019552f4f47b19322a53ce9a40ed
+ARG HADOLINT_VERSION=2.15.1
+ARG HADOLINT_SHA256_X86_64=c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+ARG HADOLINT_SHA256_ARM64=f6198ef8090f404dbb771abfee086eb8c48ac177f30da7fd3510aca35b344b5d
 RUN set -eux; \
     case "$(uname -m)" in \
       x86_64)  harch=x86_64; hsha="${HADOLINT_SHA256_X86_64}" ;; \
