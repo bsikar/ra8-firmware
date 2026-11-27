@@ -137,6 +137,7 @@ static void c6_probe_clocks_or_halt(void)
   if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     c6_probe_panic_halt();
   }
+  s_c6_pclka_hz = bringup_out.pclka_hz;
 }
 
 /**
