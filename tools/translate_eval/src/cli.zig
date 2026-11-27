@@ -8,14 +8,19 @@ pub const corpus = @import("corpus.zig");
 pub const fixtures = @import("fixtures.zig");
 pub const metrics = @import("metrics.zig");
 pub const pipeline = @import("pipeline.zig");
+pub const tpak = @import("tpak.zig");
 
 pub const tool = "translate_eval";
 pub const usage_line =
-    "usage: translate_eval [-h|--help] [--corpus PATH] [--emu-results PATH] [--json]";
+    "usage: translate_eval [-h|--help] [--corpus PATH] [--emu-results PATH | --emu-log PATH | --emu-bin BIN --emu-elf ELF] [--emit-tpak PATH] [--json]";
 
 pub const Options = struct {
     corpus_path: ?[]const u8 = null,
     emu_results_path: ?[]const u8 = null,
+    emu_log_path: ?[]const u8 = null,
+    emu_bin_path: ?[]const u8 = null,
+    emu_elf_path: ?[]const u8 = null,
+    emit_tpak_path: ?[]const u8 = null,
     json_out: bool = false,
 };
 
@@ -42,9 +47,35 @@ pub fn parseArgs(argv: []const []const u8) Action {
             i += 1;
             if (i >= argv.len) return .{ .usage_error = "--emu-results requires a path argument" };
             opts.emu_results_path = argv[i];
+        } else if (std.mem.eql(u8, arg, "--emu-log")) {
+            i += 1;
+            if (i >= argv.len) return .{ .usage_error = "--emu-log requires a path argument" };
+            opts.emu_log_path = argv[i];
+        } else if (std.mem.eql(u8, arg, "--emu-bin")) {
+            i += 1;
+            if (i >= argv.len) return .{ .usage_error = "--emu-bin requires a path argument" };
+            opts.emu_bin_path = argv[i];
+        } else if (std.mem.eql(u8, arg, "--emu-elf")) {
+            i += 1;
+            if (i >= argv.len) return .{ .usage_error = "--emu-elf requires a path argument" };
+            opts.emu_elf_path = argv[i];
+        } else if (std.mem.eql(u8, arg, "--emit-tpak")) {
+            i += 1;
+            if (i >= argv.len) return .{ .usage_error = "--emit-tpak requires a path argument" };
+            opts.emit_tpak_path = argv[i];
         } else {
             return .{ .usage_error = arg };
         }
+    }
+    if ((opts.emu_bin_path != null) != (opts.emu_elf_path != null)) {
+        return .{ .usage_error = "--emu-bin and --emu-elf must be passed together" };
+    }
+    var emu_modes: u8 = 0;
+    if (opts.emu_results_path != null) emu_modes += 1;
+    if (opts.emu_log_path != null) emu_modes += 1;
+    if (opts.emu_bin_path != null) emu_modes += 1;
+    if (emu_modes > 1) {
+        return .{ .usage_error = "pass at most one of --emu-results, --emu-log, or --emu-bin/--emu-elf" };
     }
     return .{ .run = opts };
 }
@@ -156,6 +187,65 @@ fn writeJson(report: pipeline.EvalReport, out: *std.Io.Writer) !void {
     try out.writeAll("]}\n");
 }
 
+fn runEmulatorTarget(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    dir: std.Io.Dir,
+    eval_corpus: corpus.Corpus,
+    emu_bin: []const u8,
+    emu_elf: []const u8,
+    out_trace_bytes: *?[]u8,
+    err: *std.Io.Writer,
+) !?std.json.Parsed(corpus.EmuTrace) {
+    const scratch_rel = ".zig-cache/tmp/translate_eval_sd";
+    const tpak_rel = ".zig-cache/tmp/translate_eval_sd/TPAK.BIN";
+    dir.createDirPath(io, scratch_rel) catch |e| {
+        try err.print("{s}: cannot create temp SD dir '{s}': {s}\n", .{ tool, scratch_rel, @errorName(e) });
+        return null;
+    };
+    defer dir.deleteTree(io, scratch_rel) catch {};
+
+    const pack = try tpak.buildTpak(allocator, eval_corpus);
+    defer allocator.free(pack);
+    dir.writeFile(io, .{ .sub_path = tpak_rel, .data = pack }) catch |e| {
+        try err.print("{s}: cannot write TPAK '{s}': {s}\n", .{ tool, tpak_rel, @errorName(e) });
+        return null;
+    };
+
+    const run_res = std.process.run(allocator, io, .{
+        .argv = &.{
+            emu_bin,
+            emu_elf,
+            "--sd-dir",
+            scratch_rel,
+            "--console",
+            "--until",
+            "translate_eval_e2e: END",
+            "--ms",
+            "15000",
+        },
+        .stdout_limit = .limited(2 * 1024 * 1024),
+        .stderr_limit = .limited(1024 * 1024),
+    }) catch |e| {
+        try err.print("{s}: failed running emulator '{s}': {s}\n", .{ tool, emu_bin, @errorName(e) });
+        return null;
+    };
+    defer allocator.free(run_res.stdout);
+    defer allocator.free(run_res.stderr);
+
+    const trace_json = tpak.extractTraceFromLog(allocator, run_res.stdout) catch |e| {
+        try err.print("{s}: invalid emulator output ({s})\n{s}\n", .{ tool, @errorName(e), run_res.stderr });
+        return null;
+    };
+    errdefer allocator.free(trace_json);
+    const parsed = corpus.parseEmuTrace(allocator, trace_json) catch |e| {
+        try err.print("{s}: invalid extracted emulator trace JSON: {s}\n", .{ tool, @errorName(e) });
+        return null;
+    };
+    out_trace_bytes.* = trace_json;
+    return parsed;
+}
+
 pub fn run(
     allocator: std.mem.Allocator,
     io: std.Io,
@@ -170,10 +260,14 @@ pub fn run(
             try out.print("{s}\n", .{usage_line});
             try out.writeAll(
                 "Options:\n" ++
-                    "  --corpus PATH       Evaluate custom JSON corpus instead of built-in corpus\n" ++
-                    "  --emu-results PATH  Score emulator trace JSON alongside float and host_i8\n" ++
-                    "  --json              Emit machine-readable JSON summary\n" ++
-                    "  -h, --help          Show this help message\n",
+                    "  --corpus PATH        Evaluate custom JSON corpus instead of built-in corpus\n" ++
+                    "  --emu-results PATH   Score emulator trace JSON alongside float and host_i8\n" ++
+                    "  --emu-log PATH       Extract EMU_TRACE JSON from UART log and score emulator\n" ++
+                    "  --emu-bin BIN        Path to ra8_emulator binary (requires --emu-elf)\n" ++
+                    "  --emu-elf ELF        Path to ARM translate_eval_e2e.elf target binary\n" ++
+                    "  --emit-tpak PATH     Write deterministic TPAK v1 corpus binary for target runs\n" ++
+                    "  --json               Emit machine-readable JSON summary\n" ++
+                    "  -h, --help           Show this help message\n",
             );
             return 0;
         },
@@ -200,6 +294,15 @@ pub fn run(
             };
             defer parsed_corpus.deinit();
 
+            if (opts.emit_tpak_path) |tp| {
+                const pack = try tpak.buildTpak(allocator, parsed_corpus.value);
+                defer allocator.free(pack);
+                dir.writeFile(io, .{ .sub_path = tp, .data = pack }) catch |e| {
+                    try err.print("{s}: cannot write TPAK '{s}': {s}\n", .{ tool, tp, @errorName(e) });
+                    return 2;
+                };
+            }
+
             var loaded_emu_bytes: ?[]u8 = null;
             defer if (loaded_emu_bytes) |b| allocator.free(b);
             var parsed_emu: ?std.json.Parsed(corpus.EmuTrace) = null;
@@ -215,6 +318,32 @@ pub fn run(
                     try err.print("{s}: invalid emu-results JSON: {s}\n", .{ tool, @errorName(e) });
                     return 1;
                 };
+            } else if (opts.emu_log_path) |lp| {
+                const lb = dir.readFileAlloc(io, lp, allocator, .limited(corpus.max_json_bytes)) catch |e| {
+                    try err.print("{s}: cannot read emu-log '{s}': {s}\n", .{ tool, lp, @errorName(e) });
+                    return 2;
+                };
+                defer allocator.free(lb);
+                const extracted = tpak.extractTraceFromLog(allocator, lb) catch |e| {
+                    try err.print("{s}: invalid emu-log '{s}': {s}\n", .{ tool, lp, @errorName(e) });
+                    return 1;
+                };
+                loaded_emu_bytes = extracted;
+                parsed_emu = corpus.parseEmuTrace(allocator, extracted) catch |e| {
+                    try err.print("{s}: invalid extracted trace JSON: {s}\n", .{ tool, @errorName(e) });
+                    return 1;
+                };
+            } else if (opts.emu_bin_path) |bin_p| {
+                parsed_emu = (try runEmulatorTarget(
+                    allocator,
+                    io,
+                    dir,
+                    parsed_corpus.value,
+                    bin_p,
+                    opts.emu_elf_path.?,
+                    &loaded_emu_bytes,
+                    err,
+                )) orelse return 1;
             }
 
             var report = pipeline.evaluate(

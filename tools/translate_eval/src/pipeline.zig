@@ -351,6 +351,8 @@ fn evalPageEmulator(
 
     const det = try metrics.scoreDetection(allocator, pred_page.boxes, ref_boxes.items, 0.5);
     summary.det.add(det);
+    summary.furigana_dropped += pred_page.furigana_dropped;
+    summary.weight_bytes_read += pred_page.weight_bytes;
 
     const n = @min(page.bubbles.len, pred_page.bubbles.len);
     for (0..n) |i| {

@@ -73,6 +73,8 @@ pub const EmuPagePred = struct {
     page_id: []const u8,
     boxes: []const metrics.Box,
     bubbles: []const EmuBubblePred,
+    furigana_dropped: u32 = 0,
+    weight_bytes: u64 = 0,
 };
 
 pub const EmuTrace = struct {
