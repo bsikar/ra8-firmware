@@ -26,7 +26,7 @@ pub const thread_bytes = 256;
 pub const instance_bytes = 1280;
 pub const stack_bytes = 2048;
 pub const module_ram_bytes = 16 * 1024;
-pub const object_pool_bytes = 4 * 1024;
+pub const object_pool_bytes = 16 * 1024;
 pub const priority: u32 = 1;
 
 const tx_success: u32 = 0;

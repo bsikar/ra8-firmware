@@ -103,17 +103,64 @@ fn openCard() Fail!?*anyopaque {
     return mount;
 }
 
+/// Fallback images carried in MRAM (.txm_module, linker_append.ld).
+extern const g_ra8_ls_txm_module_start: u8;
+extern const g_ra8_ls_txm_module_end: u8;
+
+fn readEmbeddedApp(name: [*:0]const u8, buf: []u8) Fail!usize {
+    const start_ptr = @intFromPtr(&g_ra8_ls_txm_module_start);
+    const end_ptr = @intFromPtr(&g_ra8_ls_txm_module_end);
+    if (end_ptr <= start_ptr) return error.open;
+    const total = end_ptr - start_ptr;
+    const bytes: [*]const u8 = @ptrCast(&g_ra8_ls_txm_module_start);
+
+    const is_hello = std.mem.orderZ(u8, name, hello_name) == .eq;
+    const is_fault = std.mem.orderZ(u8, name, fault_name) == .eq;
+    if (!is_hello and !is_fault) return error.open;
+
+    if (total < header_bytes) return error.header;
+    const code0 = std.mem.readInt(u32, bytes[code_size_offset..][0..4], .little);
+    const data0 = std.mem.readInt(u32, bytes[data_size_offset..][0..4], .little);
+    const len0: usize = header_bytes + code0 + data0;
+    if (len0 > total or !headerOk(bytes[0..len0])) return error.header;
+
+    if (is_hello) {
+        if (len0 > buf.len) return error.size;
+        @memcpy(buf[0..len0], bytes[0..len0]);
+        return len0;
+    }
+
+    var offset = len0;
+    while (offset + header_bytes <= total) : (offset += 1) {
+        if (std.mem.readInt(u32, bytes[offset..][0..4], .little) == appimg_magic) break;
+    }
+    if (offset + header_bytes > total) return error.open;
+
+    const code1 = std.mem.readInt(u32, bytes[offset + code_size_offset..][0..4], .little);
+    const data1 = std.mem.readInt(u32, bytes[offset + data_size_offset..][0..4], .little);
+    const len1: usize = header_bytes + code1 + data1;
+    if (offset + len1 > total or !headerOk(bytes[offset..][0..len1])) return error.header;
+    if (len1 > buf.len) return error.size;
+    @memcpy(buf[0..len1], bytes[offset..][0..len1]);
+    return len1;
+}
+
 /// Reads `name` off the card into `buf` and checks its header; returns the
 /// file length. The card is brought up and mounted on the first call only.
+/// If card mount or file open fails, falls back to embedded images in MRAM.
 pub fn readApp(name: [*:0]const u8, buf: []u8) Fail!usize {
-    const mount = try openCard();
-    var file: ?*anyopaque = null;
-    if (ra8_fs_open(mount, name, mode_read, &file) != ok) return error.open;
-    defer _ = ra8_fs_close(file);
-    var size: u64 = 0;
-    if (ra8_fs_size(file, &size) != ok or size > buf.len) return error.size;
-    var got: u32 = 0;
-    if (ra8_fs_read(file, buf.ptr, @intCast(size), &got) != ok or got != size) return error.read;
-    if (!headerOk(buf[0..got])) return error.header;
-    return got;
+    if (openCard()) |mount| {
+        var file: ?*anyopaque = null;
+        if (ra8_fs_open(mount, name, mode_read, &file) == ok) {
+            defer _ = ra8_fs_close(file);
+            var size: u64 = 0;
+            if (ra8_fs_size(file, &size) == ok and size <= buf.len) {
+                var got: u32 = 0;
+                if (ra8_fs_read(file, buf.ptr, @intCast(size), &got) == ok and got == size) {
+                    if (headerOk(buf[0..got])) return got;
+                }
+            }
+        }
+    } else |_| {}
+    return readEmbeddedApp(name, buf);
 }
