@@ -527,6 +527,144 @@ void ra8_devcfg_reset(void);
  */
 const ra8_devcfg_store_t* ra8_devcfg_default_store(void);
 
+/**
+ * @enum ra8_devcfg_token_const_t
+ * @brief Factory token constants, magic marker, and cryptographic lengths (RA8FW-266).
+ */
+typedef enum : uint32_t {
+  k_ra8_devcfg_token_magic      = 0x46544F4BU, /**< ASCII "FTOK" factory token marker.  */
+  k_ra8_devcfg_token_ver        = 1U,          /**< Current token schema version.       */
+  k_ra8_devcfg_token_nonce_len  = 16U,         /**< 128-bit anti-replay nonce length.   */
+  k_ra8_devcfg_token_hash_len   = 32U,         /**< SHA-256 payload digest length.      */
+  k_ra8_devcfg_token_sig_len    = 64U,         /**< Ed25519 signature / auth tag len.   */
+  k_ra8_devcfg_token_pubkey_len = 32U,         /**< Ed25519 public key length.          */
+  k_ra8_devcfg_token_signed_len = 76U,         /**< Signed header span up to signature. */
+} ra8_devcfg_token_const_t;
+
+/**
+ * @enum ra8_devcfg_token_flag_t
+ * @brief Factory token capability and authorization flags.
+ */
+typedef enum : uint32_t {
+  k_ra8_devcfg_token_flag_provision = 0x00000001U, /**< Authorizes virgin provisioning. */
+} ra8_devcfg_token_flag_t;
+
+/**
+ * @struct ra8_devcfg_factory_token_t
+ * @brief Cryptographically authenticated factory provisioning token (RA8FW-266).
+ *
+ * @details
+ * Presented by the factory end-of-line fixture to authorize provisioning on a
+ * virgin unit. Binds the unit serial, anti-replay challenge nonce, and SHA-256
+ * digest of the proposed record payload under a 64-byte Ed25519 signature
+ * signed by the factory line private key.
+ *
+ * @invariant magic == k_ra8_devcfg_token_magic
+ * @invariant version == k_ra8_devcfg_token_ver
+ * @invariant flags & k_ra8_devcfg_token_flag_provision
+ */
+typedef struct {
+  uint32_t magic;                                     /**< "FTOK" marker (0x46544F4B).     */
+  uint16_t version;                                   /**< Token format version (1).       */
+  uint16_t reserved;                                  /**< Reserved padding; must be 0.    */
+  uint32_t flags;                                     /**< Authorization flags.            */
+  uint8_t  nonce[k_ra8_devcfg_token_nonce_len];       /**< Challenge nonce (anti-replay).  */
+  char     serial[k_ra8_devcfg_serial_len];           /**< Target unit serial, NUL-padded. */
+  uint8_t  payload_hash[k_ra8_devcfg_token_hash_len]; /**< SHA-256 of serialized record.   */
+  uint8_t  signature[k_ra8_devcfg_token_sig_len];     /**< Ed25519 signature over token.   */
+} ra8_devcfg_factory_token_t;
+
+static_assert(sizeof(ra8_devcfg_factory_token_t) == 140U,
+              "ra8_devcfg_factory_token_t must have no implicit padding");
+
+/**
+ * @brief Request an anti-replay challenge nonce for virgin factory provisioning.
+ *
+ * @details
+ * Issues a fresh 16-byte cryptographic challenge nonce that must be bound into
+ * the factory token presented to ``ra8_devcfg_provision``. Refuses permanently
+ * if the unit is already provisioned (the provisioning gate is closed).
+ *
+ * @param[out] out_nonce Receives 16 challenge bytes; non-NULL.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Challenge nonce generated and active.
+ * @retval k_ra8_err_null_ptr     ``out_nonce`` is NULL.
+ * @retval k_ra8_err_access_denied Unit is already provisioned; gate is permanently closed.
+ *
+ * @pre Single-threaded provisioning context.
+ * @post On ``k_ra8_ok`` ``out_nonce`` holds the active challenge.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ra8_devcfg_get_provision_challenge(
+    uint8_t out_nonce[k_ra8_devcfg_token_nonce_len]);
+
+/**
+ * @brief Execute factory provisioning on a virgin unit using an authenticated token.
+ *
+ * @details
+ * Validates the presented factory token against the factory Root public key,
+ * confirms the challenge nonce matches the issued challenge, validates serial
+ * binding and payload SHA-256 hash, applies ``k_ra8_devcfg_flag_provisioned``,
+ * and atomically persists the record and token signature to the target slot.
+ * Permanently refuses re-entry if the unit is already provisioned.
+ *
+ * @param[in] store Backing-store vtable; non-NULL, both members non-NULL.
+ * @param[in] rec   Record to provision; non-NULL.
+ * @param[in] token Factory authorization token; non-NULL.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                    Record provisioned and committed.
+ * @retval k_ra8_err_null_ptr          ``store``, ``rec``, or ``token`` is NULL.
+ * @retval k_ra8_err_access_denied      Unit already provisioned, or no active challenge.
+ * @retval k_ra8_err_validation_failed  Token forged, tampered, or verification failed.
+ * @retval other                       Backing-store write failure.
+ *
+ * @pre Single-threaded provisioning context.
+ * @post On ``k_ra8_ok`` the unit is marked provisioned and cannot re-enter.
+ * @post Active challenge nonce is invalidated on every attempt (anti-replay).
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ra8_devcfg_provision(
+    const ra8_devcfg_store_t*         store,
+    const ra8_devcfg_record_t*        rec,
+    const ra8_devcfg_factory_token_t* token);
+
+/**
+ * @brief Helper for factory fixtures and tests to build and sign a factory token.
+ *
+ * @param[in]  rec        Record to be authorized; non-NULL.
+ * @param[in]  nonce      Active challenge nonce; non-NULL, 16 bytes.
+ * @param[in]  secret_key 64-byte Ed25519 private key seed or key; non-NULL.
+ * @param[out] out_token  Receives the populated and signed token; non-NULL.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           Token generated and signed.
+ * @retval k_ra8_err_null_ptr Any pointer argument is NULL.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ra8_devcfg_build_token(
+    const ra8_devcfg_record_t*  rec,
+    const uint8_t               nonce[k_ra8_devcfg_token_nonce_len],
+    const uint8_t               secret_key[64],
+    ra8_devcfg_factory_token_t* out_token);
+
+/**
+ * @brief Test-only hook to override the factory verification public key.
+ *
+ * @param[in] pubkey_32 32-byte Ed25519 public key, or NULL to restore default.
+ * @since 0.2.0
+ */
+void ra8_devcfg_set_token_pubkey_for_test(const uint8_t* pubkey_32);
+
+/**
+ * @brief Test-only hook to inject a deterministic challenge nonce.
+ *
+ * @param[in] nonce 16-byte nonce to inject.
+ * @since 0.2.0
+ */
+void ra8_devcfg_set_challenge_for_test(const uint8_t nonce[k_ra8_devcfg_token_nonce_len]);
+
 #ifdef __cplusplus
 }
 #endif

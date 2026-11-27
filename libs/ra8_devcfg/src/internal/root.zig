@@ -232,3 +232,111 @@ pub fn nextSeq(valid0: bool, seq0: u32, valid1: bool, seq1: u32) u32 {
 pub fn vcomInRange(mv: u16) bool {
     return (mv >= vcom_min_mv) and (mv <= vcom_max_mv);
 }
+
+const Sha256 = std.crypto.hash.sha2.Sha256;
+const Ed25519 = std.crypto.sign.Ed25519;
+
+/// Factory token constants (RA8FW-266).
+pub const token_magic: u32 = 0x46544F4B; // "FTOK"
+pub const token_ver: u16 = 1;
+pub const token_nonce_len: usize = 16;
+pub const token_hash_len: usize = 32;
+pub const token_sig_len: usize = 64;
+pub const token_pubkey_len: usize = 32;
+pub const token_signed_len: usize = 76;
+pub const token_total_len: usize = 140;
+
+pub const token_flag_provision: u32 = 0x00000001;
+
+/// Decoded factory authorization token (ra8_devcfg_factory_token_t).
+pub const FactoryToken = extern struct {
+    magic: u32 = token_magic,
+    version: u16 = token_ver,
+    reserved: u16 = 0,
+    flags: u32 = 0,
+    nonce: [token_nonce_len]u8 = @splat(0),
+    serial: [serial_len]u8 = @splat(0),
+    payload_hash: [token_hash_len]u8 = @splat(0),
+    signature: [token_sig_len]u8 = @splat(0),
+};
+
+comptime {
+    if (@sizeOf(FactoryToken) != token_total_len) @compileError("FactoryToken size mismatch");
+    if (@offsetOf(FactoryToken, "signature") != token_signed_len) @compileError("FactoryToken signature offset mismatch");
+}
+
+/// Pinned factory Root public key for Ed25519 token verification (RA8FW-266).
+/// In production, tokens must be signed by the corresponding factory private key.
+pub const default_factory_pubkey: [token_pubkey_len]u8 = [_]u8{
+    0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a,
+    0x92, 0xb7, 0x0a, 0x3d, 0x81, 0x76, 0xb8, 0xd1,
+    0x49, 0x4a, 0xb4, 0x95, 0x4e, 0x1c, 0x62, 0xd0,
+    0xf8, 0x3d, 0x97, 0xea, 0x7a, 0x72, 0x22, 0xec,
+};
+
+/// Compute SHA-256 digest over the serialized record buffer.
+pub fn hashRecord(rec: *const Record) [token_hash_len]u8 {
+    var buf: [record_len]u8 = @splat(0);
+    serialize(rec, 0, &buf);
+    var digest: [token_hash_len]u8 = undefined;
+    Sha256.hash(&buf, &digest, .{});
+    return digest;
+}
+
+/// Verify a presented factory provisioning token against active challenge,
+/// target record, and factory public key.
+pub fn verifyToken(
+    token: *const FactoryToken,
+    rec: *const Record,
+    active_nonce: *const [token_nonce_len]u8,
+    pubkey: *const [token_pubkey_len]u8,
+) bool {
+    if (token.magic != token_magic) return false;
+    if (token.version != token_ver) return false;
+    if ((token.flags & token_flag_provision) == 0) return false;
+
+    // Challenge anti-replay: token nonce must match active issued challenge
+    if (!std.mem.eql(u8, &token.nonce, active_nonce)) return false;
+
+    // Serial binding: token serial must match proposed unit serial
+    if (!std.mem.eql(u8, &token.serial, &rec.body.serial)) return false;
+
+    // Payload integrity: token hash must match SHA-256 of proposed record
+    const expected_hash = hashRecord(rec);
+    if (!std.mem.eql(u8, &token.payload_hash, &expected_hash)) return false;
+
+    // Cryptographic signature: Ed25519 verify over token header span [0..token_signed_len)
+    const raw_token: [*]const u8 = @ptrCast(token);
+    const signed_span = raw_token[0..token_signed_len];
+
+    const key = Ed25519.PublicKey.fromBytes(pubkey.*) catch return false;
+    const sig = Ed25519.Signature.fromBytes(token.signature);
+    sig.verify(signed_span, key) catch return false;
+
+    return true;
+}
+
+/// Sign a factory provisioning token using the factory private key/seed.
+pub fn signToken(
+    rec: *const Record,
+    nonce: *const [token_nonce_len]u8,
+    secret_key: *const [64]u8,
+    out_token: *FactoryToken,
+) bool {
+    out_token.magic = token_magic;
+    out_token.version = token_ver;
+    out_token.reserved = 0;
+    out_token.flags = token_flag_provision;
+    @memcpy(&out_token.nonce, nonce);
+    @memcpy(&out_token.serial, &rec.body.serial);
+    out_token.payload_hash = hashRecord(rec);
+
+    const raw_token: [*]const u8 = @ptrCast(out_token);
+    const signed_span = raw_token[0..token_signed_len];
+
+    const kp = Ed25519.KeyPair.generateDeterministic(secret_key[0..32].*) catch return false;
+    const sig = kp.sign(signed_span, null) catch return false;
+    @memcpy(&out_token.signature, &sig.toBytes());
+    return true;
+}
+

@@ -15,9 +15,10 @@ all. This app is that consumer.
    never-programmed window. The blank resolve is checked first:
    `ra8_devcfg_is_blank` reports UNPROVISIONED and `ra8_devcfg_get_vcom_mv`
    refuses rather than handing back a plausible-looking default (INV-VCOM-1).
-2. A populated record is committed, re-loaded, and compared field for field,
-   which exercises the encode, the CRC, the two-copy resolver, and the VCOM
-   validity gate end to end from firmware rather than from a host test.
+2. A populated record is provisioned under an authenticated factory token,
+   re-loaded, and compared field for field, which exercises the token gate,
+   anti-replay, permanent lock, encode, CRC, the two-copy resolver, and the
+   VCOM validity gate end to end from firmware rather than from a host test.
 3. The production extra-MRAM store is then loaded **read-only** to report
    whether this unit is provisioned.
 

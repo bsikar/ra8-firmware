@@ -197,9 +197,43 @@ static ra8_err_t internal_round_trip(void)
 
   ra8_devcfg_record_t rec = {};
   internal_make_record(&rec);
-  const ra8_err_t commit_err = ra8_devcfg_commit(&s_ram_store, &rec);
-  if (commit_err != k_ra8_ok) {
-    return commit_err;
+
+  /* Exercise factory token provisioning gate (RA8FW-266) */
+  uint8_t nonce[k_ra8_devcfg_token_nonce_len] = {};
+  if (ra8_devcfg_get_provision_challenge(nonce) != k_ra8_ok) {
+    return k_ra8_err_invalid_state;
+  }
+
+  static const uint8_t s_demo_seed[64] = {
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24
+  };
+  static const uint8_t s_demo_pubkey[32] = {
+    0x58, 0x93, 0x66, 0x04, 0xab, 0xda, 0x11, 0x2b,
+    0xc9, 0x49, 0x33, 0x56, 0x9c, 0x82, 0xf8, 0xd0,
+    0xcc, 0x0d, 0xdf, 0x92, 0xa3, 0xf8, 0x32, 0x9f,
+    0x2f, 0x44, 0x8f, 0x7f, 0x48, 0x4a, 0x59, 0x4c
+  };
+  ra8_devcfg_set_token_pubkey_for_test(s_demo_pubkey);
+
+  ra8_devcfg_factory_token_t tok = {};
+  if (ra8_devcfg_build_token(&rec, nonce, s_demo_seed, &tok) != k_ra8_ok) {
+    return k_ra8_err_invalid_state;
+  }
+
+  const ra8_err_t prov_err = ra8_devcfg_provision(&s_ram_store, &rec, &tok);
+  if (prov_err != k_ra8_ok) {
+    return prov_err;
+  }
+
+  /* Verify re-entry is permanently refused */
+  if (ra8_devcfg_provision(&s_ram_store, &rec, &tok) == k_ra8_ok) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ra8_devcfg_get_provision_challenge(nonce) == k_ra8_ok) {
+    return k_ra8_err_invalid_state;
   }
 
   ra8_devcfg_reset();

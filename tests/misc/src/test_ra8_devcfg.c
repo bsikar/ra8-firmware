@@ -629,6 +629,150 @@ static void internal_dc_default_store_backend(void)
   TEST_END("devcfg: extra-MRAM default store");
 }
 
+/**
+ * @test internal_dc_factory_provisioning_mcdc -- factory-token gate, anti-replay, and permanent lock.
+ *
+ * @brief Tests virgin challenge issuance, token authentication, anti-replay, tamper rejection, and permanent lock.
+ *
+ * @details Drives full MC/DC vectors over factory token validation:
+ *   - Missing challenge or unissued challenge rejection
+ *   - Null argument guards on challenge, provision, and build_token
+ *   - Wrong magic, wrong version, wrong flags rejection
+ *   - Payload hash mismatch (tampered VCOM / serial)
+ *   - Replayed nonce rejection and single-use challenge consumption
+ *   - Forged signature rejection
+ *   - Successful virgin provisioning with signature headroom persistence
+ *   - Permanent re-entry refusal once provisioned (across reloads and reboots)
+ *
+ * @pre Mock store is reset to blank.
+ * @post Provisioned record and signature headroom persist in mock store.
+ * @since 0.2.0
+ */
+RA8_INTERNAL
+static void internal_dc_factory_provisioning_mcdc(void)
+{
+  TEST_BEGIN("devcfg: factory-token provisioning gate (RA8FW-266)");
+  static const uint8_t test_seed[64] = {
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  };
+  static const uint8_t test_pubkey[32] = {
+    0x58, 0x93, 0x66, 0x04, 0xab, 0xda, 0x11, 0x2b,
+    0xc9, 0x49, 0x33, 0x56, 0x9c, 0x82, 0xf8, 0xd0,
+    0xcc, 0x0d, 0xdf, 0x92, 0xa3, 0xf8, 0x32, 0x9f,
+    0x2f, 0x44, 0x8f, 0x7f, 0x48, 0x4a, 0x59, 0x4c
+  };
+
+  internal_dc_mock_blank();
+  ra8_devcfg_set_token_pubkey_for_test(test_pubkey);
+
+  const ra8_devcfg_record_t rec =
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  ra8_devcfg_factory_token_t tok = {};
+  uint8_t                    nonce[k_ra8_devcfg_token_nonce_len] = {};
+
+  /* 1. Null argument guards */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_get_provision_challenge(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_provision(nullptr, &rec, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_provision(&s_mock, nullptr, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_provision(&s_mock, &rec, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_build_token(nullptr, nonce, test_seed, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_build_token(&rec, nullptr, test_seed, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_build_token(&rec, nonce, nullptr, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_build_token(&rec, nonce, test_seed, nullptr));
+
+  /* 2. Provisioning attempt without active challenge is refused */
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 3. Challenge issuance on virgin unit succeeds */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+
+  /* 4. Forged token: wrong magic */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  tok.magic = 0xBAD1U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* Notice anti-replay: failed attempt consumed challenge nonce! Re-presenting fails with access_denied */
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 5. Forged token: wrong version */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  tok.version = 99U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 6. Forged token: wrong flags */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  tok.flags = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 7. Tampered record: VCOM modified after signing */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  ra8_devcfg_record_t tampered_vcom = rec;
+  tampered_vcom.body.panel_vcom_mv  = (uint16_t)k_dc_other_mv;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &tampered_vcom, &tok));
+
+  /* 8. Tampered record: Serial modified after signing */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  ra8_devcfg_record_t tampered_serial = rec;
+  tampered_serial.body.serial[0]      = 'Z';
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &tampered_serial, &tok));
+
+  /* 9. Replayed / mismatched nonce */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  tok.nonce[0] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 10. Forged signature */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  tok.signature[0] ^= 0x01U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* 11. Successful factory provisioning */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_build_token(&rec, nonce, test_seed, &tok));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_provision(&s_mock, &rec, &tok));
+
+  /* Post-conditions of successful provisioning:
+   * - ra8_devcfg_is_blank() reports false
+   * - VCOM is loaded and matches
+   * - Target slot copy 0 holds signature in headroom (offset 128)
+   */
+  TEST_ASSERT(!ra8_devcfg_is_blank());
+  uint16_t read_vcom = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_vcom_mv(&read_vcom));
+  TEST_ASSERT_EQ(k_dc_good_mv, read_vcom);
+
+  const uint32_t sig_offset = (uint32_t)k_ra8_devcfg_copy0_off + (uint32_t)k_ra8_devcfg_record_len;
+  TEST_ASSERT_EQ(0, memcmp(&s_mem[sig_offset], tok.signature, sizeof tok.signature));
+
+  /* 12. Permanent lock: challenge and provision are PERMANENTLY REFUSED */
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_provision(&s_mock, &rec, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_commit(&s_mock, &rec));
+
+  /* 13. Permanent lock holds after reset and reload from storage */
+  ra8_devcfg_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
+  TEST_ASSERT(!ra8_devcfg_is_blank());
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_get_provision_challenge(nonce));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_provision(&s_mock, &rec, &tok));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_devcfg_commit(&s_mock, &rec));
+
+  /* Clean up test pubkey override */
+  ra8_devcfg_set_token_pubkey_for_test(nullptr);
+  TEST_END("devcfg: factory-token provisioning gate (RA8FW-266)");
+}
+
 int main(void)
 {
   internal_dc_commit_load_roundtrip();
@@ -639,5 +783,6 @@ int main(void)
   internal_dc_vcom_gate_mcdc();
   internal_dc_null_arg_guards();
   internal_dc_default_store_backend();
+  internal_dc_factory_provisioning_mcdc();
   return 0;
 }
