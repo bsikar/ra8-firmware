@@ -3,7 +3,7 @@
 //!
 //! Round-trip tests for the `.ra8app` packer: what it signs, the gate admits
 //! under the matching key, and any change to the signed bytes, the key or the
-//! signature itself is refused.
+//! signature itself is refused. Format v2 with and without icon metadata.
 
 const std = @import("std");
 const pack = @import("appimg_pack");
@@ -48,13 +48,49 @@ test "a packed image is admitted under its own key with the manifest intact" {
 
     const head = try admit(bytes, key_pair);
     try std.testing.expectEqual(@as(usize, header_bytes + code.len + data.len), bytes.len);
+    try std.testing.expectEqual(@as(u32, 2), head.format_version);
     try std.testing.expectEqual(@as(u32, 4), head.entry_offset);
     try std.testing.expectEqual(@as(u32, code.len), head.code_size);
     try std.testing.expectEqual(@as(u32, data.len), head.data_size);
+    try std.testing.expectEqual(@as(u32, 0), head.icon_offset);
+    try std.testing.expectEqual(@as(u32, 0), head.icon_length);
     try std.testing.expectEqual(appimg.Capability.display, head.capabilities);
     try std.testing.expectEqualStrings("com.ra8.hello", std.mem.sliceTo(&head.app_id, 0));
     try std.testing.expectEqualSlices(u8, &code, bytes[header_bytes..][0..code.len]);
     try std.testing.expectEqualSlices(u8, &data, bytes[header_bytes + code.len ..]);
+}
+
+test "a packed image with icon is admitted and icon matches" {
+    const icon_data: [64]u8 = @splat(0x55);
+    var icon_manifest = manifest;
+    icon_manifest.icon = &icon_data;
+
+    const key_pair = try keyPair(0x42);
+    const bytes = try pack.pack(std.testing.allocator, icon_manifest, &code, &data, key_pair);
+    defer std.testing.allocator.free(bytes);
+
+    const head = try admit(bytes, key_pair);
+    try std.testing.expectEqual(@as(u32, 2), head.format_version);
+    try std.testing.expectEqual(@as(u32, code.len + data.len), head.icon_offset);
+    try std.testing.expectEqual(@as(u32, 64), head.icon_length);
+    try std.testing.expectEqual(@as(usize, header_bytes + code.len + data.len + 64), bytes.len);
+
+    const icon = (try appimg.iconSlice(head, bytes)).?;
+    try std.testing.expectEqualSlices(u8, &icon_data, icon);
+}
+
+test "a flipped icon byte in payload is refused as a bad signature" {
+    const icon_data: [64]u8 = @splat(0xAA);
+    var icon_manifest = manifest;
+    icon_manifest.icon = &icon_data;
+
+    const key_pair = try keyPair(0x42);
+    const bytes = try pack.pack(std.testing.allocator, icon_manifest, &code, &data, key_pair);
+    defer std.testing.allocator.free(bytes);
+
+    // Flip a byte in the icon payload
+    bytes[bytes.len - 1] ^= 0x01;
+    try std.testing.expectError(gate.Error.BadSignature, admit(bytes, key_pair));
 }
 
 test "a flipped payload byte is refused as a bad signature" {
@@ -131,4 +167,17 @@ test "a manifest the parser would refuse is never assembled" {
         appimg.Error.OutOfRange,
         pack.assemble(std.testing.allocator, bad, &code, &data),
     );
+}
+
+test "legacy format v1 packaging can be requested explicitly" {
+    var v1_manifest = manifest;
+    v1_manifest.format_version = appimg.Format.version_v1;
+
+    const key_pair = try keyPair(0x42);
+    const bytes = try pack.pack(std.testing.allocator, v1_manifest, &code, &data, key_pair);
+    defer std.testing.allocator.free(bytes);
+
+    const head = try admit(bytes, key_pair);
+    try std.testing.expectEqual(@as(u32, 1), head.format_version);
+    try std.testing.expectEqual(@as(usize, 160 + code.len + data.len), bytes.len);
 }

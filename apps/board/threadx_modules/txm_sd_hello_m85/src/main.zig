@@ -111,12 +111,12 @@ fn runModules(lens: Lengths) anyerror!void {
     try module.init();
     var round: u32 = 1;
     while (round <= hello_cycles) : (round += 1) {
-        sayCycle(round, try module.hello(image[verify.header_bytes..lens.hello]));
+        sayCycle(round, try module.hello(image[verify.headerBytes(image[0..lens.hello])..lens.hello]));
     }
     say(reload_line);
     say(pass_line);
-    sayKill(try module.fault(fault_image[verify.header_bytes..lens.fault]));
-    _ = try module.hello(image[verify.header_bytes..lens.hello]);
+    sayKill(try module.fault(fault_image[verify.headerBytes(fault_image[0..lens.fault])..lens.fault]));
+    _ = try module.hello(image[verify.headerBytes(image[0..lens.hello])..lens.hello]);
     say(next_line);
     say(fault_line);
 }

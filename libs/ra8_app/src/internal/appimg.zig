@@ -22,14 +22,27 @@ pub const Width = struct {
 pub const Format = struct {
     /// ASCII "RA8A", the marker at the head of every `.ra8app` file.
     pub const magic: u32 = 0x52413841;
-    /// Header revision this implementation reads.
-    pub const version: u32 = 0x00000001;
+    /// Legacy format revision without icon metadata (v1).
+    pub const version_v1: u32 = 0x00000001;
+    /// Format revision with icon metadata (v2).
+    pub const version_v2: u32 = 0x00000002;
+    /// Header revision this implementation reads by default.
+    pub const version: u32 = version_v2;
     /// Syscall-table generation the running firmware publishes.
     pub const api_version_current: u32 = 0x00000002;
     /// Per-segment byte cap: the Non-Secure region a module can be given.
     pub const segment_max: u32 = 0x00100000;
     /// Smallest usable module stack, bytes.
     pub const stack_min: u32 = 0x00000400;
+
+    /// Fixed icon dimensions and 2-bit grayscale packed size (v2).
+    pub const icon_width: u32 = 16;
+    pub const icon_height: u32 = 16;
+    pub const icon_bytes: u32 = 64;
+
+    /// Header on-disk byte sizes.
+    pub const header_bytes_v1: usize = 160;
+    pub const header_bytes_v2: usize = 168;
 };
 
 /// What a module declares it needs, one bit per host resource.
@@ -53,7 +66,7 @@ pub const Error = error{
 
 /// The `.ra8app` file header, in wire order and wire layout.
 ///
-/// `extern` pins the C layout the on-disk format depends on: eight 32-bit
+/// `extern` pins the C layout the on-disk format depends on: ten 32-bit
 /// words, the two fixed-width text fields, then the signature, with no
 /// implicit padding on any little-endian target.
 pub const Header = extern struct {
@@ -67,26 +80,53 @@ pub const Header = extern struct {
     capabilities: u32,
     app_id: [Width.app_id]u8,
     display_name: [Width.display_name]u8,
+    icon_offset: u32,
+    icon_length: u32,
     signature: [Width.signature]u8,
 
+    /// Byte offset of `signature` in format v1 (on disk).
+    pub const signature_offset_v1: usize = 96;
+    /// Byte offset of `signature` in format v2 (on disk).
+    pub const signature_offset_v2: usize = 104;
     /// Byte offset of `signature`, which is where the signed prefix ends.
-    pub const signature_offset: usize = @offsetOf(Header, "signature");
+    pub const signature_offset: usize = signature_offset_v2;
+
+    /// On-disk header size for this header's format version.
+    pub fn headerSize(self: Header) usize {
+        return if (self.format_version == Format.version_v1)
+            Format.header_bytes_v1
+        else
+            Format.header_bytes_v2;
+    }
+
+    /// On-disk signature offset for this header's format version.
+    pub fn signatureOffset(self: Header) usize {
+        return if (self.format_version == Format.version_v1)
+            signature_offset_v1
+        else
+            signature_offset_v2;
+    }
 
     /// Declared payload length: the module image that follows the header.
     pub fn payloadLen(self: Header) usize {
-        return @as(usize, self.code_size) + @as(usize, self.data_size);
+        const code_data = @as(usize, self.code_size) + @as(usize, self.data_size);
+        if (self.icon_length > 0) {
+            return @max(code_data, @as(usize, self.icon_offset) + @as(usize, self.icon_length));
+        }
+        return code_data;
     }
 
     /// Total declared file length: header plus payload.
     pub fn imageLen(self: Header) usize {
-        return @sizeOf(Header) + self.payloadLen();
+        return self.headerSize() + self.payloadLen();
     }
 };
 
 comptime {
-    const words = 8 * @sizeOf(u32);
+    const words = 10 * @sizeOf(u32);
     const expected = words + Width.app_id + Width.display_name + Width.signature;
     std.debug.assert(@sizeOf(Header) == expected);
+    std.debug.assert(@sizeOf(Header) == Format.header_bytes_v2);
     std.debug.assert(Header.signature_offset == words + Width.app_id + Width.display_name);
 }
 
@@ -107,7 +147,7 @@ fn terminated(field: []const u8) bool {
 /// Prove the fixed content fields: magic, revision, capabilities, text, API.
 fn checkIdentity(header: Header) Error!void {
     if (header.magic != Format.magic) return Error.Validation;
-    if (header.format_version != Format.version) return Error.Validation;
+    if (header.format_version != Format.version_v1 and header.format_version != Format.version_v2) return Error.Validation;
     if ((header.capabilities & ~Capability.known) != 0) return Error.Validation;
     if (!terminated(&header.app_id)) return Error.Validation;
     if (!terminated(&header.display_name)) return Error.Validation;
@@ -123,6 +163,21 @@ fn checkSizes(header: Header, len: usize) Error!void {
     if (header.stack_size < Format.stack_min) return Error.OutOfRange;
     if (header.stack_size > Format.segment_max) return Error.OutOfRange;
     if (header.entry_offset >= header.code_size) return Error.OutOfRange;
+
+    if (header.format_version == Format.version_v1) {
+        if (header.icon_offset != 0 or header.icon_length != 0) return Error.Validation;
+    } else {
+        if (header.icon_length == 0) {
+            if (header.icon_offset != 0) return Error.Validation;
+        } else {
+            if (header.icon_length != Format.icon_bytes) return Error.OutOfRange;
+            const code_data = @as(u64, header.code_size) + @as(u64, header.data_size);
+            if (header.icon_offset < code_data) return Error.OutOfRange;
+            const icon_end = @as(u64, header.icon_offset) + @as(u64, header.icon_length);
+            if (icon_end > std.math.maxInt(u32)) return Error.OutOfRange;
+        }
+    }
+
     if (len < header.imageLen()) return Error.ShortImage;
 }
 
@@ -131,10 +186,24 @@ fn checkSizes(header: Header, len: usize) Error!void {
 /// The candidate is proven before it is returned, so a caller can never hold a
 /// half-parsed header: on any refusal there is no value to hold at all.
 pub fn parse(bytes: []const u8) Error!Header {
-    if (bytes.len < @sizeOf(Header)) return Error.ShortImage;
+    if (bytes.len < Format.header_bytes_v1) return Error.ShortImage;
+
+    const magic = std.mem.readInt(u32, bytes[0..4], .little);
+    if (magic != Format.magic) return Error.Validation;
+
+    const version = std.mem.readInt(u32, bytes[4..8], .little);
+    if (version != Format.version_v1 and version != Format.version_v2) return Error.Validation;
 
     var candidate: Header = undefined;
-    @memcpy(std.mem.asBytes(&candidate), bytes[0..@sizeOf(Header)]);
+    if (version == Format.version_v1) {
+        @memcpy(std.mem.asBytes(&candidate)[0..Header.signature_offset_v1], bytes[0..Header.signature_offset_v1]);
+        candidate.icon_offset = 0;
+        candidate.icon_length = 0;
+        @memcpy(&candidate.signature, bytes[Header.signature_offset_v1..Format.header_bytes_v1]);
+    } else {
+        if (bytes.len < Format.header_bytes_v2) return Error.ShortImage;
+        @memcpy(std.mem.asBytes(&candidate), bytes[0..Format.header_bytes_v2]);
+    }
 
     try checkIdentity(candidate);
     try checkSizes(candidate, bytes.len);
@@ -142,18 +211,43 @@ pub fn parse(bytes: []const u8) Error!Header {
 }
 
 /// The leading signed run: the header up to where `signature` begins.
-pub fn signedSpan(len: usize) Error!Span {
-    if (len < @sizeOf(Header)) return Error.ShortImage;
-    return .{ .offset = 0, .length = @intCast(Header.signature_offset) };
+pub fn signedSpan(header: Header, len: usize) Error!Span {
+    if (len < header.headerSize()) return Error.ShortImage;
+    return .{ .offset = 0, .length = @intCast(header.signatureOffset()) };
 }
 
 /// The payload run: everything after the header that the header declares.
 pub fn payloadSpan(header: Header, len: usize) Error!Span {
     if (len < header.imageLen()) return Error.ShortImage;
     return .{
-        .offset = @intCast(@sizeOf(Header)),
+        .offset = @intCast(header.headerSize()),
         .length = @intCast(header.payloadLen()),
     };
+}
+
+/// Report the byte range the app icon occupies within the `.ra8app` file.
+pub fn iconSpan(header: Header, len: usize) Error!Span {
+    if (header.icon_length == 0) {
+        return .{ .offset = 0, .length = 0 };
+    }
+    if (header.format_version < Format.version_v2) {
+        return Error.Validation;
+    }
+    const h_size = header.headerSize();
+    const abs_offset = h_size + @as(usize, header.icon_offset);
+    const abs_end = abs_offset + @as(usize, header.icon_length);
+    if (len < abs_end) return Error.ShortImage;
+    return .{
+        .offset = @intCast(abs_offset),
+        .length = header.icon_length,
+    };
+}
+
+/// Direct slice to the icon bytes, or null if no icon is declared.
+pub fn iconSlice(header: Header, bytes: []const u8) Error!?[]const u8 {
+    if (header.icon_length == 0) return null;
+    const span = try iconSpan(header, bytes.len);
+    return bytes[span.offset..][0..span.length];
 }
 
 /// Whether a host grant satisfies the manifest an image declares.

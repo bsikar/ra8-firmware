@@ -63,9 +63,15 @@ fn goodHeader() appimg.Header {
 }
 
 fn imageOf(allocator: std.mem.Allocator, h: appimg.Header) ![]u8 {
-    const buf = try allocator.alloc(u8, header_bytes + h.payloadLen());
+    const hdr_size = h.headerSize();
+    const buf = try allocator.alloc(u8, hdr_size + h.payloadLen());
     @memset(buf, 0);
-    @memcpy(buf[0..header_bytes], std.mem.asBytes(&h));
+    if (h.format_version == appimg.Format.version_v1) {
+        @memcpy(buf[0..appimg.Header.signature_offset_v1], std.mem.asBytes(&h)[0..appimg.Header.signature_offset_v1]);
+        @memcpy(buf[appimg.Header.signature_offset_v1..hdr_size], &h.signature);
+    } else {
+        @memcpy(buf[0..hdr_size], std.mem.asBytes(&h));
+    }
     return buf;
 }
 
@@ -75,10 +81,23 @@ test "the signed message is the header prefix and then the payload" {
     defer std.testing.allocator.free(image);
 
     const msg = try gate.signedMessage(h, image);
-    try std.testing.expectEqual(@as(usize, 96), msg.head.len);
+    try std.testing.expectEqual(@as(usize, 104), msg.head.len);
     try std.testing.expectEqual(h.payloadLen(), msg.tail.len);
     try std.testing.expectEqual(image.ptr, msg.head.ptr);
     try std.testing.expectEqual(@intFromPtr(image.ptr) + header_bytes, @intFromPtr(msg.tail.ptr));
+}
+
+test "format v1 signed message uses 96-byte header prefix and 160-byte payload offset" {
+    var h = goodHeader();
+    h.format_version = appimg.Format.version_v1;
+    const image = try imageOf(std.testing.allocator, h);
+    defer std.testing.allocator.free(image);
+
+    const msg = try gate.signedMessage(h, image);
+    try std.testing.expectEqual(@as(usize, 96), msg.head.len);
+    try std.testing.expectEqual(h.payloadLen(), msg.tail.len);
+    try std.testing.expectEqual(image.ptr, msg.head.ptr);
+    try std.testing.expectEqual(@intFromPtr(image.ptr) + 160, @intFromPtr(msg.tail.ptr));
 }
 
 test "the signed message refuses an image too short for its payload" {
@@ -109,7 +128,7 @@ test "the backend sees both signed runs, at their real lengths" {
     defer std.testing.allocator.free(image);
 
     _ = try gate.verify(spy.backend(appimg.Capability.display), image);
-    try std.testing.expectEqual(@as(u32, 96), spy.saw_head_len);
+    try std.testing.expectEqual(@as(u32, 104), spy.saw_head_len);
     try std.testing.expectEqual(@as(u32, 320), spy.saw_tail_len);
 }
 

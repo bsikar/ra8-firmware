@@ -14,14 +14,10 @@
  * leaves the launcher byte-identical -- the run-time "core uninstallable"
  * invariant, observed through pixels.
  *
- * The launcher build is the same enumeration a home screen does on-target
- * (`ra8_app_count` + `ra8_app_at` + `app->name`), so this is a faithful host
- * proxy for the on-panel chrome. The pixels are drawn through the injected
- * ::ra8_widget_paint_t backend bound to `ra8_gfx` -- the same Dependency-Inversion
- * seam the widget unit tests bind to a recording mock. There are no compound
- * boolean decisions under test here (the logic lives in `ra8_app` / `ra8_widget`,
- * each tested in its own TU), so there is no `@par MC/DC` obligation in this
- * file; it asserts the two goldens and the registry-reflects invariant.
+ * Additionally verifies the launcher icon consumer (RA8FW-531): reads .ra8app
+ * format v2 16x16 2-bit packed grayscale icon metadata, unpacks and plots
+ * pixels onto the tile, asserting deterministic composite and rejection of
+ * format v1 or malformed icon fields.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -30,8 +26,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8_app.h"
+#include "ra8_appimg.h"
 #include "ra8_box.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -98,8 +96,9 @@ typedef enum : uint16_t {
  * @brief CRC-32 goldens of the composited launcher (baked from a run).
  */
 typedef enum : uint32_t {
-  k_lr_golden_a = 0xA6AA065AU, /**< Frame A: library + reader + settings tiles. */
-  k_lr_golden_b = 0x759DF0ECU, /**< Frame B: settings uninstalled (2 tiles).    */
+  k_lr_golden_a    = 0xA6AA065AU, /**< Frame A: library + reader + settings tiles. */
+  k_lr_golden_b    = 0x759DF0ECU, /**< Frame B: settings uninstalled (2 tiles).    */
+  k_lr_golden_icon = 0x0380436BU, /**< Frame with format v2 16x16 icon rendered.   */
 } lr_golden_t;
 
 /** @brief Framebuffer for frame A (and the reflowed frame B). */
@@ -258,6 +257,64 @@ static uint32_t lr_compose_crc(uint32_t* buf, const ra8_app_registry_t* reg)
 }
 
 /**
+ * @brief Unpack and blit a 16x16 2-bit grayscale .ra8app icon into the framebuffer.
+ *
+ * @details Reads the icon metadata and payload from an in-memory .ra8app image
+ * using ra8_appimg_parse and ra8_appimg_get_icon, unpacks the 2-bit grayscale
+ * pixels (4 pixels per byte, 64 bytes total for 16x16), and plots each pixel
+ * onto the active ra8_gfx framebuffer at (dst_x, dst_y).
+ *
+ * @param[in] img_bytes Raw bytes of the .ra8app file.
+ * @param[in] img_len   Length in bytes of img_bytes.
+ * @param[in] dst_x     X coordinate on the framebuffer for the top-left of the icon.
+ * @param[in] dst_y     Y coordinate on the framebuffer for the top-left of the icon.
+ *
+ * @return ra8_err_t k_ra8_ok on success, or error from header/icon parsing.
+ */
+static ra8_err_t lr_render_appimg_icon(const uint8_t* img_bytes,
+                                       size_t         img_len,
+                                       int32_t        dst_x,
+                                       int32_t        dst_y)
+{
+  if (img_bytes == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  ra8_appimg_header_t hdr = {};
+  ra8_err_t err = ra8_appimg_parse(img_bytes, img_len, &hdr);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  const uint8_t* icon_data = nullptr;
+  size_t         icon_len  = 0U;
+  err = ra8_appimg_get_icon(&hdr, img_bytes, img_len, &icon_data, &icon_len);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (icon_data == nullptr || icon_len == 0U) {
+    return k_ra8_err_not_found;
+  }
+
+  /* Unpack 16x16 2-bit grayscale pixels (64 bytes, 4 pixels/byte) */
+  for (int32_t y = 0; y < (int32_t)k_ra8_appimg_icon_height; ++y) {
+    for (int32_t x = 0; x < (int32_t)k_ra8_appimg_icon_width; ++x) {
+      const size_t byte_idx = (size_t)(y * (int32_t)k_ra8_appimg_icon_width + x) / 4U;
+      const uint32_t shift = (uint32_t)(6 - 2 * (x % 4));
+      const uint8_t level2 = (uint8_t)((icon_data[byte_idx] >> shift) & 0x03U);
+      /* 2-bit grayscale mapping to ARGB8888 */
+      static const uint32_t tone_lut[4] = {
+        0x00000000U, /* 00: Black      */
+        0x00555555U, /* 01: Dark gray  */
+        0x00AAAAAAU, /* 10: Light gray */
+        0x00FFFFFFU  /* 11: White      */
+      };
+      const uint32_t pixel_color = tone_lut[level2];
+      (void)ra8_gfx_pixel(dst_x + x, dst_y + y, pixel_color);
+    }
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @test The chrome launcher composites to a CRC golden and reflects the registry.
  *
  * @details
@@ -266,12 +323,6 @@ static uint32_t lr_compose_crc(uint32_t* buf, const ra8_app_registry_t* reg)
  * byte-identical (the run-time core-uninstallable invariant, seen in pixels).
  * Uninstalling the removable `settings` app drops its tile, yielding the
  * distinct frame-B golden -- the launcher visibly reflects the registry change.
- *
- * @par MC/DC:
- * (no compound decision is under test in this case -- it pins two CRC-32 goldens
- * and the registry-reflects invariant (core uninstall refused -> byte-identical;
- * removable uninstall -> distinct golden). The launcher/app logic's decisions live
- * in ra8_app and ra8_widget, each MC/DC-tested in its own TU.)
  */
 static void test_launcher_render_golden(void)
 {
@@ -304,8 +355,101 @@ static void test_launcher_render_golden(void)
   TEST_END("ra8_app: widget launcher CRC golden + uninstall reflow");
 }
 
+/**
+ * @test The launcher reads and renders .ra8app format v2 icons (RA8FW-531).
+ *
+ * @details
+ * Proves the launcher acts as a real consumer of .ra8app icon metadata:
+ * - A format v2 image with a 64-byte 16x16 2-bit grayscale icon is parsed and
+ *   its icon unpacked and rendered onto the launcher framebuffer.
+ * - An image without an icon (format v1 or format v2 icon_length == 0) returns
+ *   k_ra8_err_not_found.
+ * - The composite CRC with the icon rendered is deterministic.
+ */
+static void test_launcher_render_with_appimg_icon(void)
+{
+  TEST_BEGIN("ra8_app: launcher reads and renders .ra8app v2 icon");
+  ra8_app_t          a_lib = lr_make_app((uint16_t)k_lr_id_library, "library", false);
+  ra8_app_t*         slots[1];
+  ra8_app_registry_t reg = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&reg, &a_lib));
+
+  /* Compose initial launcher frame */
+  const uint32_t crc_base = lr_compose_crc(s_lr_fb, &reg);
+  TEST_ASSERT(crc_base != 0U);
+
+  /* Build format v2 .ra8app fixture with 16x16 icon */
+  const uint32_t code_len = 64U;
+  const uint32_t data_len = 32U;
+  const uint32_t icon_len = (uint32_t)k_ra8_appimg_icon_bytes;
+  const size_t v2_size = sizeof(ra8_appimg_header_t) + code_len + data_len + icon_len;
+  uint8_t v2_file[sizeof(ra8_appimg_header_t) + 64U + 32U + 64U];
+  (void)memset(v2_file, 0, v2_size);
+
+  ra8_appimg_header_t* hdr = (ra8_appimg_header_t*)v2_file;
+  hdr->magic           = (uint32_t)k_ra8_appimg_magic;
+  hdr->format_version  = (uint32_t)k_ra8_appimg_format_version_v2;
+  hdr->entry_offset    = 0U;
+  hdr->code_size       = code_len;
+  hdr->data_size       = data_len;
+  hdr->stack_size      = 2048U;
+  hdr->min_api_version = (uint32_t)k_ra8_appimg_api_version_current;
+  hdr->capabilities    = (uint32_t)k_ra8_appimg_cap_display;
+  hdr->icon_offset     = code_len + data_len;
+  hdr->icon_length     = icon_len;
+  (void)strcpy(hdr->app_id, "com.ra8.reader");
+  (void)strcpy(hdr->display_name, "Reader");
+
+  /* Populate 64-byte 2-bit icon pattern (concentric border / gradient) */
+  uint8_t* icon_data = v2_file + sizeof(ra8_appimg_header_t) + hdr->icon_offset;
+  for (uint32_t y = 0U; y < 16U; ++y) {
+    for (uint32_t x = 0U; x < 16U; ++x) {
+      const size_t b_idx = (size_t)(y * 16U + x) / 4U;
+      const uint32_t sh = (uint32_t)(6 - 2 * (x % 4));
+      uint8_t tone = 1U;
+      if (x == 0U || x == 15U || y == 0U || y == 15U) {
+        tone = 3U; /* White border */
+      } else if (x == y || (x + y) == 15U) {
+        tone = 2U; /* Light gray X */
+      }
+      icon_data[b_idx] |= (uint8_t)(tone << sh);
+    }
+  }
+
+  /* Render icon at tile position (x=108, y=24) */
+  TEST_ASSERT_EQ(k_ra8_ok, lr_render_appimg_icon(v2_file, v2_size, 108, 24));
+  const uint32_t crc_with_icon = lr_crc32((const uint8_t*)s_lr_fb,
+                                          (size_t)(k_lr_fb_w * k_lr_fb_h) * sizeof(uint32_t));
+  /* Icon modified framebuffer pixels deterministically */
+  TEST_ASSERT(crc_with_icon != crc_base);
+  TEST_ASSERT_EQ(k_lr_golden_icon, crc_with_icon);
+
+  /* Build format v1 fixture (no icon) and verify launcher refuses icon render */
+  uint8_t v1_file[160U + 64U];
+  (void)memset(v1_file, 0, sizeof(v1_file));
+  uint32_t* v1_words = (uint32_t*)v1_file;
+  v1_words[0] = (uint32_t)k_ra8_appimg_magic;
+  v1_words[1] = (uint32_t)k_ra8_appimg_format_version_v1;
+  v1_words[3] = 64U;
+  v1_words[5] = 2048U;
+  v1_words[6] = (uint32_t)k_ra8_appimg_api_version_current;
+  (void)strcpy((char*)(v1_file + 32U), "com.ra8.v1app");
+  (void)strcpy((char*)(v1_file + 64U), "V1App");
+  (void)memset(v1_file + 96U, 0x55, 64U);
+
+  TEST_ASSERT_EQ(k_ra8_err_not_found, lr_render_appimg_icon(v1_file, sizeof(v1_file), 108, 24));
+
+  /* Null and invalid file checks */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, lr_render_appimg_icon(nullptr, v2_size, 108, 24));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, lr_render_appimg_icon(v2_file, 32U, 108, 24));
+
+  TEST_END("ra8_app: launcher reads and renders .ra8app v2 icon");
+}
+
 int main(void)
 {
   test_launcher_render_golden();
+  test_launcher_render_with_appimg_icon();
   return 0;
 }

@@ -1,6 +1,6 @@
 /**
  * @file ra8_appimg.h
- * @brief The `.ra8app` container header: identity, capabilities, signed span (RA8FW-293).
+ * @brief The `.ra8app` container header: identity, capabilities, signed span (RA8FW-293, RA8FW-531).
  * @ingroup grp_board
  *
  * @par Tag
@@ -19,6 +19,9 @@
  * 3. **Which bytes does the signature cover?** ::ra8_appimg_signed_span, the
  *    single definition of the signed region, so the signer and the verifier
  *    cannot disagree about it.
+ *
+ * Format revision 2 (RA8FW-531) adds icon metadata: a fixed 16x16 2-bit
+ * packed grayscale icon (64 bytes) carried in the signed payload.
  *
  * This header is the *format*, not the loader. It parses and validates; it
  * performs no cryptography and reads no filesystem. Signature verification
@@ -62,19 +65,23 @@ extern "C" {
 
 /**
  * @enum ra8_appimg_size_t
- * @brief Fixed byte-lengths of the header's sized fields.
+ * @brief Fixed byte-lengths of the header's sized fields and icon geometry.
  *
  * @details
  * An Ed25519 signature is the raw 64-byte `R || S` string (RFC 8032 Sec 5.1.6).
  * The two text fields are fixed-width so the header has one size on every
  * toolchain; each carries a NUL-terminated string and is zero-padded to width.
+ * Format v2 adds fixed 16x16 2-bit packed grayscale icon (64 bytes).
  *
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra8_appimg_sig_bytes    = 64U, /**< Ed25519 raw R||S signature length.   */
-  k_ra8_appimg_app_id_cap   = 32U, /**< `app_id` field width, incl. the NUL. */
-  k_ra8_appimg_name_cap     = 32U, /**< `display_name` width, incl. the NUL. */
+  k_ra8_appimg_sig_bytes    = 64U, /**< Ed25519 raw R||S signature length.    */
+  k_ra8_appimg_app_id_cap   = 32U, /**< `app_id` field width, incl. the NUL.  */
+  k_ra8_appimg_name_cap     = 32U, /**< `display_name` width, incl. the NUL.  */
+  k_ra8_appimg_icon_width   = 16U, /**< Format v2 fixed icon width (pixels).  */
+  k_ra8_appimg_icon_height  = 16U, /**< Format v2 fixed icon height (pixels). */
+  k_ra8_appimg_icon_bytes   = 64U, /**< Format v2 2-bit packed icon bytes.    */
 } ra8_appimg_size_t;
 
 /**
@@ -93,8 +100,12 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   /** ASCII "RA8A": the container marker at the head of every `.ra8app` file. */
   k_ra8_appimg_magic = 0x52413841U,
-  /** Header format revision this implementation reads. */
-  k_ra8_appimg_format_version = 0x00000001U,
+  /** Legacy format revision (v1). */
+  k_ra8_appimg_format_version_v1 = 0x00000001U,
+  /** Format revision with icon metadata (v2). */
+  k_ra8_appimg_format_version_v2 = 0x00000002U,
+  /** Default header format revision. */
+  k_ra8_appimg_format_version = 0x00000002U,
   /** Syscall-table generation the running firmware publishes. */
   k_ra8_appimg_api_version_current = 0x00000002U,
   /** Per-segment byte cap, the Non-Secure region a module can be given. */
@@ -130,49 +141,51 @@ typedef enum : uint32_t {
  *
  * @details
  * Field order is the wire order: eight 32-bit words, the two fixed-width text
- * fields, then the signature. Every field is naturally aligned and the struct
- * carries no implicit padding, so a read of the first `sizeof(ra8_appimg_header_t)`
- * bytes of the file *is* the parsed header on any little-endian target.
+ * fields, icon offset and length (v2), then the signature. Every field is
+ * naturally aligned and the struct carries no implicit padding.
  *
- * `entry_offset`, `code_size` and `data_size` describe the ThreadX module image
- * that follows the header; `stack_size` is the module thread's stack, sized by
- * the app and honoured by the Module Manager.
+ * On disk, format v1 headers occupy 160 bytes (ending after `display_name`
+ * directly into the 64-byte `signature`). Format v2 headers occupy 168 bytes
+ * (including `icon_offset` and `icon_length` before `signature`). Both parse
+ * into this struct, with `icon_offset = 0` and `icon_length = 0` for v1.
  *
- * @invariant `magic == k_ra8_appimg_magic` for a valid container.
- * @invariant `format_version == k_ra8_appimg_format_version`.
- * @invariant `(capabilities & ~k_ra8_appimg_cap_known) == 0`.
- * @invariant `app_id` and `display_name` each contain a NUL within their width.
- *
- * @note The signature field is the last member on purpose: the signed span is
- *       then one contiguous run of bytes ending where `signature` begins, plus
- *       the payload that follows the header. See ::ra8_appimg_signed_span.
- *
- * @see ra8_appimg_parse
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t magic;           /**< ::k_ra8_appimg_magic.                      */
-  uint32_t format_version;  /**< ::k_ra8_appimg_format_version.             */
-  uint32_t entry_offset;    /**< Module entry, bytes from the payload base. */
-  uint32_t code_size;       /**< Instruction-area length, bytes.            */
-  uint32_t data_size;       /**< Data-area length, bytes.                   */
-  uint32_t stack_size;      /**< Module thread stack, bytes.                */
-  uint32_t min_api_version; /**< Lowest host API generation that will do.   */
-  uint32_t capabilities;    /**< ::ra8_appimg_capability_t bitfield.        */
-  /** Reverse-DNS application identity, e.g. `com.example.reader`. */
+  /** ASCII "RA8A" (`0x52413841`). */
+  uint32_t magic;
+  /** Format revision (`1` for v1, `2` for v2). */
+  uint32_t format_version;
+  /** Byte offset of the entry point into the code segment. */
+  uint32_t entry_offset;
+  /** Byte length of the module code (text + rodata) segment. */
+  uint32_t code_size;
+  /** Byte length of the module data segment (0 for pure code). */
+  uint32_t data_size;
+  /** Stack allocation the loader must give the module, bytes. */
+  uint32_t stack_size;
+  /** Lowest syscall-table generation the app can run against. */
+  uint32_t min_api_version;
+  /** Capability bitfield the app requests. */
+  uint32_t capabilities;
+  /** Reverse-DNS identifier: unique, immutable, NUL-terminated. */
   char app_id[k_ra8_appimg_app_id_cap];
   /** Human-facing label the launcher shows. */
   char display_name[k_ra8_appimg_name_cap];
+  /** Byte offset of the icon from the start of the payload (v2, 0 if none). */
+  uint32_t icon_offset;
+  /** Byte length of the icon (v2, 0 if none; 64 for 16x16 2-bit grayscale). */
+  uint32_t icon_length;
   /** Ed25519 raw `R || S` over the span ::ra8_appimg_signed_span reports. */
   uint8_t signature[k_ra8_appimg_sig_bytes];
 } ra8_appimg_header_t;
 
-/* Eight 32-bit words precede the two text fields and the signature block; the
- * assert pins the no-padding layout the on-disk format depends on. */
 static_assert(sizeof(ra8_appimg_header_t) ==
-                (8U * sizeof(uint32_t)) + (size_t)k_ra8_appimg_app_id_cap +
+                (10U * sizeof(uint32_t)) + (size_t)k_ra8_appimg_app_id_cap +
                   (size_t)k_ra8_appimg_name_cap + (size_t)k_ra8_appimg_sig_bytes,
               "ra8_appimg_header_t must have no implicit padding");
+static_assert(sizeof(ra8_appimg_header_t) == 168U,
+              "ra8_appimg_header_t must be exactly 168 bytes");
 
 /**
  * @struct ra8_appimg_span_t
@@ -194,11 +207,11 @@ typedef struct {
  * @brief Read and validate a `.ra8app` header from the head of a file image.
  *
  * @details
- * Copies the leading `sizeof(ra8_appimg_header_t)` bytes into @p out, then
- * refuses anything that is not a loadable container of this revision: wrong
- * magic or format version, an API generation this firmware does not implement,
- * an undefined capability bit, a text field with no NUL inside its width, a
- * zero or over-cap code size, an over-cap data size, a stack below
+ * Parses format v1 or v2 headers into @p out, then refuses anything that is
+ * not a loadable container: wrong magic or format version, an API generation
+ * this firmware does not implement, an undefined capability bit, a text field
+ * with no NUL inside its width, an invalid icon specification, a zero or
+ * over-cap code size, an over-cap data size, a stack below
  * ::k_ra8_appimg_stack_min, an entry offset outside the code area, or a file
  * too short to hold the payload the header declares.
  *
@@ -218,8 +231,8 @@ typedef struct {
  *                                     a text field is malformed.
  * @retval k_ra8_err_not_supported     `min_api_version` exceeds
  *                                     ::k_ra8_appimg_api_version_current.
- * @retval k_ra8_err_out_of_range      A declared size or the entry offset is
- *                                     outside its permitted range.
+ * @retval k_ra8_err_out_of_range      A declared size, entry offset or icon
+ *                                     range is outside its permitted range.
  *
  * @pre @p bytes addresses at least @p len readable bytes.
  * @post On any non-`k_ra8_ok` return @p out is unmodified and nothing is loaded.
@@ -238,14 +251,8 @@ ra8_appimg_parse(const uint8_t* bytes, size_t len, ra8_appimg_header_t* out);
  *
  * @details
  * The signed region is everything except the signature field itself: the
- * header's first `offsetof(ra8_appimg_header_t, signature)` bytes, and then the
- * payload from the end of the header to the end of the file. Those two runs are
- * *not* contiguous, so the span returned here is the leading run and the caller
- * hashes the payload run after it; ::ra8_appimg_payload_span names the second.
- *
- * Defining both here is the point of the call: the signer in
- * `scripts/secrets/rot_sign.py` and the verifier of RA8FW-291 read one definition
- * rather than two implementations that agree until they do not.
+ * header's leading run up to `signature`, and then the payload from the end
+ * of the header to the end of the file.
  *
  * @param[in]  header Validated header; non-NULL.
  * @param[in]  len    Total file length in bytes.
@@ -268,9 +275,8 @@ ra8_appimg_signed_span(const ra8_appimg_header_t* header, size_t len, ra8_appimg
  * @brief Report the byte range the module payload occupies.
  *
  * @details
- * The payload begins immediately after the header and runs to the end of the
- * declared image: `code_size + data_size` bytes. It is the second half of the
- * signed material and the region the Module Manager maps.
+ * The payload begins immediately after the header on disk and runs to the end
+ * of the declared material: `code_size + data_size` bytes (and icon if present).
  *
  * @param[in]  header Validated header; non-NULL.
  * @param[in]  len    Total file length in bytes.
@@ -290,12 +296,59 @@ ra8_appimg_signed_span(const ra8_appimg_header_t* header, size_t len, ra8_appimg
 ra8_appimg_payload_span(const ra8_appimg_header_t* header, size_t len, ra8_appimg_span_t* out);
 
 /**
- * @brief Decide whether a host grant satisfies an app's declared manifest.
+ * @brief Report the byte range the app icon occupies within the `.ra8app` file.
  *
  * @details
- * The one place the comparison is written: every bit the app declares must
- * appear in @p granted. An app that declares nothing is satisfied by any grant,
- * including ::k_ra8_appimg_cap_none.
+ * If the header declares no icon (`icon_length == 0`), @p out is zeroed and
+ * `k_ra8_ok` is returned. If an icon is present, @p out receives the
+ * file-relative offset and length.
+ *
+ * @param[in]  header Validated header; non-NULL.
+ * @param[in]  len    Total file length in bytes.
+ * @param[out] out    Receives the icon run; non-NULL.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Span reported.
+ * @retval k_ra8_err_null_ptr     @p header or @p out is NULL.
+ * @retval k_ra8_err_invalid_size @p len is shorter than header + icon range.
+ * @retval k_ra8_err_out_of_range Declared icon range is invalid.
+ *
+ * @post On any non-`k_ra8_ok` return @p out is zeroed.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_appimg_icon_span(const ra8_appimg_header_t* header, size_t len, ra8_appimg_span_t* out);
+
+/**
+ * @brief Retrieve a pointer to the app icon data from an `.ra8app` image buffer.
+ *
+ * @details
+ * If the header declares an icon, reports a direct pointer into @p bytes and
+ * sets `*out_len = 64`. If no icon is present, sets `*out_icon = NULL` and
+ * `*out_len = 0` and returns `k_ra8_ok`.
+ *
+ * @param[in]  header   Validated header; non-NULL.
+ * @param[in]  bytes    Start of the `.ra8app` file image; non-NULL.
+ * @param[in]  len      Total readable byte length of @p bytes.
+ * @param[out] out_icon Receives pointer to 64-byte icon (or NULL); non-NULL.
+ * @param[out] out_len  Receives icon byte length (64 or 0); non-NULL.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Icon reported.
+ * @retval k_ra8_err_null_ptr     Any argument is NULL.
+ * @retval k_ra8_err_invalid_size @p len cannot hold the icon.
+ * @retval k_ra8_err_out_of_range Icon range is invalid.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_appimg_get_icon(const ra8_appimg_header_t* header,
+                    const uint8_t*            bytes,
+                    size_t                    len,
+                    const uint8_t**           out_icon,
+                    size_t*                   out_len);
+
+/**
+ * @brief Decide whether a host grant satisfies an app's declared manifest.
  *
  * @param[in] header  Validated header; non-NULL.
  * @param[in] granted Capability bits the host is willing to give.

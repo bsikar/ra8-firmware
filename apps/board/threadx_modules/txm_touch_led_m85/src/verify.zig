@@ -23,7 +23,17 @@ pub const cap_display: u32 = 0x1;
 pub const cap_led: u32 = 0x8;
 /// Host grant for this demo: display + LED access only (no storage/network).
 pub const granted: u32 = cap_display | cap_led;
-pub const header_bytes: usize = 160;
+pub const header_bytes: usize = 168;
+
+/// Dynamic header size based on format version: 160 for v1, 168 for v2.
+pub fn headerBytes(bytes: []const u8) usize {
+    if (bytes.len >= 8) {
+        const version = std.mem.readInt(u32, bytes[4..8], .little);
+        if (version == 1) return 160;
+        if (version == 2) return 168;
+    }
+    return header_bytes;
+}
 
 fn ed25519(
     ctx: ?*anyopaque,
@@ -70,7 +80,8 @@ pub fn refusesWithoutLed(bytes: []const u8) bool {
 
 /// True when the gate refuses `bytes` with its last payload byte flipped.
 pub fn refusesTamper(bytes: []u8) bool {
-    if (bytes.len <= header_bytes) return false;
+    const hdr_len = headerBytes(bytes);
+    if (bytes.len <= hdr_len) return false;
     const last = bytes.len - 1;
     bytes[last] ^= 0x01;
     defer bytes[last] ^= 0x01;
@@ -83,7 +94,8 @@ pub const Manifest = struct {
 };
 
 pub fn manifest(bytes: []const u8) ?Manifest {
-    if (bytes.len < header_bytes) return null;
+    const hdr_len = headerBytes(bytes);
+    if (bytes.len < hdr_len) return null;
     const capabilities = std.mem.readInt(u32, bytes[7 * @sizeOf(u32) ..][0..4], .little);
     const field = bytes[8 * @sizeOf(u32) ..][0..32];
     const end = std.mem.indexOfScalar(u8, field, 0) orelse field.len;

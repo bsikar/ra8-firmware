@@ -13,9 +13,19 @@ pub const hello_name = "txm_hello_m33.ra8app";
 pub const fault_name = "txm_fault_m33.ra8app";
 /// Largest image read into RAM.
 pub const file_max = 64 * 1024;
-/// sizeof(appimg.Header): eight u32 fields, app_id 32, display_name 32,
-/// signature 64 (libs/ra8_app/src/internal/appimg.zig).
-pub const header_bytes = 160;
+/// sizeof(appimg.Header): format v1 is 160 bytes, format v2 is 168 bytes
+/// (libs/ra8_app/src/internal/appimg.zig).
+pub const header_bytes = 168;
+
+/// Dynamic header size based on format version: 160 for v1, 168 for v2.
+pub fn headerBytes(bytes: []const u8) usize {
+    if (bytes.len >= 8) {
+        const version = std.mem.readInt(u32, bytes[4..8], .little);
+        if (version == 1) return 160;
+        if (version == 2) return 168;
+    }
+    return header_bytes;
+}
 /// appimg.Header.magic, "A8AR" read little-endian.
 pub const appimg_magic: u32 = 0x5241_3841;
 const code_size_offset = 12;
@@ -83,11 +93,23 @@ const backend = FsBackend{ .read_block = &readBlocks, .write_block = &writeBlock
 /// True when `bytes` opens with an .ra8app header whose declared code and
 /// data sizes account for exactly the rest of the file.
 pub fn headerOk(bytes: []const u8) bool {
-    if (bytes.len < header_bytes) return false;
+    if (bytes.len < 8) return false;
     if (std.mem.readInt(u32, bytes[0..4], .little) != appimg_magic) return false;
+    const version = std.mem.readInt(u32, bytes[4..8], .little);
+    const hdr_len: u64 = if (version == 1) 160 else if (version == 2) 168 else return false;
+    if (bytes.len < hdr_len) return false;
     const code = std.mem.readInt(u32, bytes[code_size_offset..][0..4], .little);
     const data = std.mem.readInt(u32, bytes[data_size_offset..][0..4], .little);
-    return @as(u64, header_bytes) + code + data == bytes.len;
+    if (version == 1) {
+        return hdr_len + code + data == bytes.len;
+    }
+    const icon_offset = std.mem.readInt(u32, bytes[96..100], .little);
+    const icon_length = std.mem.readInt(u32, bytes[100..104], .little);
+    const payload = if (icon_length > 0)
+        @max(@as(u64, code) + data, @as(u64, icon_offset) + icon_length)
+    else
+        @as(u64, code) + data;
+    return hdr_len + payload == bytes.len;
 }
 
 var mounted: ?*anyopaque = null;
@@ -118,10 +140,17 @@ fn readEmbeddedApp(name: [*:0]const u8, buf: []u8) Fail!usize {
     const is_fault = std.mem.orderZ(u8, name, fault_name) == .eq;
     if (!is_hello and !is_fault) return error.open;
 
-    if (total < header_bytes) return error.header;
+    if (total < 8) return error.header;
+    const hdr_len0 = headerBytes(bytes[0..@min(total, 168)]);
+    if (total < hdr_len0) return error.header;
     const code0 = std.mem.readInt(u32, bytes[code_size_offset..][0..4], .little);
     const data0 = std.mem.readInt(u32, bytes[data_size_offset..][0..4], .little);
-    const len0: usize = header_bytes + code0 + data0;
+    const version0 = std.mem.readInt(u32, bytes[4..8], .little);
+    const payload0: usize = if (version0 == 2 and std.mem.readInt(u32, bytes[100..104], .little) > 0)
+        @max(code0 + data0, std.mem.readInt(u32, bytes[96..100], .little) + std.mem.readInt(u32, bytes[100..104], .little))
+    else
+        code0 + data0;
+    const len0: usize = hdr_len0 + payload0;
     if (len0 > total or !headerOk(bytes[0..len0])) return error.header;
 
     if (is_hello) {
@@ -131,14 +160,21 @@ fn readEmbeddedApp(name: [*:0]const u8, buf: []u8) Fail!usize {
     }
 
     var offset = len0;
-    while (offset + header_bytes <= total) : (offset += 1) {
+    while (offset + 8 <= total) : (offset += 1) {
         if (std.mem.readInt(u32, bytes[offset..][0..4], .little) == appimg_magic) break;
     }
-    if (offset + header_bytes > total) return error.open;
+    if (offset + 8 > total) return error.open;
+    const hdr_len1 = headerBytes(bytes[offset..@min(total, offset + 168)]);
+    if (offset + hdr_len1 > total) return error.open;
 
     const code1 = std.mem.readInt(u32, bytes[offset + code_size_offset..][0..4], .little);
     const data1 = std.mem.readInt(u32, bytes[offset + data_size_offset..][0..4], .little);
-    const len1: usize = header_bytes + code1 + data1;
+    const version1 = std.mem.readInt(u32, bytes[offset + 4..][0..4], .little);
+    const payload1: usize = if (version1 == 2 and std.mem.readInt(u32, bytes[offset + 100..][0..4], .little) > 0)
+        @max(code1 + data1, std.mem.readInt(u32, bytes[offset + 96..][0..4], .little) + std.mem.readInt(u32, bytes[offset + 100..][0..4], .little))
+    else
+        code1 + data1;
+    const len1: usize = hdr_len1 + payload1;
     if (offset + len1 > total or !headerOk(bytes[offset..][0..len1])) return error.header;
     if (len1 > buf.len) return error.size;
     @memcpy(buf[0..len1], bytes[offset..][0..len1]);

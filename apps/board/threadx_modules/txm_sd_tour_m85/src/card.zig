@@ -13,9 +13,19 @@ const std = @import("std");
 pub const tour_name = "txm_tour_m33.ra8app";
 /// Largest image read into RAM.
 pub const file_max = 64 * 1024;
-/// sizeof(appimg.Header): eight u32 fields, app_id 32, display_name 32,
-/// signature 64 (libs/ra8_app/src/internal/appimg.zig).
-pub const header_bytes = 160;
+/// sizeof(appimg.Header): format v1 is 160 bytes, format v2 is 168 bytes
+/// (libs/ra8_app/src/internal/appimg.zig).
+pub const header_bytes = 168;
+
+/// Dynamic header size based on format version: 160 for v1, 168 for v2.
+pub fn headerBytes(bytes: []const u8) usize {
+    if (bytes.len >= 8) {
+        const version = std.mem.readInt(u32, bytes[4..8], .little);
+        if (version == 1) return 160;
+        if (version == 2) return 168;
+    }
+    return header_bytes;
+}
 /// appimg.Header.magic, "A8AR" read little-endian.
 pub const appimg_magic: u32 = 0x5241_3841;
 const code_size_offset = 12;
@@ -83,11 +93,23 @@ const backend = FsBackend{ .read_block = &readBlocks, .write_block = &writeBlock
 /// True when `bytes` opens with an .ra8app header whose declared code and
 /// data sizes account for exactly the rest of the file.
 pub fn headerOk(bytes: []const u8) bool {
-    if (bytes.len < header_bytes) return false;
+    if (bytes.len < 8) return false;
     if (std.mem.readInt(u32, bytes[0..4], .little) != appimg_magic) return false;
+    const version = std.mem.readInt(u32, bytes[4..8], .little);
+    const hdr_len: u64 = if (version == 1) 160 else if (version == 2) 168 else return false;
+    if (bytes.len < hdr_len) return false;
     const code = std.mem.readInt(u32, bytes[code_size_offset..][0..4], .little);
     const data = std.mem.readInt(u32, bytes[data_size_offset..][0..4], .little);
-    return @as(u64, header_bytes) + code + data == bytes.len;
+    if (version == 1) {
+        return hdr_len + code + data == bytes.len;
+    }
+    const icon_offset = std.mem.readInt(u32, bytes[96..100], .little);
+    const icon_length = std.mem.readInt(u32, bytes[100..104], .little);
+    const payload = if (icon_length > 0)
+        @max(@as(u64, code) + data, @as(u64, icon_offset) + icon_length)
+    else
+        @as(u64, code) + data;
+    return hdr_len + payload == bytes.len;
 }
 
 var mounted: ?*anyopaque = null;

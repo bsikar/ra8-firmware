@@ -88,7 +88,7 @@ fn signatureAbsent(signature: []const u8) bool {
 /// Exposed on its own because the signer side needs it without needing a
 /// verify backend.
 pub fn signedMessage(header: appimg.Header, bytes: []const u8) appimg.Error!Message {
-    const head = try appimg.signedSpan(bytes.len);
+    const head = try appimg.signedSpan(header, bytes.len);
     const tail = try appimg.payloadSpan(header, bytes.len);
     return .{
         .head = bytes[head.offset..][0..head.length],
