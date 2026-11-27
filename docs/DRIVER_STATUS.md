@@ -102,7 +102,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_port_utils` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_pwr` | 0 | 1 | 9 | 1 | 0 |
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
-| `ra8_reset` | 0 | 1 | 9 | 3 | 3 |
+| `ra8_reset` | 0 | 1 | 9 | 3 | 4 |
 | `ra8_rmac` | 1 | 2 | 36 | 9 | 0 |
 | `ra8_rsip` | 6 | 8 | 69 | 12 | 5 |
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |

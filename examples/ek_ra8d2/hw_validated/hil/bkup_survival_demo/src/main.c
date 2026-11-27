@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/bkup_survival_demo/src/main.c
  * @brief VBATT backup-register read/write + reset-survival demo (EK-RA8D2)
  *
  * @par Tag
@@ -9,44 +9,26 @@
  * The RA8D2 keeps 128 bytes (32 x 32-bit ``VBTBKRn`` words) of backup
  * register storage in the VBATT-backed power domain, which retains its
  * contents across a CPU reset (and, with a battery on VBATT, across a
- * power cycle). This demo exercises both halves of that contract:
+ * power cycle). This demo exercises both halves of that contract across two
+ * self-orchestrated boots:
  *
- *   1. **Read / write window.** Words 0..29 are filled with a
- *      deterministic pattern, read back, and compared byte-exact
- *      (``g_bkup_rw_ok``).
- *   2. **Reset survival.** Word 30 holds a sentinel and word 31 a boot
- *      counter. On the first boot the sentinel is absent, so it is
- *      written and the counter set to 1 (``g_bkup_survived = 0``). After
- *      a reset the sentinel is found intact, the counter is incremented,
- *      and ``g_bkup_survived = 1`` -- proving the domain retained state.
- *
- * Bring-up: CGC + SysTick + SCI8 + LEDs. Once a second the loop reports
- * ``"bkup: rw=ok survived=Y boot=3\r\n"`` on the J-Link OB CDC channel.
- * LED1 toggles while the read/write window is healthy; LED2 toggles if it
- * ever mismatches.
+ *   1. **Cold / non-software boot (boot=1).** Clears any stale sentinel,
+ *      writes and verifies words 0..29 (``g_bkup_rw_ok``), plants the
+ *      sentinel in word 30 and ``1`` in word 31 (``g_bkup_survived = 0``),
+ *      prints ``bkup: rw=ok survived=N boot=1``, flushes UART, and issues
+ *      ``ra8_reset_software_reset()``.
+ *   2. **Software-reset boot (boot=2).** Observes reset cause
+ *      ``k_ra8_reset_cause_software``, reads the retained sentinel intact,
+ *      increments word 31 to ``2`` (``g_bkup_survived = 1``), and reports
+ *      ``bkup: rw=ok survived=Y boot=2`` at 1 Hz while toggling LED1.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Silicon status (issue RA8FW-254).** The dominant precondition for a live
- * VBTBKRn window is that voltage monitor 0 (LVD0) reset is enabled via the
- * ``OFS1.PVDAS`` option byte (HUM Ch 12.1.3 p 499, Ch 12.3.2 p 514); this app
- * sets ``OFS1 = 0xFFFFFFF0`` in ``CMakeLists.txt``. Bench debugger reads with
- * the default ``OFS1 = 0xFFFFFFFF`` (LVD0 off) show the whole VBATT area held
- * in ``VBATT_POR`` reset (``VBPORF = 1``) with every write dropped -- ``rw=BAD``.
- * The current HIL flash path (``scripts/hil/flash.sh``) strips the ``.option_
- * setting_*`` sections, so the ``OFS1`` change does not reach silicon through
- * it; on-silicon ``rw=ok`` needs a full-image / option-byte flash (see README).
- *
- * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the VBTBKRn
- * window as a reset-retained domain (``board_periph_bkup.c``) whose writes are
- * gated on ``VBTBER.VBAE`` (HUM Ch 12.2.6 p 504), so the read/write half passes
- * (``rw=ok``) only because this demo first arms VBAE via ``ra8_bkup_init`` -- a
- * firmware that forgot the VBAE step now reports ``rw=BAD`` on the fake too. The
- * emulator cannot model the ``OFS1``/LVD0 option-byte prerequisite (there is no
- * option memory in the fake), which is precisely why the emulator reports ``rw=ok``
- * while the bench reports ``rw=BAD``. ``--reboot 1`` re-runs from the reset
- * vector with the retained domain, so the second boot finds the sentinel and
- * reports ``survived=Y`` (the ``ra8_emulator_smoke.sh`` gate exercises this).
+ * @note **Silicon & emulator behavior (RA8FW-254).** Register access to
+ * ``VBT*`` requires SYSC ``PRCR.PRC1`` unlocked (HUM Ch 13.1 Table 13.1
+ * p 520-521) and ``VBTBER.VBAE = 1`` with >= 500 ns settle (HUM Ch 12.2.6
+ * p 504), both handled by ``ra8_bkup``. Both physical EK-RA8D2 silicon and
+ * ``tools/ra8_emulator`` retain ``VBTBKRn`` across ``AIRCR.SYSRESETREQ``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -64,6 +46,7 @@
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_reset.h"
 #include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
@@ -71,11 +54,14 @@ static const char* s_tag = "bkup_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_bkup_demo_baud      = 115200U,     /**< SCI8 console baud rate.            */
-  k_bkup_demo_period_ms = 1000U,       /**< Delay between reports.             */
-  k_bkup_demo_sentinel  = 0x600DCAFEU, /**< "good cafe" reset-survival marker. */
-  k_bkup_demo_pat_mult  = 0x01010101U, /**< Per-word pattern multiplier.       */
-  k_bkup_demo_pat_xor   = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.         */
+  k_bkup_demo_baud            = 115200U,     /**< SCI8 console baud rate.            */
+  k_bkup_demo_period_ms       = 1000U,       /**< Delay between reports.             */
+  k_bkup_demo_reset_settle_ms = 100U,        /**< UART settle before SW reset.       */
+  k_bkup_demo_dec_base        = 10U,         /**< Decimal radix for boot counter.    */
+  k_bkup_demo_sentinel        = 0x600DCAFEU, /**< "good cafe" reset-survival marker. */
+  k_bkup_demo_pat_mult        = 0x01010101U, /**< Per-word pattern multiplier.       */
+  k_bkup_demo_pat_xor         = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.         */
+  k_bkup_demo_rstsr_all_mask  = 0x7FFFFFFFU, /**< Clear all RSTSR0/1 cause flags.    */
 } bkup_demo_config_t;
 
 /** @brief Backup-word layout (32 words total; 0..29 data, 30/31 reserved). */
@@ -117,6 +103,12 @@ static const uint8_t s_bkup_demo_surv_y[] = "survived=Y ";
  * @since 0.1.0
  */
 static const uint8_t s_bkup_demo_surv_n[] = "survived=N ";
+/**
+ * @var s_bkup_demo_boot_msg
+ * @brief Prefix before the numeric boot counter in each report line.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_boot_msg[] = "boot=";
 /**
  * @var s_bkup_demo_crlf
  * @brief Console line terminator for each periodic report.
@@ -217,25 +209,14 @@ RA8_INTERNAL static void internal_bkup_demo_setup_or_halt(void)
     internal_bkup_demo_panic_halt();
   }
 
-  /* Bring the VBATT backup-register block up before any VBTBKRn touch. Two
-   * silicon preconditions must both hold or every VBTBKRn write is dropped:
-   *
-   *   1. Voltage monitor 0 (LVD0) reset must be enabled -- OFS1.PVDAS = 0
-   *      (HUM Ch 12.1.3 p 499: "It is necessary to enable voltage monitor 0
-   *      resets to use the battery backup function"; Ch 12.3.2 p 514). This
-   *      is an option byte set in CMakeLists.txt (OFS1 = 0xFFFFFFF0); without
-   *      it the VBATT area stays held in VBATT_POR reset (VBPORF = 1) and the
-   *      whole block -- VBTBPCR1, VBTBKRn -- rejects writes. This is the
-   *      dominant RA8FW-254 root cause, verified on the bench by debugger reads.
-   *   2. VBTBER.VBAE must be 1 before access -- HUM Ch 12.2.6 p 504 ("You
-   *      must write 1 to VBAE before accessing VBTBKR", then "wait for at
-   *      least 500 ns"). VBAE resets to 1, but ra8_bkup_init writes it and
-   *      performs the mandatory settle so the sequence is explicit/correct.
+  /* Bring the VBATT backup-register block up before any VBTBKRn touch:
+   * ``ra8_bkup`` unlocks SYSC ``PRCR.PRC1`` around every ``VBT*`` write
+   * (HUM Ch 13.1 Table 13.1 p 520-521) and writes ``VBTBER.VBAE = 1`` with the
+   * HUM Ch 12.2.6 p 504 >= 500 ns settle so the 128-byte store is writable.
    *
    * On the EK-RA8D2 VBATT is tied to VCC, so the battery power-supply switch
-   * stays stopped (enable_switch = false). The window stays open for the life
-   * of the demo (a J-Link/SYSRESETREQ reset keeps VCC/VBATT powered, so
-   * leaving VBAE = 1 does not lose data). */
+   * stays stopped (enable_switch = false). An AIRCR.SYSRESETREQ software reset
+   * keeps VCC/VBATT powered, retaining VBTBKRn across the two boots. */
   const ra8_bkup_config_t bkup_cfg = {
     .vdet_level    = k_ra8_bkup_vdet_2p80v,
     .enable_switch = false,
@@ -367,6 +348,87 @@ RA8_INTERNAL static void internal_bkup_demo_report_survival(void)
   (void)ra8_board_uart_console_write(tag, (size_t)len);
 }
 
+/**
+ * @brief Write an unsigned 32-bit decimal counter to the UART console.
+ * @param[in] value Counter value to format in base 10.
+ */
+RA8_INTERNAL static void internal_bkup_demo_put_u32(uint32_t value)
+{
+  uint8_t  digits[10] = {};
+  uint32_t count      = 0U;
+  uint32_t rem        = value;
+
+  do {
+    digits[count] = (uint8_t)('0' + (rem % (uint32_t)k_bkup_demo_dec_base));
+    rem /= (uint32_t)k_bkup_demo_dec_base;
+    ++count;
+  } while ((rem != 0U) && (count < (uint32_t)sizeof(digits)));
+
+  while (count > 0U) {
+    --count;
+    (void)ra8_board_uart_console_write(&digits[count], 1U);
+  }
+}
+
+/**
+ * @brief Emit one full status line: rw verdict, survival flag, and boot count.
+ * @param[in] good True when backup pattern read-back matched word-for-word.
+ */
+RA8_INTERNAL static void internal_bkup_demo_emit_status(bool good)
+{
+  if (good) {
+    (void)ra8_board_uart_console_write(s_bkup_demo_ok_msg,
+                                       (size_t)(sizeof(s_bkup_demo_ok_msg) - 1U));
+  } else {
+    (void)ra8_board_uart_console_write(s_bkup_demo_bad_msg,
+                                       (size_t)(sizeof(s_bkup_demo_bad_msg) - 1U));
+  }
+  internal_bkup_demo_report_survival();
+  (void)ra8_board_uart_console_write(s_bkup_demo_boot_msg,
+                                     (size_t)(sizeof(s_bkup_demo_boot_msg) - 1U));
+  internal_bkup_demo_put_u32(g_bkup_boot_count);
+  (void)ra8_board_uart_console_write(s_bkup_demo_crlf, (size_t)(sizeof(s_bkup_demo_crlf) - 1U));
+}
+
+/**
+ * @brief Return true only when entry matches our Boot 1 -> Boot 2 self-reset.
+ *
+ * @param[in] rstsr1    Raw RSTSR1 flags captured on entry.
+ * @param[in] sentinel  Backup sentinel read before planting/incrementing.
+ * @param[in] prev_boot Previous boot counter read from backup storage.
+ * @return True when SWRF is set right after Boot 1 planted sentinel + boot=1.
+ */
+[[nodiscard]] RA8_INTERNAL static bool
+internal_bkup_demo_is_boot2(uint32_t rstsr1, uint32_t sentinel, uint32_t prev_boot)
+{
+  if ((rstsr1 & (uint32_t)k_ra8_reset_rstsr1_swrf_msk) == 0U) {
+    return false;
+  }
+  return (sentinel == (uint32_t)k_bkup_demo_sentinel) && (prev_boot == 1U);
+}
+
+/**
+ * @brief Run one rw check, emit Boot 1 status, and trigger software reset.
+ * @note Never returns; calls ``ra8_reset_software_reset()`` when rw passed.
+ */
+[[noreturn]] RA8_INTERNAL static void internal_bkup_demo_cold_boot_reset_or_halt(void)
+{
+  uint8_t         rw   = 0U;
+  const ra8_err_t err  = internal_bkup_demo_rw_check(&rw);
+  const bool      good = (err == k_ra8_ok && rw != 0U);
+  g_bkup_rw_ok         = good ? 1U : 0U;
+
+  internal_bkup_demo_emit_status(good);
+  (void)ra8_board_uart_console_flush();
+  if (!good) {
+    (void)ra8_bkup_write_word((uint8_t)k_bkup_demo_idx_sentinel, 0U);
+    internal_bkup_demo_panic_halt();
+  }
+  ra8_delay_ms((uint32_t)k_bkup_demo_reset_settle_ms);
+  ra8_reset_software_reset();
+  internal_bkup_demo_panic_halt();
+}
+
 void main(void)
 {
   internal_bkup_demo_setup_or_halt();
@@ -375,27 +437,53 @@ void main(void)
    * are armed by this demo. */
   ra8_isr_globals_enable();
 
+  if (ra8_reset_init() != k_ra8_ok) {
+    internal_bkup_demo_panic_halt();
+  }
+  ra8_reset_raw_t raw = {};
+  if (ra8_reset_get_raw(&raw) != k_ra8_ok) {
+    internal_bkup_demo_panic_halt();
+  }
+  /* Sticky RSTSR0/1 flags (for example PORF or WDTRF from earlier runs)
+   * can mask SWRF, while J-Link flash reset raises SWRF via SYSRESETREQ.
+   * Clear all flags on entry and gate Boot 2 on raw SWRF + boot=1 state. */
+  if (ra8_reset_clear_cause((uint32_t)k_bkup_demo_rstsr_all_mask) != k_ra8_ok) {
+    internal_bkup_demo_panic_halt();
+  }
+
+  uint32_t sentinel  = 0U;
+  uint32_t prev_boot = 0U;
+  if ((ra8_bkup_read_word((uint8_t)k_bkup_demo_idx_sentinel, &sentinel) != k_ra8_ok) ||
+      (ra8_bkup_read_word((uint8_t)k_bkup_demo_idx_boot, &prev_boot) != k_ra8_ok)) {
+    internal_bkup_demo_panic_halt();
+  }
+  const bool boot2 = internal_bkup_demo_is_boot2(raw.rstsr1, sentinel, prev_boot);
+
+  if (!boot2) {
+    /* Fresh flash, POR, or repeat HIL run (prev_boot >= 2): clear any
+     * leftover sentinel so Boot 1 deterministically emits survived=N boot=1
+     * before issuing ra8_reset_software_reset(). */
+    if (ra8_bkup_write_word((uint8_t)k_bkup_demo_idx_sentinel, 0U) != k_ra8_ok) {
+      internal_bkup_demo_panic_halt();
+    }
+  }
+
   if (internal_bkup_demo_survival_check() != k_ra8_ok) {
     internal_bkup_demo_panic_halt();
+  }
+
+  if (!boot2) {
+    internal_bkup_demo_cold_boot_reset_or_halt();
   }
 
   while (1) {
     uint8_t         rw   = 0U;
     const ra8_err_t err  = internal_bkup_demo_rw_check(&rw);
-    const uint8_t   good = (err == k_ra8_ok && rw != 0U) ? 1U : 0U;
-    g_bkup_rw_ok         = (uint32_t)good;
+    const bool      good = (err == k_ra8_ok && rw != 0U);
+    g_bkup_rw_ok         = good ? 1U : 0U;
 
-    if (good != 0U) {
-      (void)ra8_board_uart_console_write(s_bkup_demo_ok_msg,
-                                         (size_t)(sizeof(s_bkup_demo_ok_msg) - 1U));
-      (void)ra8_board_led_toggle(k_ra8_board_led1);
-    } else {
-      (void)ra8_board_uart_console_write(s_bkup_demo_bad_msg,
-                                         (size_t)(sizeof(s_bkup_demo_bad_msg) - 1U));
-      (void)ra8_board_led_toggle(k_ra8_board_led2);
-    }
-    internal_bkup_demo_report_survival();
-    (void)ra8_board_uart_console_write(s_bkup_demo_crlf, (size_t)(sizeof(s_bkup_demo_crlf) - 1U));
+    internal_bkup_demo_emit_status(good);
+    (void)ra8_board_led_toggle(good ? k_ra8_board_led1 : k_ra8_board_led2);
     ++g_bkup_heartbeat;
     ra8_delay_ms(k_bkup_demo_period_ms);
   }
