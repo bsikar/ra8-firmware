@@ -64,6 +64,82 @@ typedef struct {
 typedef void (*ra8_rsip_event_fn_t)(void* ctx, uint32_t isr);
 
 /* =============================================================================
+ * Backend Selection and Qualification
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_rsip_backend_t
+ * @brief Identifies the active cryptographic execution backend.
+ *
+ * @details
+ * Distinguishes hardware-accelerated RSIP execution from freestanding software
+ * fallbacks and unsupported operations. Allows test suites and system audit
+ * routines to deterministically verify whether a cryptographic operation was
+ * executed on silicon hardware or via software fallback.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_rsip_backend_unsupported = 0U, /**< Operation or hardware not supported. */
+  k_ra8_rsip_backend_software    = 1U, /**< Freestanding constant-time software backend. */
+  k_ra8_rsip_backend_hardware    = 2U, /**< Silicon hardware-accelerated backend (RSIP). */
+} ra8_rsip_backend_t;
+
+/**
+ * @enum ra8_rsip_op_t
+ * @brief Cryptographic operation class for backend querying.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_rsip_op_trng   = 0U, /**< True Random Number Generator. */
+  k_ra8_rsip_op_sha256 = 1U, /**< SHA-256 message digest. */
+  k_ra8_rsip_op_aes    = 2U, /**< AES block cipher / CMAC. */
+  k_ra8_rsip_op_ecdsa  = 3U, /**< ECDSA P-256 sign / verify. */
+} ra8_rsip_op_t;
+
+/**
+ * @brief Query the active execution backend for a given cryptographic operation.
+ *
+ * @details
+ * Returns the concrete execution backend (hardware, software, or unsupported)
+ * backing the specified operation in the active firmware build. Guarantees that
+ * software fallbacks are never misreported as hardware passes.
+ *
+ * @param[in] op Cryptographic operation to query.
+ *
+ * @return The active backend identifier.
+ * @retval k_ra8_rsip_backend_software Active implementation runs in software.
+ * @retval k_ra8_rsip_backend_hardware Active implementation runs on RSIP hardware.
+ * @retval k_ra8_rsip_backend_unsupported Operation is unsupported on this build/silicon.
+ *
+ * @pre Module headers included.
+ * @post No hardware or global state is modified.
+ *
+ * @note Thread safety: re-entrant, pure function with no side effects.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_rsip_backend_t ra8_rsip_get_backend(ra8_rsip_op_t op);
+
+/**
+ * @brief Query the human-readable name of a backend identifier.
+ *
+ * @param[in] backend Backend identifier to stringify.
+ *
+ * @return Static NUL-terminated ASCII string ("software", "hardware", "unsupported").
+ *
+ * @pre Valid backend enumerator.
+ * @post Returned pointer addresses static storage; caller must not free.
+ *
+ * @note Thread safety: thread-safe, re-entrant.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] const char* ra8_rsip_backend_name(ra8_rsip_backend_t backend);
+
+/* =============================================================================
  * Lifecycle
  * =============================================================================
  */

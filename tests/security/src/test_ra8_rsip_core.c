@@ -41,39 +41,30 @@
 
 /**
  * @enum t_hmac_t
- * @brief HMAC-SHA-256 parameters, fixed by RFC 2104 and FIPS 180-4.
- *
- * @details
- * The reference implementation the tests compare against is spelled out here
- * rather than pulled from the driver, so a driver that changes its padding
- * constants fails instead of agreeing with itself.
+ * @brief HMAC-SHA-256 test parameters fixed by RFC 2104 and FIPS 180-4.
  */
 typedef enum : uint16_t {
-  k_t_hmac_block_len = 64U,   /**< SHA-256 block size, bytes: the width of the
-                                   ipad/opad buffers and of a prepared key.    */
-  k_t_hmac_ipad_byte = 0x36U, /**< Inner-pad byte XORed over the prepared key. */
-  k_t_hmac_opad_byte = 0x5CU, /**< Outer-pad byte, likewise.                   */
-  k_t_key_short_len  = 20U,   /**< A key shorter than the block, which must be
-                                   zero-extended rather than hashed.           */
-  k_t_key_long_len   = 131U,  /**< A key longer than the block, which must be
-                                   hashed down to 32 bytes first.              */
-  k_t_key_short_byte = 0x0BU, /**< Fill byte of the short key. */
-  k_t_key_long_byte  = 0xAAU, /**< Fill byte of the long key.  */
+  k_t_hmac_block_len = 64U,   /**< SHA-256 block size in bytes. */
+  k_t_hmac_ipad_byte = 0x36U, /**< Inner-pad byte. */
+  k_t_hmac_opad_byte = 0x5CU, /**< Outer-pad byte. */
+  k_t_key_short_len  = 20U,   /**< Short key length. */
+  k_t_key_long_len   = 131U,  /**< Long key length. */
+  k_t_key_short_byte = 0x0BU, /**< Short key fill byte. */
+  k_t_key_long_byte  = 0xAAU, /**< Long key fill byte. */
 } t_hmac_t;
 
 /**
  * @enum ra8_rsip_test_const_t
- * @brief Magic numbers used by the tests, named to keep the
- * no-magic-numbers rule satisfied.
+ * @brief Named constants for test limits and message geometries.
  */
 typedef enum : uint32_t {
-  k_ra8_rsip_test_trng_bytes  = 32U,          /**< TRNG read length under test. */
-  k_ra8_rsip_test_msg_bytes   = 8U,           /**< SHA input message size.      */
-  k_ra8_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length.    */
-  k_ra8_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field.       */
-  k_ra8_rsip_test_bist_polls  = 3U,           /**< Late BIST pass poll index.   */
-  k_ra8_rsip_test_kat_chunk   = 1000U,        /**< Bytes per million-a update.  */
-  k_ra8_rsip_test_kat_repeats = 1000U,        /**< Updates in million-a KAT.    */
+  k_ra8_rsip_test_trng_bytes  = 32U,          /**< TRNG read length. */
+  k_ra8_rsip_test_msg_bytes   = 8U,           /**< SHA input message size. */
+  k_ra8_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length. */
+  k_ra8_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field. */
+  k_ra8_rsip_test_bist_polls  = 3U,           /**< Late BIST pass poll index. */
+  k_ra8_rsip_test_kat_chunk   = 1000U,        /**< Bytes per chunk. */
+  k_ra8_rsip_test_kat_repeats = 1000U,        /**< Updates in KAT. */
 } ra8_rsip_test_const_t;
 
 /**
@@ -591,9 +582,8 @@ RA8_INTERNAL static void internal_test_sha256_inc_long_message(void)
   TEST_BEGIN("rsip sha256 incremental million-a");
   internal_prep_running();
   static const uint8_t local_expected[32] = {
-    0xCDU, 0xC7U, 0x6EU, 0x5CU, 0x99U, 0x14U, 0xFBU, 0x92U, 0x81U, 0xA1U, 0xC7U,
-    0xE2U, 0x84U, 0xD7U, 0x3EU, 0x67U, 0xF1U, 0x80U, 0x9AU, 0x48U, 0xA4U, 0x97U,
-    0x20U, 0x0EU, 0x04U, 0x6DU, 0x39U, 0xCCU, 0xC7U, 0x11U, 0x2CU, 0xD0U,
+    0xCDU, 0xC7U, 0x6EU, 0x5CU, 0x99U, 0x14U, 0xFBU, 0x92U, 0x81U, 0xA1U, 0xC7U, 0xE2U, 0x84U, 0xD7U, 0x3EU, 0x67U,
+    0xF1U, 0x80U, 0x9AU, 0x48U, 0xA4U, 0x97U, 0x20U, 0x0EU, 0x04U, 0x6DU, 0x39U, 0xCCU, 0xC7U, 0x11U, 0x2CU, 0xD0U,
   };
   uint8_t input[k_ra8_rsip_test_kat_chunk];
   for (uint32_t i = 0U; i < (uint32_t)sizeof(input); ++i) {
@@ -682,31 +672,8 @@ RA8_INTERNAL static void internal_test_hmac_sha256_inc_rfc4231_1(void)
   TEST_END("rsip hmac sha256 incremental rfc4231 case 1");
 }
 
-/*
- * @brief HMAC-SHA-256 with an oversized key (forces SHA collapse to 32 bytes).
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
 /**
  * @brief RFC 2104 key preparation: hash a key longer than the block size.
- *
- * @details
- * A key longer than the 64-byte SHA-256 block is replaced by its own digest,
- * zero-padded back out to a full block. That is the step this test exists to
- * exercise, so the reference computes it independently of the HMAC API.
- *
- * @param[in]  key      Key bytes, longer than one block.
- * @param[in]  key_len  Length of @p key in bytes.
- * @param[out] prepared 64-byte prepared key block.
- * @pre @p key and @p prepared are non-null.
- * @pre @p prepared is zeroed by the caller, so the pad is already in place.
- * @post The first 32 bytes of @p prepared hold SHA-256(@p key).
- * @post The remaining bytes of @p prepared are left as the caller's zero pad.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
  */
 RA8_INTERNAL static void
 internal_hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* prepared)
@@ -723,22 +690,6 @@ internal_hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* pre
 
 /**
  * @brief RFC 2104 two-pass HMAC over a prepared key, using the SHA primitive.
- *
- * @details
- * Computes `H((K ^ opad) || H((K ^ ipad) || data))` directly, so the expected
- * MAC comes from the same hash the driver uses but along a path that shares no
- * code with `ra8_rsip_hmac_sha256_*`.
- *
- * @param[in]  prepared 64-byte prepared key block.
- * @param[in]  data     Message bytes to authenticate.
- * @param[in]  data_len Length of @p data in bytes.
- * @param[out] expect   32-byte reference MAC.
- * @pre All pointer arguments are non-null.
- * @pre @p prepared holds a full 64-byte block.
- * @post @p expect holds the reference MAC.
- * @post @p prepared and @p data are unmodified.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
  */
 RA8_INTERNAL static void internal_hmac_ref_compute(const uint8_t* prepared,
                                                    const uint8_t* data,
@@ -883,9 +834,8 @@ RA8_INTERNAL static void internal_test_sha256_command_sequence(void)
  * - Vector 3: data==null, len=8 -> C1=T, C2=T -> Decision T (null_ptr)
  * Vectors 1+3 vary C1 (decision flips); vectors 2+3 vary C2 with C1=T.
  * Same compound shape repeats in `ra8_rsip_hmac_sha256_init`,
- * `ra8_rsip_poly1305`, `internal_hash_validate` and `ra8_rsip_hmac`;
- * per DO-178C 6.4.4.3 source-text equivalence a single MC/DC vector
- * set discharges the obligation for all of them. @brief Verify sha256 update mcdc data len behavior. @details Executes the sha256 update mcdc data len scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * `ra8_rsip_poly1305`, `internal_hash_validate` and `ra8_rsip_hmac`.
+ */
 RA8_INTERNAL static void internal_test_sha256_update_mcdc_data_len(void)
 {
   TEST_BEGIN("rsip sha256_update MC/DC: data==null && len!=0");
@@ -915,7 +865,8 @@ RA8_INTERNAL static void internal_test_sha256_update_mcdc_data_len(void)
  * libs/ra8_hal/src/ra8_rsip.c ra8_rsip_hmac_sha256_init). N+1 = 3.
  * - V1: key=valid, key_len=4 -> C1=F short-circuits -> dec F (proceeds)
  * - V2: key=NULL,  key_len=0 -> C1=T, C2=F          -> dec F (zero-key path)
- * - V3: key=NULL,  key_len=4 -> C1=T, C2=T          -> dec T -> null_ptr @brief Verify mcdc hmac init key len behavior. @details Executes the mcdc hmac init key len scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * - V3: key=NULL,  key_len=4 -> C1=T, C2=T          -> dec T -> null_ptr
+ */
 RA8_INTERNAL static void internal_test_mcdc_hmac_init_key_len(void)
 {
   TEST_BEGIN("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
@@ -931,6 +882,44 @@ RA8_INTERNAL static void internal_test_mcdc_hmac_init_key_len(void)
   ra8_rsip_hmac_sha256_ctx_t ctx3 = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rsip_hmac_sha256_init(&ctx3, nullptr, 4U));
   TEST_END("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
+}
+
+/**
+ * @brief Verify observable backend query and string conversion.
+ *
+ * @details Checks that ra8_rsip_get_backend() accurately reflects the
+ * compiled backend for each operation and that ra8_rsip_backend_name()
+ * returns the expected human-readable strings.
+ */
+RA8_INTERNAL static void internal_test_backend_selection(void)
+{
+  TEST_BEGIN("rsip backend selection");
+  internal_prep();
+
+  /* SHA-256 backend: software unless RA8_RSIP_HASH_HARDWARE is defined. */
+#ifdef RA8_RSIP_HASH_HARDWARE
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_hardware, ra8_rsip_get_backend(k_ra8_rsip_op_sha256));
+#else
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_software, ra8_rsip_get_backend(k_ra8_rsip_op_sha256));
+#endif
+
+  /* TRNG backend: hardware if RA8_RSIP_TRNG_HARDWARE, else unsupported. */
+#ifdef RA8_RSIP_TRNG_HARDWARE
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_hardware, ra8_rsip_get_backend(k_ra8_rsip_op_trng));
+#else
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_unsupported, ra8_rsip_get_backend(k_ra8_rsip_op_trng));
+#endif
+
+  /* Unimplemented hardware paths report unsupported honestly. */
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_unsupported, ra8_rsip_get_backend(k_ra8_rsip_op_aes));
+  TEST_ASSERT_EQ(k_ra8_rsip_backend_unsupported, ra8_rsip_get_backend(k_ra8_rsip_op_ecdsa));
+
+  /* String representation checks. */
+  TEST_ASSERT_EQ(0, strcmp("software", ra8_rsip_backend_name(k_ra8_rsip_backend_software)));
+  TEST_ASSERT_EQ(0, strcmp("hardware", ra8_rsip_backend_name(k_ra8_rsip_backend_hardware)));
+  TEST_ASSERT_EQ(0, strcmp("unsupported", ra8_rsip_backend_name(k_ra8_rsip_backend_unsupported)));
+
+  TEST_END("rsip backend selection");
 }
 
 /**
@@ -970,6 +959,7 @@ static void (*const s_test_roster[])(void) = {
   internal_test_hmac_sha256_inc_arg_check,
   internal_test_sha256_update_mcdc_data_len,
   internal_test_mcdc_hmac_init_key_len,
+  internal_test_backend_selection,
 };
 
 int main(void)

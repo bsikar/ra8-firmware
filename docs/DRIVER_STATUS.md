@@ -104,7 +104,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_reset` | 0 | 1 | 9 | 3 | 4 |
 | `ra8_rmac` | 1 | 2 | 36 | 9 | 0 |
-| `ra8_rsip` | 6 | 8 | 69 | 12 | 5 |
+| `ra8_rsip` | 6 | 8 | 71 | 12 | 5 |
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |
 | `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_sci` | 1 | 3 | 42 | 15 | 28 |

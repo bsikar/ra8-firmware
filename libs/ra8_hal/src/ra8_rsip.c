@@ -457,18 +457,10 @@ typedef enum : uint32_t {
   k_ra8_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.    */
   k_ra8_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.    */
   k_ra8_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.    */
-  k_ra8_rsip_sw_rotr_2           = 2U,    /**< RA8 rsip sw rotr 2.           */
-  k_ra8_rsip_sw_rotr_3           = 3U,    /**< RA8 rsip sw rotr 3.           */
-  k_ra8_rsip_sw_rotr_6           = 6U,    /**< RA8 rsip sw rotr 6.           */
-  k_ra8_rsip_sw_rotr_7           = 7U,    /**< RA8 rsip sw rotr 7.           */
-  k_ra8_rsip_sw_rotr_10          = 10U,   /**< RA8 rsip sw rotr 10.          */
-  k_ra8_rsip_sw_rotr_11          = 11U,   /**< RA8 rsip sw rotr 11.          */
-  k_ra8_rsip_sw_rotr_13          = 13U,   /**< RA8 rsip sw rotr 13.          */
-  k_ra8_rsip_sw_rotr_17          = 17U,   /**< RA8 rsip sw rotr 17.          */
-  k_ra8_rsip_sw_rotr_18          = 18U,   /**< RA8 rsip sw rotr 18.          */
-  k_ra8_rsip_sw_rotr_19          = 19U,   /**< RA8 rsip sw rotr 19.          */
-  k_ra8_rsip_sw_rotr_22          = 22U,   /**< RA8 rsip sw rotr 22.          */
-  k_ra8_rsip_sw_rotr_25          = 25U,   /**< RA8 rsip sw rotr 25.          */
+  k_ra8_rsip_sw_rotr_2           = 2U,  k_ra8_rsip_sw_rotr_3  = 3U,  k_ra8_rsip_sw_rotr_6  = 6U,
+  k_ra8_rsip_sw_rotr_7           = 7U,  k_ra8_rsip_sw_rotr_10 = 10U, k_ra8_rsip_sw_rotr_11 = 11U,
+  k_ra8_rsip_sw_rotr_13          = 13U, k_ra8_rsip_sw_rotr_17 = 17U, k_ra8_rsip_sw_rotr_18 = 18U,
+  k_ra8_rsip_sw_rotr_19          = 19U, k_ra8_rsip_sw_rotr_22 = 22U, k_ra8_rsip_sw_rotr_25 = 25U,
   k_ra8_rsip_sw_word_bits        = 32U,   /**< Word width in bits.           */
 } ra8_rsip_sw_sha256_t;
 
@@ -479,7 +471,7 @@ static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
   return (x >> n) | (x << (k_ra8_rsip_sw_word_bits - n));
 }
 
-// clang-format off: FIPS 180-4 K[0..63] table, four constants per row.
+// clang-format off: FIPS 180-4 K[0..63] table, eight constants per row.
 /**
  * @brief FIPS PUB 180-4 Section 4.1.2 SHA-256 round constants K[0..63].
  *
@@ -487,22 +479,14 @@ static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
  * @since 0.1.0
  */
 static const uint32_t s_sw_sha256_k[k_ra8_rsip_sw_sha256_round_cnt] = {
-  0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL,
-  0x3956c25bUL, 0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL,
-  0xd807aa98UL, 0x12835b01UL, 0x243185beUL, 0x550c7dc3UL,
-  0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL, 0xc19bf174UL,
-  0xe49b69c1UL, 0xefbe4786UL, 0x0fc19dc6UL, 0x240ca1ccUL,
-  0x2de92c6fUL, 0x4a7484aaUL, 0x5cb0a9dcUL, 0x76f988daUL,
-  0x983e5152UL, 0xa831c66dUL, 0xb00327c8UL, 0xbf597fc7UL,
-  0xc6e00bf3UL, 0xd5a79147UL, 0x06ca6351UL, 0x14292967UL,
-  0x27b70a85UL, 0x2e1b2138UL, 0x4d2c6dfcUL, 0x53380d13UL,
-  0x650a7354UL, 0x766a0abbUL, 0x81c2c92eUL, 0x92722c85UL,
-  0xa2bfe8a1UL, 0xa81a664bUL, 0xc24b8b70UL, 0xc76c51a3UL,
-  0xd192e819UL, 0xd6990624UL, 0xf40e3585UL, 0x106aa070UL,
-  0x19a4c116UL, 0x1e376c08UL, 0x2748774cUL, 0x34b0bcb5UL,
-  0x391c0cb3UL, 0x4ed8aa4aUL, 0x5b9cca4fUL, 0x682e6ff3UL,
-  0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL,
-  0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL,
+  0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL, 0x3956c25bUL, 0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL,
+  0xd807aa98UL, 0x12835b01UL, 0x243185beUL, 0x550c7dc3UL, 0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL, 0xc19bf174UL,
+  0xe49b69c1UL, 0xefbe4786UL, 0x0fc19dc6UL, 0x240ca1ccUL, 0x2de92c6fUL, 0x4a7484aaUL, 0x5cb0a9dcUL, 0x76f988daUL,
+  0x983e5152UL, 0xa831c66dUL, 0xb00327c8UL, 0xbf597fc7UL, 0xc6e00bf3UL, 0xd5a79147UL, 0x06ca6351UL, 0x14292967UL,
+  0x27b70a85UL, 0x2e1b2138UL, 0x4d2c6dfcUL, 0x53380d13UL, 0x650a7354UL, 0x766a0abbUL, 0x81c2c92eUL, 0x92722c85UL,
+  0xa2bfe8a1UL, 0xa81a664bUL, 0xc24b8b70UL, 0xc76c51a3UL, 0xd192e819UL, 0xd6990624UL, 0xf40e3585UL, 0x106aa070UL,
+  0x19a4c116UL, 0x1e376c08UL, 0x2748774cUL, 0x34b0bcb5UL, 0x391c0cb3UL, 0x4ed8aa4aUL, 0x5b9cca4fUL, 0x682e6ff3UL,
+  0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL, 0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL,
 };
 
 /**
@@ -512,8 +496,7 @@ static const uint32_t s_sw_sha256_k[k_ra8_rsip_sw_sha256_round_cnt] = {
  * @since 0.1.0
  */
 static const uint32_t s_sw_sha256_h0[k_ra8_rsip_sw_sha256_state_w] = {
-  0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,
-  0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL,
+  0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL, 0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL,
 };
 // clang-format on
 
@@ -568,8 +551,6 @@ typedef enum : uint8_t {
  * @param[in]     w  Expanded 64-word message schedule for the current block.
  *
  * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
@@ -903,8 +884,6 @@ ra8_rsip_hmac_sha256_update(ra8_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data
  * @since 0.1.0
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
  */
 RA8_INTERNAL
 static ra8_err_t internal_hmac_outer(const uint8_t key_block[k_ra8_rsip_sha256_block],
@@ -970,4 +949,39 @@ ra8_err_t ra8_rsip_exit_stop(void)
     return bist_err;
   }
   return k_ra8_ok;
+}
+
+ra8_rsip_backend_t ra8_rsip_get_backend(ra8_rsip_op_t op)
+{
+  switch (op) {
+    case k_ra8_rsip_op_sha256:
+#ifdef RA8_RSIP_HASH_HARDWARE
+      return k_ra8_rsip_backend_hardware;
+#else
+      return k_ra8_rsip_backend_software;
+#endif
+    case k_ra8_rsip_op_trng:
+#ifdef RA8_RSIP_TRNG_HARDWARE
+      return k_ra8_rsip_backend_hardware;
+#else
+      return k_ra8_rsip_backend_unsupported;
+#endif
+    case k_ra8_rsip_op_aes:
+    case k_ra8_rsip_op_ecdsa:
+    default:
+      return k_ra8_rsip_backend_unsupported;
+  }
+}
+
+const char* ra8_rsip_backend_name(ra8_rsip_backend_t backend)
+{
+  switch (backend) {
+    case k_ra8_rsip_backend_software:
+      return "software";
+    case k_ra8_rsip_backend_hardware:
+      return "hardware";
+    case k_ra8_rsip_backend_unsupported:
+    default:
+      return "unsupported";
+  }
 }

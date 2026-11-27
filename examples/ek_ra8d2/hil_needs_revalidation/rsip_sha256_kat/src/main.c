@@ -1,19 +1,23 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rsip_sha256_kat/src/main.c
- * @brief On-silicon FIPS 180-4 known-answer test for the RSIP HASH engine
+ * @brief On-silicon RSIP backend qualification and FIPS 180-4 known-answer test
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Validates ``ra8_rsip_sha256`` -- the exact primitive ``ra8_rot`` uses to
- * re-compute an image digest on silicon -- against the published FIPS 180-4
- * NIST vectors, running on the real EK-RA8D2 hardware. ``ra8_rsip_sha256`` is
- * backed by the in-tree software SHA-256: the RSIP-E50D HASH hardware has no
- * usable register interface (HUM Ch 52 documents none) and is non-functional on
- * silicon -- this app first proved that, then the driver was fixed to route the
- * digest through software (see libs/ra8_hal/src/ra8_rsip.c). The software backend
- * is the working implementation until the FSP procedural RSIP driver is ported.
+ * Validates ``ra8_rsip_sha256`` and tests backend selection observability on the
+ * real EK-RA8D2 hardware. The RSIP-E50D cryptographic engine has no public register
+ * interface (HUM Ch 52 contains no register map) and requires closed-source
+ * Renesas FSP binary primitives (librsip.a) that cannot be linked in open-source
+ * firmware. The active and working SHA-256 path is therefore the freestanding
+ * in-tree constant-time software implementation (RA8_RSIP_SOFTWARE_BACKEND).
+ *
+ * Observability:
+ *   - The backend query ``ra8_rsip_get_backend()`` is reported explicitly.
+ *   - Software execution is never reported as a hardware KAT pass.
+ *   - TRNG read fails closed with ``k_ra8_err_not_supported`` (no canned entropy).
+ *   - Unqualified hardware paths are recorded honestly.
  *
  * Vectors (FIPS 180-4):
  *   - ""                                                   -> e3b0c442...7852b855
@@ -21,9 +25,8 @@
  *   - 56-byte two-block message                            -> 248d6a61...19db06c1
  *
  * Reporting:
- *   - LED1 toggles on every all-vectors-pass cycle; LED2 latches on any failure.
- *   - "rsip sha256: KAT OK" / "rsip sha256: KAT FAIL" over SCI8 (115200 8N1,
- *     J-Link OB CDC), scraped by the HIL rig (hil.conf).
+ *   - LED1 toggles on every pass cycle; LED2 latches on any failure.
+ *   - "rsip sha256: backend=software KAT OK" over SCI8 (115200 8N1).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -44,8 +47,9 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_kat_baud      = 115200U, /**< Kat baud.      */
-  k_kat_period_ms = 1000U,   /**< Kat period ms. */
+  k_kat_baud       = 115200U, /**< Kat baud. */
+  k_kat_period_ms  = 1000U,   /**< Kat period ms. */
+  k_kat_trng_bytes = 32U,     /**< TRNG probe buffer length. */
 } kat_const_t;
 
 /** @brief Length of the 56-byte NIST two-block message (excludes the NUL). */
@@ -80,23 +84,32 @@ static const uint8_t s_exp_two_block[k_ra8_rsip_sha256_digest_bytes] = {
   0x21U, 0x67U, 0xF6U, 0xECU, 0xEDU, 0xD4U, 0x19U, 0xDBU, 0x06U, 0xC1U,
 };
 
-/** @brief HIL verdict emitted after all SHA-256 vectors pass. */
-static const uint8_t s_kat_msg_ok[] = "rsip sha256: KAT OK\r\n";
+/** @brief Diagnostic string emitted at startup for backend awareness. */
+static const uint8_t s_diag_backend_sw[] = "rsip backend: sha256=software trng=unsupported\r\n";
 
-/** @brief HIL verdict emitted after one or more SHA-256 vectors fail. */
-static const uint8_t s_kat_msg_fail[] = "rsip sha256: KAT FAIL\r\n";
+/** @brief Diagnostic string emitted at startup for hardware qualification status. */
+static const uint8_t s_diag_hw_status[] =
+  "rsip hardware: NOT QUALIFIED (requires closed Renesas FSP librsip.a)\r\n";
+
+/** @brief HIL verdict emitted after software SHA-256 vectors pass. */
+static const uint8_t s_kat_msg_sw_ok[] = "rsip sha256: backend=software KAT OK\r\n";
+
+/** @brief HIL verdict emitted after software SHA-256 vectors fail. */
+static const uint8_t s_kat_msg_sw_fail[] = "rsip sha256: backend=software KAT FAIL\r\n";
+
+/** @brief HIL verdict emitted after hardware SHA-256 vectors pass. */
+static const uint8_t s_kat_msg_hw_ok[] = "rsip sha256: backend=hardware KAT OK\r\n";
+
+/** @brief HIL verdict emitted after hardware SHA-256 vectors fail. */
+static const uint8_t s_kat_msg_hw_fail[] = "rsip sha256: backend=hardware KAT FAIL\r\n";
 
 /**
  * @brief Park the processor after fatal setup or KAT control-flow failure.
  *
- * @details Executes wait-for-interrupt indefinitely, preventing any failed
- * diagnostic state from returning into normal application execution.
+ * @details Executes wait-for-interrupt indefinitely, preserving diagnostic state.
  *
- * @pre The caller has determined that the application cannot continue safely.
- * @pre No remaining foreground recovery operation can restore valid state.
+ * @pre Fatal error detected.
  * @post This function does not return.
- * @post The processor remains in a low-activity wait loop.
- * @note This terminal path preserves the diagnostic failure state for probing.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_kat_panic_halt(void)
@@ -109,14 +122,8 @@ RA8_INTERNAL static void internal_kat_panic_halt(void)
 /**
  * @brief Initialize clocks, timing, console, and status LEDs for the KAT.
  *
- * @details Brings each prerequisite up in dependency order and transfers to
- * ::internal_kat_panic_halt if any required operation fails.
- *
- * @pre The function runs during single-threaded application startup.
- * @pre EK-RA8D2 board registers are accessible through the platform mapping.
- * @post On return, timing, console output, and both status LEDs are ready.
- * @post Any prerequisite failure prevents a return to the caller.
- * @note SHA-256 uses the software backend, so no RSIP engine bring-up is needed.
+ * @pre Single-threaded application startup.
+ * @post Clocks, console, and status LEDs ready.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_kat_setup_or_halt(void)
@@ -132,24 +139,13 @@ RA8_INTERNAL static void internal_kat_setup_or_halt(void)
 }
 
 /**
- * @brief Hash one message on the RSIP engine and compare to a known answer.
- *
- * @details Computes a bounded SHA-256 digest into local storage and compares all
- * digest bytes with the supplied FIPS 180-4 known answer.
+ * @brief Hash one message on the active backend and compare to a known answer.
  *
  * @param[in] msg    Message bytes; may be NULL only when @p len is 0.
  * @param[in] len    Message length in bytes.
- * @param[in] expect ::k_ra8_rsip_sha256_digest_bytes expected digest; non-NULL.
+ * @param[in] expect Expected digest buffer.
  *
- * @return true iff the engine digest matches @p expect exactly.
- * @retval true Hashing succeeded and every digest byte matched @p expect.
- * @retval false Hashing failed or at least one digest byte differed.
- *
- * @pre @p expect addresses ::k_ra8_rsip_sha256_digest_bytes readable bytes.
- * @pre The RSIP engine is initialised (::ra8_rsip_init returned success).
- * @post No global state is mutated.
- * @post The transient digest buffer leaves scope on return.
- * @note Single condition -- no compound decision, so no MC/DC obligation.
+ * @return true iff the digest matches @p expect exactly.
  * @since 0.1.0
  */
 [[nodiscard]] RA8_INTERNAL static bool
@@ -162,30 +158,98 @@ internal_kat_one(const uint8_t* msg, uint32_t len, const uint8_t* expect)
   return memcmp(digest, expect, (size_t)k_ra8_rsip_sha256_digest_bytes) == 0;
 }
 
+/**
+ * @brief Verify that TRNG fails closed with not_supported and does not corrupt output.
+ *
+ * @return true iff TRNG read returned k_ra8_err_not_supported and left buffer zeroed.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_INTERNAL static bool internal_kat_trng_fail_closed(void)
+{
+  uint8_t trng_buf[k_kat_trng_bytes] = {};
+  const ra8_err_t err = ra8_rsip_trng_read(trng_buf, (uint32_t)sizeof(trng_buf));
+  if (err != k_ra8_err_not_supported) {
+    return false;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)sizeof(trng_buf); ++i) {
+    if (trng_buf[i] != 0U) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Emit appropriate pass or fail diagnostic message over the console.
+ *
+ * @param[in] ok      true if all test vectors and sanity checks passed.
+ * @param[in] backend Active SHA-256 backend identifier.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_kat_report(bool ok, ra8_rsip_backend_t backend)
+{
+  if (backend == k_ra8_rsip_backend_hardware) {
+    if (ok) {
+      (void)ra8_board_uart_console_write(s_kat_msg_hw_ok, (size_t)(sizeof(s_kat_msg_hw_ok) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
+    } else {
+      (void)ra8_board_uart_console_write(s_kat_msg_hw_fail,
+                                         (size_t)(sizeof(s_kat_msg_hw_fail) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
+    }
+  } else {
+    /* Software backend path: never report as hardware. */
+    if (ok) {
+      (void)ra8_board_uart_console_write(s_kat_msg_sw_ok, (size_t)(sizeof(s_kat_msg_sw_ok) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
+    } else {
+      (void)ra8_board_uart_console_write(s_kat_msg_sw_fail,
+                                         (size_t)(sizeof(s_kat_msg_sw_fail) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
+    }
+  }
+}
+
 void main(void)
 {
   internal_kat_setup_or_halt();
   ra8_isr_globals_enable();
 
+  const ra8_rsip_backend_t sha_backend = ra8_rsip_get_backend(k_ra8_rsip_op_sha256);
+
+  /* Announce observable backend configuration. */
+  (void)ra8_board_uart_console_write(s_diag_backend_sw, (size_t)(sizeof(s_diag_backend_sw) - 1U));
+  (void)ra8_board_uart_console_write(s_diag_hw_status, (size_t)(sizeof(s_diag_hw_status) - 1U));
+
   while (1) {
     bool ok = true;
+
+    /* Verify TRNG fails closed cleanly. */
+    if (!internal_kat_trng_fail_closed()) {
+      ok = false;
+    }
+
+    /* Verify FIPS 180-4 SHA-256 test vectors. */
     if (!internal_kat_one(s_msg_abc, (uint32_t)sizeof(s_msg_abc), s_exp_abc)) {
       ok = false;
     }
     if (!internal_kat_one(s_msg_two_block, (uint32_t)k_kat_msg2_len, s_exp_two_block)) {
       ok = false;
     }
-    if (!internal_kat_one(s_msg_abc, 0U, s_exp_empty)) { /* zero-length: msg ignored */
+    if (!internal_kat_one(s_msg_abc, 0U, s_exp_empty)) {
       ok = false;
     }
 
-    if (ok) {
-      (void)ra8_board_uart_console_write(s_kat_msg_ok, (size_t)(sizeof(s_kat_msg_ok) - 1U));
-      (void)ra8_board_led_toggle(k_ra8_board_led1);
-    } else {
-      (void)ra8_board_uart_console_write(s_kat_msg_fail, (size_t)(sizeof(s_kat_msg_fail) - 1U));
-      (void)ra8_board_led_toggle(k_ra8_board_led2);
+    /* Argument validation sanity checks. */
+    uint8_t dummy[k_ra8_rsip_sha256_digest_bytes] = {};
+    if (ra8_rsip_sha256(nullptr, 4U, dummy) != k_ra8_err_null_ptr) {
+      ok = false;
     }
+    if (ra8_rsip_sha256(s_msg_abc, 3U, nullptr) != k_ra8_err_null_ptr) {
+      ok = false;
+    }
+
+    internal_kat_report(ok, sha_backend);
     ra8_delay_ms(k_kat_period_ms);
   }
   internal_kat_panic_halt();

@@ -32,6 +32,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME rsip_sha256_kat
   STACK_BYTES 4096
-  DESCRIPTION "On-silicon RSIP hardware SHA-256 FIPS 180-4 KAT"
+  DESCRIPTION "On-silicon RSIP qualification and observable software SHA-256 KAT"
   LIBS ra8_board_ek_ra8d2
 )
