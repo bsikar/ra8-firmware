@@ -29,15 +29,6 @@
  * Tick rate matches the project ``tx_user.h``
  * (``TX_TIMER_TICKS_PER_SECOND = 1000``), so 1 NPL tick == 1 ms.
  *
- * @warning UNVALIDATED SCAFFOLD: this NimBLE port and its
- * ThreadX Native Porting Layer link and pass the static gates, but have
- * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
- * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
- * transport is itself unproven on this board. Treat every
- * symbol here as a link-only stub, not a working BLE stack. Consumers stay
- * under ``examples/_unsupported/`` until a NimBLE app is driven to real
- * hardware validation and promoted out of that tier.
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -55,65 +46,12 @@ extern "C" {
  * OS-specific structs in through ``nimble/nimble_npl_os.h``, which this
  * port supplies (``port/nimble/inc/nimble/nimble_npl_os.h``). Including
  * it here is what puts a prototype in front of every ``ble_npl_*``
- * definition in ``nimble_npl_threadx.c``; the port used to restate the
- * types by hand and restate none of the functions, so nothing checked
- * those definitions against the contract they implement.
+ * definition in ``nimble_npl_threadx.c``. ``nimble/nimble_port.h``
+ * supplies ``nimble_port_init``, ``nimble_port_run``, and
+ * ``nimble_port_get_dflt_eventq`` from the compiled NimBLE porting TU.
  */
 #include "nimble/nimble_npl.h"
-
-/* =============================================================================
- * NimBLE port API (matches porting/nimble/include/nimble/nimble_port.h)
- * =============================================================================
- */
-
-/**
- * @brief Bring the NimBLE host port up.
- *
- * @details
- * Initialises the default eventq used by the host stack. The
- * adapter implementation lives in ``nimble_npl_threadx.c`` and is
- * marked weak so the upstream NimBLE host TUs can supersede it
- * once they are wired into the build.
- *
- * @pre ThreadX kernel is running (``tx_kernel_enter`` returned).
- * @post ``nimble_port_get_dflt_eventq`` returns a usable queue.
- *
- * @since 0.1.0
- *
- * @pre Module has been initialized.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
-void nimble_port_init(void);
-
-/**
- * @brief Pump the NimBLE host event loop forever.
- *
- * @details Pulls events out of the default eventq and calls
- * ``ble_npl_event_run`` on each. Never returns.
- *
- * @pre ``nimble_port_init`` has been called.
- * @post Calling thread runs the host loop until shutdown.
- *
- * @since 0.1.0
- *
- * @pre Module has been initialized.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
-void nimble_port_run(void);
-
-/**
- * @brief Return the host's default eventq pointer.
- *
- * @return Pointer to the default ``struct ble_npl_eventq`` (never NULL
- *         after ``nimble_port_init``).
- *
- * @pre ``nimble_port_init`` has been called.
- *
- * @since 0.1.0
- */
-struct ble_npl_eventq* nimble_port_get_dflt_eventq(void);
+#include "nimble/nimble_port.h"
 
 /* =============================================================================
  * NPL constants
@@ -125,10 +63,10 @@ struct ble_npl_eventq* nimble_port_get_dflt_eventq(void);
  * @brief Sizing constants for the ThreadX-backed NPL.
  */
 typedef enum : uint16_t {
-  /** Wait forever -- maps onto ``TX_WAIT_FOREVER``. */
+  /** Legacy 16-bit sentinel kept only for internal sizing bounds. */
   k_ble_npl_threadx_wait_forever = 0xFFFFU,
   /** Default eventq depth (number of pointer slots). */
-  k_ble_npl_threadx_eventq_depth = 16U,
+  k_ble_npl_threadx_eventq_depth = 64U,
   /** Bytes of storage per eventq slot (one pointer on M85). */
   k_ble_npl_threadx_eventq_slot_bytes = 4U,
   /** Default sem max value -- effectively unbounded for our use case. */

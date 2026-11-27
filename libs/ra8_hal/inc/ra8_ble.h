@@ -27,11 +27,13 @@
  *     | type | handle (LE16) | data-len (LE16) | payload | ACL  (0x02)
  *
  * @note The RA8D2 has no on-chip Bluetooth radio, so there is no on-chip
- *       controller backend. Without a bound backend, ``src/ble_abi.zig`` uses an
- *       in-memory loopback for host unit tests. Binding a hardware transport
- *       through ::ra8_ble_bind_transport (such as the ESP32-C6 companion link in
- *       ``port/nimble/src/ble_hci_c6link.c``) routes TX packets and RX polling
- *       over that link while leaving the upper HCI seam unchanged.
+ *       controller backend. Target firmware MUST bind a hardware transport
+ *       through ::ra8_ble_bind_transport (such as the ESP32-C6 companion link
+ *       in ``port/nimble/src/ble_hci_c6link.c``) before sending HCI packets or
+ *       calling ::ra8_ble_dispatch; calling them unbound returns
+ *       ``k_ra8_err_not_initialized``. The in-memory loopback helper is exposed
+ *       only in host tests (``RA8_OFF_TARGET`` / ``UNIT_TEST``) via
+ *       ::ra8_ble_test_bind_loopback.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -220,7 +222,12 @@ typedef void (*ra8_ble_acl_fn_t)(void* ctx, uint16_t handle, const uint8_t* payl
 [[nodiscard]] ra8_err_t ra8_ble_bind_transport(const ra8_ble_transport_t* transport);
 
 /**
- * @brief Detach any external BLE transport and restore loopback mode.
+ * @brief Detach any external BLE transport, leaving `ra8_ble` unbound.
+ *
+ * @details
+ * Does not fall back to in-memory loopback; subsequent HCI transmit or
+ * dispatch calls return ``k_ra8_err_not_initialized`` until another transport
+ * is bound (or host tests call ::ra8_ble_test_bind_loopback).
  *
  * @return ``k_ra8_ok`` Always.
  * @since 0.1.0

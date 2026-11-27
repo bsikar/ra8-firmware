@@ -65,8 +65,13 @@
  */
 #ifndef RA8_OFF_TARGET
 #include "ble_hci_ra8_ble.h"
+#include "host/ble_hs.h"
 #include "nimble_npl_threadx.h"
 #include "ra8_ble.h"
+#include "services/bas/ble_svc_bas.h"
+#include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
+#include "store/config/ble_store_config.h"
 #include "tx_api.h"
 #endif
 
@@ -225,11 +230,18 @@ RA8_INTERNAL static void internal_demo_clocks_or_halt(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL static void internal_demo_on_sync(void)
+{
+  internal_demo_log("[nimble] host synced\r\n");
+}
+
 RA8_INTERNAL static void internal_demo_ble_or_halt(void)
 {
   /* Both flags stay 0: the C6 companion owns the radio oscillator and
    * the controller sleep policy, and ra8_ble_open refuses a set flag
-   * with k_ra8_err_not_supported. */
+   * with k_ra8_err_not_supported. Without a bound hardware transport
+   * (ble_hci_c6link), outbound HCI calls return k_ra8_err_not_initialized
+   * instead of falling back to loopback. */
   const ra8_ble_config_t ble_cfg = {
     .use_external_osc  = 0U,
     .deep_sleep_enable = 0U,
@@ -242,7 +254,17 @@ RA8_INTERNAL static void internal_demo_ble_or_halt(void)
     internal_demo_log("[nimble] ble_hci_ra8_ble_init failed\r\n");
     internal_demo_panic_halt();
   }
+  ble_hs_cfg.sync_cb         = internal_demo_on_sync;
+  ble_hs_cfg.store_read_cb   = ble_store_config_read;
+  ble_hs_cfg.store_write_cb  = ble_store_config_write;
+  ble_hs_cfg.store_delete_cb = ble_store_config_delete;
+  ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
   nimble_port_init();
+  ble_svc_gap_init();
+  ble_svc_gatt_init();
+  ble_svc_bas_init();
+  (void)ble_svc_gap_device_name_set(s_demo_local_name);
+  (void)ble_svc_bas_battery_level_set(s_demo_battery_level);
 }
 
 /**

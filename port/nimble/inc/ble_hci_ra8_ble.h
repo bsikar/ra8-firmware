@@ -22,22 +22,12 @@
  *
  * The expected lifecycle is:
  *
- *  1. App calls ``ra8_ble_init()`` (clocks the radio and opens the HCI
- *     mailbox).
- *  2. App calls ``ble_hci_ra8_ble_init()`` -- this file -- to attach
- *     the inbound callbacks and clear any private state.
- *  3. App calls ``nimble_port_init()`` followed by ``ble_hs_sched_start()``
- *     and the host stack starts pumping HCI commands through the
- *     adapter.
- *
- * @warning UNVALIDATED SCAFFOLD: this NimBLE port and its
- * ThreadX Native Porting Layer link and pass the static gates, but have
- * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
- * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
- * transport is itself unproven on this board. Treat every
- * symbol here as a link-only stub, not a working BLE stack. Consumers stay
- * under ``examples/_unsupported/`` until a NimBLE app is driven to real
- * hardware validation and promoted out of that tier.
+ *  1. App calls ``ra8_ble_open()`` and binds a hardware transport
+ *     (``ble_hci_c6link_init()``).
+ *  2. App calls ``ble_hci_ra8_ble_init()`` to attach the inbound callbacks
+ *     and prepare adapter serialization state.
+ *  3. App calls ``nimble_port_init()``, starts the HCI dispatch worker calling
+ *     ::ble_hci_ra8_ble_dispatch, and runs ``nimble_port_run()``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -126,6 +116,26 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ble_hci_ra8_ble_deinit(void);
+
+/**
+ * @brief Poll and dispatch inbound HCI traffic with TX serialization.
+ *
+ * @details
+ * Acquires the adapter lock (when running on ThreadX), invokes
+ * ``ra8_ble_dispatch()`` to pump pending inbound controller packets into the
+ * registered NimBLE callbacks, and releases the lock before returning. This
+ * serializes the dedicated HCI pump task against ``ble_transport_to_ll_*``
+ * calls issued from the NimBLE host task.
+ *
+ * @return ra8_err_t Result returned by ``ra8_ble_dispatch()``.
+ * @retval k_ra8_ok Inbound queue drained cleanly (or empty).
+ * @retval k_ra8_err_not_initialized ``ra8_ble`` is not open or no transport
+ *         is bound.
+ *
+ * @pre ``ble_hci_ra8_ble_init()`` returned ``k_ra8_ok``.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra8_err_t ble_hci_ra8_ble_dispatch(void);
 
 #ifdef __cplusplus
 }

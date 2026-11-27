@@ -126,3 +126,96 @@ target_include_directories(
           ${FW_ROOT}/port/nimble/inc
 )
 add_test(NAME test_app_c6_ble_hci COMMAND test_app_c6_ble_hci)
+
+# test_app_c6_ble_nimble: host integration tests for examples/ek_ra8d2/hw_validated/c6/c6_ble_nimble
+# driving the compiled Apache NimBLE 1.10.0 host + services + transport -> ble_hci_ra8_ble
+# -> ra8_ble -> ble_hci_c6link -> ra8_c6link against ra8_c6_model.
+ra8_zig_package_dir(nimble RA8_NIMBLE_HOST_DIR)
+if(EXISTS "${RA8_NIMBLE_HOST_DIR}/nimble/host/include/host/ble_hs.h")
+  file(GLOB RA8_NIMBLE_TEST_HOST_SRCS CONFIGURE_DEPENDS
+       "${RA8_NIMBLE_HOST_DIR}/nimble/host/src/*.c"
+  )
+  list(
+    FILTER
+    RA8_NIMBLE_TEST_HOST_SRCS
+    EXCLUDE
+    REGEX
+    ".*/ble_gatts_lcl\\.c$"
+  )
+  add_library(
+    nimble_host_test_objs OBJECT
+    ${RA8_NIMBLE_TEST_HOST_SRCS}
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/util/src/addr.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/bas/src/ble_svc_bas.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/dis/src/ble_svc_dis.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gap/src/ble_svc_gap.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gatt/src/ble_svc_gatt.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/store/config/src/ble_store_config.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/host/store/config/src/ble_store_config_conf.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/transport/src/monitor.c
+    ${RA8_NIMBLE_HOST_DIR}/nimble/transport/src/transport.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/endian.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/mem.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/nimble_port.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/os_mbuf.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/os_mempool.c
+    ${RA8_NIMBLE_HOST_DIR}/porting/nimble/src/os_msys.c
+  )
+  target_include_directories(
+    nimble_host_test_objs SYSTEM
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wireless/inc/nimble_host
+           ${FW_ROOT}/port/nimble/inc
+           ${RA8_NIMBLE_HOST_DIR}/nimble/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/bas/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/dis/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gap/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gatt/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/store/config/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/host/util/include
+           ${RA8_NIMBLE_HOST_DIR}/nimble/transport/include
+           ${RA8_NIMBLE_HOST_DIR}/porting/nimble/include
+    PRIVATE ${RA8_NIMBLE_HOST_DIR}/nimble/host/src
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/store/config/src
+  )
+  target_compile_options(
+    nimble_host_test_objs PRIVATE -w -include${FW_ROOT}/port/nimble/inc/nimble_port_alloc.h
+  )
+
+  add_executable(
+    test_app_c6_ble_nimble
+    ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_app_c6_ble_nimble.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/nimble_npl_host.c
+    ${FW_ROOT}/examples/ek_ra8d2/hw_validated/c6/c6_ble_nimble/src/c6_ble_nimble_core.c
+    ${FW_ROOT}/port/nimble/src/ble_hci_ra8_ble.c
+    ${FW_ROOT}/port/nimble/src/ble_hci_c6link.c
+    ${FW_ROOT}/port/nimble/src/nimble_port_alloc.c
+    ${RA8_C6LINK_TEST_SUPPORT}
+    ${RA8_C6LINK_TEST_MODEL}
+    ${RA8_C6LINK_SOURCES}
+    $<TARGET_OBJECTS:nimble_host_test_objs>
+    $<TARGET_OBJECTS:ra8_core_hal>
+  )
+  set_target_properties(test_app_c6_ble_nimble PROPERTIES LINKER_LANGUAGE CXX)
+  target_compile_options(test_app_c6_ble_nimble PRIVATE -Wall -Wextra)
+  target_include_directories(
+    test_app_c6_ble_nimble
+    PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_validated/c6/c6_ble_nimble/inc
+            ${RA8_C6LINK_INCLUDE_DIRS}
+            ${FW_ROOT}/libs/ra8_hal/inc
+            ${FW_ROOT}/libs/ra8_hal/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/wireless/inc/nimble_host
+            ${FW_ROOT}/port/nimble/inc
+            ${RA8_NIMBLE_HOST_DIR}/nimble/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/bas/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/dis/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gap/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/services/gatt/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/store/config/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/host/util/include
+            ${RA8_NIMBLE_HOST_DIR}/nimble/transport/include
+            ${RA8_NIMBLE_HOST_DIR}/porting/nimble/include
+  )
+  add_test(NAME test_app_c6_ble_nimble COMMAND test_app_c6_ble_nimble)
+endif()

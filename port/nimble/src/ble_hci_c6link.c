@@ -27,6 +27,9 @@
 #include "ra8_ble.h"
 #include "ra8_c6link.h"
 #include "ra8_err.h"
+#ifndef RA8_OFF_TARGET
+#include "ra8_esp_hosted_port.h"
+#endif
 #include "ra8_log.h"
 
 /** @enum ble_hci_c6link_const_t @brief Bounded poll transaction budget. */
@@ -68,6 +71,11 @@ RA8_INTERNAL static ra8_err_t internal_c6link_hci_poll(void* ctx)
   if (link == nullptr) {
     return k_ra8_err_null_ptr;
   }
+#ifndef RA8_OFF_TARGET
+  if (!ra8_esp_hosted_port_rx_pending()) {
+    return k_ra8_ok;
+  }
+#endif
   ra8_c6link_stats_t stats = {};
   const ra8_err_t    err   = ra8_c6link_poll(link, (uint16_t)k_ble_hci_c6link_poll_budget, &stats);
   if (err == k_ra8_err_hw_timeout) {
@@ -113,7 +121,7 @@ ra8_err_t ble_hci_c6link_init(ra8_c6link_t* link)
   return k_ra8_ok;
 }
 
-/* Unbind `ra8_ble` from the companion link and restore loopback mode. */
+/* Unbind `ra8_ble` from the companion link without falling back to loopback. */
 ra8_err_t ble_hci_c6link_deinit(void)
 {
   const ra8_err_t unbind_err = ra8_ble_unbind_transport();

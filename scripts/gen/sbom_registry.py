@@ -291,7 +291,10 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/apache/mynewt-nimble",
         path="build.zig.zon",
         provenance=PROV_DEP_PINNED,
-        description="Bluetooth 5.4 host + controller stack (staged, not linked).",
+        description=(
+            "Bluetooth 5.4 host stack linked into BLE apps over ThreadX and "
+            "ra8_ble via port/nimble/."
+        ),
         purl="pkg:github/apache/mynewt-nimble@a7a156f28954819e158b62dd613008f22f9cf73b",
         spdx="Apache-2.0",
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",

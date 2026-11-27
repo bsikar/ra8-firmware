@@ -8,24 +8,11 @@
  * @details
  * Implementation of the NimBLE NPL primitives on top of ThreadX.
  * Each ``ble_npl_*`` symbol delegates to the matching ``tx_*``
- * service. This file also carries small stubs of the upstream
- * ``ble_transport_alloc_*`` / ``os_mbuf_*`` symbols so the per-app
- * build can link our adapter even before the curated upstream
- * NimBLE host TUs are wired into the build (the heavyweight host
- * stack is opt-in via ``RA8_USE_NIMBLE_HOST`` -- without it we still
- * provide a link-only scaffold so the demo links).
+ * service while upstream ``nimble_port.c``, ``nimble/transport/``, and
+ * ``nimble/host/`` provide the host runtime symbols.
  *
  * Tick rate: ``TX_TIMER_TICKS_PER_SECOND = 1000`` (see
  * ``port/threadx/inc/tx_user.h``), so 1 NPL tick == 1 ms.
- *
- * @warning UNVALIDATED SCAFFOLD: this NimBLE port and its
- * ThreadX Native Porting Layer link and pass the static gates, but have
- * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
- * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
- * transport is itself unproven on this board. Treat every
- * symbol here as a link-only stub, not a working BLE stack. Consumers stay
- * under ``examples/_unsupported/`` until a NimBLE app is driven to real
- * hardware validation and promoted out of that tier.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,19 +24,28 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nimble_transport_stubs.h"
 #include "ra8_attributes.h"
 #include "tx_api.h"
 
-/* =============================================================================
- * NPL public API forward decls (matches upstream nimble/nimble_npl.h)
- * =============================================================================
- */
+/** @brief Active ThreadX critical-section nesting counter. */
+static volatile uint32_t s_critical_nesting = 0U;
 
 /* =============================================================================
  * Generic helpers
  * =============================================================================
  */
+
+/* Check whether ThreadX scheduler has started -- see nimble/nimble_npl.h. */
+bool ble_npl_os_started(void)
+{
+  return tx_thread_identify() != nullptr;
+}
+
+/* Identify the active ThreadX thread -- see nimble/nimble_npl.h. */
+void* ble_npl_get_current_task_id(void)
+{
+  return (void*)tx_thread_identify();
+}
 
 /**
  * @enum ble_npl_threadx_const_t
@@ -79,7 +75,7 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static ULONG internal_tmo_to_tx(ble_npl_time_t tmo)
 {
-  if (tmo == (ble_npl_time_t)k_ble_npl_threadx_wait_forever) {
+  if (tmo == (ble_npl_time_t)BLE_NPL_TIME_FOREVER) {
     return (ULONG)k_ble_npl_tx_wait_forever;
   }
   return (ULONG)tmo;
@@ -98,7 +94,7 @@ ble_npl_error_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
   }
   /** @brief Mutable mutex name retained by the ThreadX control block. */
   static CHAR s_name[] = {'n', 'p', 'l', '_', 'm', 'u', '\0'};
-  const UINT  st       = tx_mutex_create(&mu->handle, s_name, TX_NO_INHERIT);
+  const UINT  st       = tx_mutex_create(&mu->handle, s_name, TX_INHERIT);
   return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
@@ -228,7 +224,9 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
   }
   struct ble_npl_event* ev = (struct ble_npl_event*)(uintptr_t)slot; /**< Slot. */
   if (ev != nullptr) {
-    ev->queued = 0U;
+    const uint32_t sr = ble_npl_hw_enter_critical();
+    ev->queued        = 0U;
+    ble_npl_hw_exit_critical(sr);
   }
   return ev; /**< Ev. */
 }
@@ -239,22 +237,44 @@ void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
   if (evq == nullptr || ev == nullptr) {
     return;
   }
-  if (ev->queued != 0U) {
-    return;
+  const uint32_t sr = ble_npl_hw_enter_critical();
+  if (ev->queued == 0U) {
+    ULONG slot = (ULONG)(uintptr_t)ev;
+    if (tx_queue_send(&evq->q, &slot, TX_NO_WAIT) == TX_SUCCESS) {
+      ev->queued = 1U;
+    }
   }
-  ev->queued = 1U;
-  ULONG slot = (ULONG)(uintptr_t)ev;
-  (void)tx_queue_send(&evq->q, &slot, TX_NO_WAIT);
+  ble_npl_hw_exit_critical(sr);
 }
 
-/* Best-effort removal of an event from a queue -- see implementation for details. */
+/* Bounded queue rotation removing ``ev`` from ``evq`` -- see implementation for details. */
 void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
-  (void)evq;
-  if (ev == nullptr) {
+  if (evq == nullptr || ev == nullptr) {
     return;
   }
-  ev->queued = 0U;
+  const uint32_t sr = ble_npl_hw_enter_critical();
+  if (ev->queued != 0U) {
+    ULONG enqueued = 0U;
+    if (tx_queue_info_get(&evq->q, nullptr, &enqueued, nullptr, nullptr, nullptr, nullptr) ==
+        TX_SUCCESS) {
+      if (enqueued > (ULONG)k_ble_npl_threadx_eventq_depth) {
+        enqueued = (ULONG)k_ble_npl_threadx_eventq_depth;
+      }
+      const ULONG target = (ULONG)(uintptr_t)ev;
+      for (ULONG i = 0U; i < enqueued; i++) {
+        ULONG slot = 0U;
+        if (tx_queue_receive(&evq->q, &slot, TX_NO_WAIT) != TX_SUCCESS) {
+          break;
+        }
+        if (slot != target) {
+          (void)tx_queue_send(&evq->q, &slot, TX_NO_WAIT);
+        }
+      }
+    }
+    ev->queued = 0U;
+  }
+  ble_npl_hw_exit_critical(sr);
 }
 
 /* Run an NPL event by invoking its callback -- see implementation for details. */
@@ -336,7 +356,11 @@ RA8_INTERNAL static void internal_callout_trampoline(ULONG arg)
   if (co == nullptr) {
     return;
   }
-  ble_npl_eventq_put(co->evq, &co->ev);
+  if (co->evq != nullptr) {
+    ble_npl_eventq_put(co->evq, &co->ev);
+  } else if (co->ev.fn != nullptr) {
+    co->ev.fn(&co->ev);
+  }
 }
 
 /* Initialise an NPL callout (does not start it) -- see implementation for details. */
@@ -348,19 +372,25 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
   if (co == nullptr) {
     return;
   }
+  if (co->initialized != 0U) {
+    (void)tx_timer_deactivate(&co->handle);
+    (void)tx_timer_delete(&co->handle);
+  }
   (void)memset(co, 0, sizeof(*co));
   co->evq    = evq;
   co->ev.fn  = ev_cb;
   co->ev.arg = ev_arg;
   /** @brief Mutable timer name retained by the ThreadX control block. */
   static CHAR s_name[] = {'n', 'p', 'l', '_', 'c', 'o', '\0'};
-  (void)tx_timer_create(&co->handle,
-                        s_name,
-                        internal_callout_trampoline,
-                        (ULONG)(uintptr_t)co,
-                        1U, /* initial-ticks (placeholder, reset on arm) */
-                        0U, /* reschedule-ticks (one-shot)               */
-                        TX_NO_ACTIVATE);
+  if (tx_timer_create(&co->handle,
+                      s_name,
+                      internal_callout_trampoline,
+                      (ULONG)(uintptr_t)co,
+                      1U, /* initial-ticks (placeholder, reset on arm) */
+                      0U, /* reschedule-ticks (one-shot)               */
+                      TX_NO_ACTIVATE) == TX_SUCCESS) {
+    co->initialized = 1U;
+  }
 }
 
 /* Arm the callout to fire ``ticks`` from now -- see implementation for details. */
@@ -369,6 +399,7 @@ ble_npl_error_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t
   if (co == nullptr) {
     return BLE_NPL_INVALID_PARAM;
   }
+  co->ticks = ble_npl_time_get() + ticks;
   if (ticks == 0U) {
     ticks = 1U;
   }
@@ -398,6 +429,22 @@ bool ble_npl_callout_is_active(struct ble_npl_callout* co)
     return false;
   }
   return active != 0U;
+}
+
+/* Return the tick deadline recorded when the callout was last reset. */
+ble_npl_time_t ble_npl_callout_get_ticks(struct ble_npl_callout* co)
+{
+  return (co == nullptr) ? 0U : co->ticks;
+}
+
+/* Return remaining ticks until the armed callout deadline (0 if expired). */
+ble_npl_time_t ble_npl_callout_remaining_ticks(struct ble_npl_callout* co, ble_npl_time_t time)
+{
+  if (co == nullptr) {
+    return 0U;
+  }
+  const ble_npl_stime_t delta = (ble_npl_stime_t)(co->ticks - time);
+  return (delta > 0) ? (ble_npl_time_t)delta : 0U;
 }
 
 /* Replace the callout's event arg pointer -- see implementation for details. */
@@ -440,6 +487,18 @@ ble_npl_error_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
   return BLE_NPL_OK;
 }
 
+/* Convert ms directly to 32-bit NPL ticks (1000 Hz tick base). */
+ble_npl_time_t ble_npl_time_ms_to_ticks32(uint32_t ms)
+{
+  return (ble_npl_time_t)ms;
+}
+
+/* Convert NPL ticks directly to 32-bit milliseconds (1000 Hz tick base). */
+uint32_t ble_npl_time_ticks_to_ms32(ble_npl_time_t ticks)
+{
+  return (uint32_t)ticks;
+}
+
 /* Sleep for the given number of NPL ticks -- see implementation for details. */
 void ble_npl_time_delay(ble_npl_time_t ticks)
 {
@@ -454,187 +513,22 @@ void ble_npl_time_delay(ble_npl_time_t ticks)
 /* Enter a critical section by disabling interrupts -- see implementation for details. */
 uint32_t ble_npl_hw_enter_critical(void)
 {
-  return (uint32_t)tx_interrupt_control(TX_INT_DISABLE);
+  const UINT prev = tx_interrupt_control(TX_INT_DISABLE);
+  s_critical_nesting += 1U;
+  return (uint32_t)prev;
 }
 
 /* Exit a critical section, restoring the previous int mask -- see implementation for details. */
 void ble_npl_hw_exit_critical(uint32_t ctx)
 {
+  if (s_critical_nesting > 0U) {
+    s_critical_nesting -= 1U;
+  }
   (void)tx_interrupt_control((UINT)ctx);
 }
 
-/**
- * @brief Test whether the calling context is inside a critical section.
- *
- * @return 1 when inside, 0 otherwise.
- *
- * @details Best-effort: ThreadX does not expose a "primask read"
- * helper, so we always report 0 (NimBLE uses this for assertions
- * only).
- *
- * @since 0.1.0
- *
- * @retval 0 Success or default value.
- * @pre Module has been initialized.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Report whether execution is currently inside an NPL critical section. */
 bool ble_npl_hw_is_in_critical(void)
 {
-  return false;
-}
-
-/* =============================================================================
- * NimBLE port + transport stubs
- * =============================================================================
- *
- * These provide minimal definitions so the example app and the
- * companion `ble_hci_ra8_ble.c` link without pulling the heavyweight
- * upstream NimBLE host TUs into this curated build. When the host
- * stack is later wired in (Phase 1.4 / 1.5), these stubs are
- * superseded by the upstream symbols.
- */
-
-/**
- * @brief Default eventq used by the host stack.
- *
- * @details Lives in BSS; ``ble_npl_eventq_init`` is called once at
- * boot. Surfaced via ``nimble_port_get_dflt_eventq``.
- */
-static struct ble_npl_eventq s_dflt_eventq;
-
-/** @brief Initialized flag for the default eventq. */
-static uint8_t s_dflt_eventq_ready = 0U;
-
-/* Bring the default eventq up -- see implementation for details. */
-void nimble_port_init(void)
-{
-  if (s_dflt_eventq_ready == 0U) {
-    ble_npl_eventq_init(&s_dflt_eventq);
-    s_dflt_eventq_ready = 1U;
-  }
-}
-
-/**
- * @brief Return the address of the default eventq.
- *
- * @return Pointer to the default ``ble_npl_eventq`` (never NULL).
- *
- * @pre ``nimble_port_init`` has been called.
- * @post Caller can pass the returned pointer to ``ble_npl_eventq_put``.
- *
- * @since 0.1.0
- */
-struct ble_npl_eventq* nimble_port_get_dflt_eventq(void)
-{
-  return &s_dflt_eventq; /**< S dflt eventq. */
-}
-
-/**
- * @brief Run the NimBLE host event loop forever.
- *
- * @details Pumps events out of the default eventq; never returns
- * under normal operation.
- *
- * @pre ``nimble_port_init`` has been called.
- * @post Calling thread runs the host loop until shutdown.
- *
- * @since 0.1.0
- *
- * @pre Module has been initialized.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
-void nimble_port_run(void)
-{
-  while (1) {
-    struct ble_npl_event* ev =
-      ble_npl_eventq_get(&s_dflt_eventq, (ble_npl_time_t)k_ble_npl_threadx_wait_forever);
-    if (ev != nullptr) {
-      ble_npl_event_run(ev);
-    }
-  }
-}
-
-/* =============================================================================
- * NimBLE transport allocator stubs
- * =============================================================================
- *
- * These are deliberately minimal: the curated build does not pull in
- * the upstream nimble/transport object library yet, but
- * `ble_hci_ra8_ble.c` references ``ble_transport_alloc_evt`` /
- * ``ble_transport_alloc_acl_from_ll`` / ``ble_transport_to_hs_evt``
- * / ``ble_transport_to_hs_acl`` / ``ble_transport_free`` /
- * ``os_mbuf_*``. We provide weak no-op definitions so the demo app
- * links; once the host stack lands these are replaced by the real
- * symbols at link time (the linker prefers strong over weak).
- */
-
-[[gnu::weak]] void* ble_transport_alloc_evt(int discardable)
-{
-  (void)discardable;
-  return nullptr;
-}
-
-[[gnu::weak]] struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
-{
-  return nullptr;
-}
-
-[[gnu::weak]] void ble_transport_free(void* buf)
-{
-  (void)buf;
-}
-
-[[gnu::weak]] int ble_transport_to_hs_evt(void* buf)
-{
-  (void)buf;
-  return 0;
-}
-
-[[gnu::weak]] int ble_transport_to_hs_acl(struct os_mbuf* om)
-{
-  (void)om;
-  return 0;
-}
-
-[[gnu::weak]] int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
-{
-  (void)om;
-  (void)data;
-  (void)len;
-  return 0;
-}
-
-[[gnu::weak]] int os_mbuf_free_chain(struct os_mbuf* om)
-{
-  (void)om;
-  return 0;
-}
-
-[[gnu::weak]] uint16_t os_mbuf_len(const struct os_mbuf* om)
-{
-  (void)om;
-  return 0U;
-}
-
-[[gnu::weak]] int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
-{
-  (void)om;
-  (void)off;
-  (void)len;
-  (void)dst;
-  return 0;
-}
-
-[[gnu::weak]] int ble_transport_to_ll_cmd(void* buf)
-{
-  return ble_transport_to_ll_cmd_impl(buf);
-}
-
-[[gnu::weak]] int ble_transport_to_ll_acl(struct os_mbuf* om)
-{
-  return ble_transport_to_ll_acl_impl(om);
+  return s_critical_nesting > 0U;
 }

@@ -217,13 +217,15 @@ RA8_INTERNAL static void test_ble_rx_and_faults_over_c6link(void)
   TEST_ASSERT_EQ(k_ra8_err_spi_error, ra8_ble_dispatch());
   TEST_ASSERT_EQ(k_ra8_err_spi_error, ra8_ble_set_advertising_enable(0U));
 
-  /* After deinit, ra8_ble falls back cleanly to loopback mode. */
+  /* After deinit, ra8_ble stays unbound and does not fall back to loopback. */
   ra8_c6_model()->fail_transfer = false;
   TEST_ASSERT_EQ(k_ra8_ok, ble_hci_c6link_deinit());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_set_advertising_enable(1U));
+  TEST_ASSERT(!ble_hci_c6link_is_bound());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_set_advertising_enable(1U));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_dispatch());
   uint16_t loop_len = 0U;
   (void)ra8_ble_test_tx_capture(&loop_len);
-  TEST_ASSERT_EQ(5U, loop_len);
+  TEST_ASSERT_EQ(0U, loop_len);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
   TEST_END("ble_hci_c6link inbound dispatch and transport faults");
 }

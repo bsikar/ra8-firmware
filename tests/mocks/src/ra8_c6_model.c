@@ -38,6 +38,17 @@ void ra8_c6_model_reset(void)
 
 uint8_t* ra8_c6_model_slot(void)
 {
+  if ((s_c6.head > 0U) && (s_c6.head == s_c6.tail)) {
+    s_c6.head = 0U;
+    s_c6.tail = 0U;
+  } else if ((s_c6.head > 0U) && ((uint32_t)s_c6.tail >= (uint32_t)k_c6m_queue)) {
+    const uint8_t rem = (uint8_t)(s_c6.tail - s_c6.head);
+    (void)memmove(s_c6.queue[0],
+                  s_c6.queue[s_c6.head],
+                  (size_t)rem * (size_t)k_ra8_c6link_frame_bytes);
+    s_c6.head = 0U;
+    s_c6.tail = rem;
+  }
   if ((uint32_t)s_c6.tail >= (uint32_t)k_c6m_queue) {
     return nullptr;
   }
@@ -865,6 +876,10 @@ internal_c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
   if (s_c6.head < s_c6.tail) {
     (void)memcpy(rx, s_c6.queue[s_c6.head], (size_t)len);
     s_c6.head++;
+    if (s_c6.head == s_c6.tail) {
+      s_c6.head = 0U;
+      s_c6.tail = 0U;
+    }
   } else {
     priv_c6link_frame_filler(rx);
   }

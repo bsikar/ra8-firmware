@@ -55,10 +55,12 @@ static void prep_open(void)
   ra8_fake_mmap_reset();
   /* If a previous test left the driver open, force-close. */
   (void)ra8_ble_close();
+  (void)ra8_ble_unbind_transport();
   /* Both flags must be 0: they are C6-side knobs this transport
    * refuses rather than silently swallows. */
   const ra8_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_test_bind_loopback());
   ra8_ble_test_reset_capture();
 }
 
@@ -614,9 +616,49 @@ static ra8_err_t ext_poll(void* ctx)
 
 /**
  * @par MC/DC:
+ * (exercises unbound-transport refusal across send_command, send_acl_data,
+ * rx_push, dispatch, and LE command wrappers without loopback fallback)
+ */
+static void test_unbound_refuses_loopback_fallback(void)
+{
+  TEST_BEGIN("ble unbound refuses implicit loopback");
+  ra8_fake_mmap_reset();
+  (void)ra8_ble_close();
+  (void)ra8_ble_unbind_transport();
+  const ra8_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
+  ra8_ble_test_reset_capture();
+
+  const uint8_t param[1]   = {0x01U};
+  const uint8_t acl_body[] = {0xAAU, 0xBBU};
+  const uint8_t addr[6]    = {0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0xC6U};
+  const uint8_t evt[3]     = {0x04U, 0x0EU, 0x00U};
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
+  TEST_ASSERT_EQ(
+    k_ra8_err_not_initialized,
+    ra8_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, acl_body, (uint16_t)sizeof acl_body));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_rx_push(evt, (uint16_t)sizeof evt));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_dispatch());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_set_random_address(addr));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_set_advertising_data(param, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_set_advertising_enable(1U));
+  TEST_ASSERT_EQ(
+    k_ra8_err_not_initialized,
+    ra8_ble_scan_start(1U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
+
+  uint16_t cap_len = 99U;
+  (void)ra8_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT_EQ(0U, cap_len);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
+  TEST_END("ble unbound refuses implicit loopback");
+}
+
+/**
+ * @par MC/DC:
  * (tests external transport bind/unbind, TX pass-through without mutating
- * loopback capture, `ra8_ble_rx_push` H4 validation + bounds, and fallback
- * to loopback after unbind)
+ * loopback capture, `ra8_ble_rx_push` H4 validation + bounds, refusal after
+ * unbind, and explicit host-only loopback binding)
  */
 static void test_external_transport_seam(void)
 {
@@ -677,8 +719,20 @@ static void test_external_transport_seam(void)
   ext.poll_ret = k_ra8_err_hw_error;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_ble_dispatch());
 
-  /* Unbind restores loopback TX capture. */
+  /* Unbind refuses TX/dispatch without falling back to loopback. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_unbind_transport());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, acl_body, 2U));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_dispatch());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_ble_rx_push(closed_evt, (uint16_t)sizeof closed_evt));
+  (void)ra8_ble_test_tx_capture(&loop_tx_len);
+  TEST_ASSERT_EQ(0U, loop_tx_len);
+
+  /* Host tests may explicitly re-bind loopback when needed. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_test_bind_loopback());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, param, 1U));
   (void)ra8_ble_test_tx_capture(&loop_tx_len);
@@ -689,6 +743,7 @@ static void test_external_transport_seam(void)
 
 int main(void)
 {
+  test_unbound_refuses_loopback_fallback();
   test_open_close();
   test_open_cfg_flags();
   test_open_null_cfg();

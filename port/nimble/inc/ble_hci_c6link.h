@@ -65,17 +65,19 @@ extern "C" {
 [[nodiscard]] ra8_err_t ble_hci_c6link_init(ra8_c6link_t* link);
 
 /**
- * @brief Unbind `ra8_ble` from the companion link and restore loopback mode.
+ * @brief Unbind `ra8_ble` from the companion link, leaving `ra8_ble` unbound.
  *
  * @details
  * Detaches the `ra8_ble` external transport, clears the `ESP_HCI_IF` sink,
  * and stops the co-processor Bluetooth controller via ::ra8_c6link_bt_stop on
- * the previously bound `ra8_c6link_t` handle if it is still open.
+ * the previously bound `ra8_c6link_t` handle if it is still open. Does not
+ * restore loopback mode; subsequent HCI calls return
+ * ``k_ra8_err_not_initialized`` until a transport is bound again.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok Unbound cleanly; `ra8_ble` operates in loopback mode again.
+ * @retval k_ra8_ok Unbound cleanly.
  *
- * @post Subsequent `ra8_ble` operations use the built-in loopback buffers.
+ * @post Subsequent `ra8_ble` transmit/dispatch calls refuse cleanly until bound.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ble_hci_c6link_deinit(void);

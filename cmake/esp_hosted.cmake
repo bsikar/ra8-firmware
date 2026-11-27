@@ -185,7 +185,9 @@ target_include_directories(
 # ESP-IDF normally provides these two vendor-facing branch-hint tokens through
 # esp_compiler.h. Keep the lowercase upstream spellings out of first-party
 # headers and map them only while compiling the pinned vendor object library.
-target_compile_definitions(esp_hosted_objs PRIVATE likely=HOSTED_LIKELY unlikely=HOSTED_UNLIKELY)
+target_compile_definitions(
+  esp_hosted_objs PRIVATE likely=HOSTED_LIKELY unlikely=HOSTED_UNLIKELY calloc=hosted_calloc
+)
 
 # No warning suppression here, deliberately. This object library used to
 # carry -Wno-implicit-function-declaration, -Wno-builtin-declaration-mismatch
