@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ereader_longstrip/src/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_longstrip/src/main.c
  * @brief Viewable continuous vertical-scroll (longstrip / manhwa) reader.
  *
  * @par Tag

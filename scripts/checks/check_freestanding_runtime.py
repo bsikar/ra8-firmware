@@ -253,7 +253,9 @@ def _migrated_zig_archive(
     if migrated is None:
         return None
     library = migrated.group(1)
-    if not (repo_root / "libs" / library / "build.zig").is_file():
+    in_libs = (repo_root / "libs" / library / "build.zig").is_file()
+    in_shared = (repo_root / "apps" / "shared_libs" / library / "build.zig").is_file()
+    if not (in_libs or in_shared):
         return None
     return f"lib{library}.a"
 
