@@ -30,28 +30,29 @@
  * @brief Register and argument constants used across the cases.
  *
  * @details
- * ``k_test_ops_mstpc_bit`` mirrors the provisional MSTPCRC slot the driver
- * ungates (HUM Ch 64.4.2 p 3838); the tests set and clear it directly so the
- * observers can be seen switching between the gated and ungated answers.
+ * ``k_test_ops_mstpc_bit`` mirrors the MIPI DSI / PHY MSTPCRC slot the driver
+ * ungates (HUM Ch 11.2.8 Table 11.13 p 446 and Ch 64.4.2 p 3838); the tests
+ * set and clear it directly so the observers can be seen switching between
+ * the gated and ungated answers.
  */
 typedef enum : uint32_t {
-  k_test_ops_mstpc_bit    = 13U,        /**< Provisional MIPI PHY MSTPC slot. */
-  k_test_ops_mosc_mhz     = 24U,        /**< In-window MOSC frequency.        */
-  k_test_ops_mosc_lo      = 7U,         /**< Just below the 8 MHz floor.      */
-  k_test_ops_mosc_hi      = 49U,        /**< Just above the 48 MHz ceiling.   */
-  k_test_ops_nmul         = 100U,       /**< Mid-range NMUL (40..375).        */
-  k_test_ops_pclka_dsi    = 125U,       /**< HUM Table 64.2 PCLKA bucket.     */
-  k_test_ops_pclka_csi    = 100U,       /**< HUM Table 64.3 PCLKA bucket.     */
-  k_test_ops_pclka_absent = 61U,        /**< No table row carries this PCLKA. */
-  k_test_ops_rate_mbps    = 250U,       /**< In-window per-lane line rate.    */
-  k_test_ops_rate_lo      = 79U,        /**< Just below the 80 Mbps floor.    */
-  k_test_ops_rate_hi      = 721U,       /**< Just above the 720 Mbps ceiling. */
-  k_test_ops_mode_bad     = 9U,         /**< Value outside the mode enum.     */
-  k_test_ops_dual_bad     = 9U,         /**< Value outside the dual-mode enum.*/
-  k_test_ops_hz_100mhz    = 100000000U, /**< 100 MHz expressed in Hz.         */
-  k_test_ops_hz_100p9mhz  = 100900000U, /**< 100.9 MHz -- floors to 100.      */
-  k_test_ops_hz_sub_mhz   = 999999U,    /**< Under 1 MHz -- floors to 0.      */
-  k_test_ops_hz_300mhz    = 300000000U, /**< 300 MHz -- over the RFREQ range. */
+  k_test_ops_mstpc_bit    = 10U,        /**< MIPI DSI / PHY MSTPC slot.        */
+  k_test_ops_mosc_mhz     = 24U,        /**< In-window MOSC frequency.         */
+  k_test_ops_mosc_lo      = 7U,         /**< Just below the 8 MHz floor.       */
+  k_test_ops_mosc_hi      = 49U,        /**< Just above the 48 MHz ceiling.    */
+  k_test_ops_nmul         = 100U,       /**< Mid-range NMUL (40..375).         */
+  k_test_ops_pclka_dsi    = 125U,       /**< HUM Table 64.2 PCLKA bucket.      */
+  k_test_ops_pclka_csi    = 100U,       /**< HUM Table 64.3 PCLKA bucket.      */
+  k_test_ops_pclka_absent = 61U,        /**< No table row carries this PCLKA.  */
+  k_test_ops_rate_mbps    = 250U,       /**< In-window per-lane line rate.     */
+  k_test_ops_rate_lo      = 79U,        /**< Just below the 80 Mbps floor.     */
+  k_test_ops_rate_hi      = 721U,       /**< Just above the 720 Mbps ceiling.  */
+  k_test_ops_mode_bad     = 9U,         /**< Value outside the mode enum.      */
+  k_test_ops_dual_bad     = 9U,         /**< Value outside the dual-mode enum. */
+  k_test_ops_hz_100mhz    = 100000000U, /**< 100 MHz expressed in Hz.          */
+  k_test_ops_hz_100p9mhz  = 100900000U, /**< 100.9 MHz -- floors to 100.       */
+  k_test_ops_hz_sub_mhz   = 999999U,    /**< Under 1 MHz -- floors to 0.       */
+  k_test_ops_hz_300mhz    = 300000000U, /**< 300 MHz -- over the RFREQ range.  */
 } test_phy_ops_const_t;
 
 /**
@@ -168,8 +169,7 @@ static void test_compute_pll_freq_and_lane_rate(void)
                  ra8_mipi_phy_compute_pll_freq(&pll, (uint8_t)k_test_ops_mosc_hi, &mhz));
 
   /* f = 24 MHz * 100 / 1 / 1 = 2400 MHz; line rate = f / 2. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_mipi_phy_compute_pll_freq(&pll, (uint8_t)k_test_ops_mosc_mhz, &mhz));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_compute_pll_freq(&pll, (uint8_t)k_test_ops_mosc_mhz, &mhz));
   TEST_ASSERT_EQ((int)((uint32_t)k_test_ops_mosc_mhz * (uint32_t)k_test_ops_nmul), (int)mhz);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -284,8 +284,7 @@ static void test_dual_mode_policy(void)
 
   /* A requestor outside the enum is blocked whatever the policy. */
   TEST_ASSERT_EQ(false,
-                 ra8_mipi_phy_dual_mode_can_acquire(
-                   (ra8_mipi_phy_mode_t)k_test_ops_mode_bad));
+                 ra8_mipi_phy_dual_mode_can_acquire((ra8_mipi_phy_mode_t)k_test_ops_mode_bad));
 
   /* Leave the shadow in its default for any later case. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_set_dual_mode(k_ra8_mipi_phy_dual_off));
@@ -298,15 +297,13 @@ static void test_set_pclka_freq_hz(void)
   internal_ungate();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_set_pclka_freq_hz((uint32_t)k_test_ops_hz_100mhz));
-  TEST_ASSERT_EQ((int)((uint32_t)k_test_ops_pclka_csi -
-                       (uint32_t)k_ra8_mipi_phy_refcr_rfreq_bias),
+  TEST_ASSERT_EQ((int)((uint32_t)k_test_ops_pclka_csi - (uint32_t)k_ra8_mipi_phy_refcr_rfreq_bias),
                  (int)*ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_refcr));
 
   /* 100.9 MHz floors onto the same RFREQ word. */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_refcr) = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_set_pclka_freq_hz((uint32_t)k_test_ops_hz_100p9mhz));
-  TEST_ASSERT_EQ((int)((uint32_t)k_test_ops_pclka_csi -
-                       (uint32_t)k_ra8_mipi_phy_refcr_rfreq_bias),
+  TEST_ASSERT_EQ((int)((uint32_t)k_test_ops_pclka_csi - (uint32_t)k_ra8_mipi_phy_refcr_rfreq_bias),
                  (int)*ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_refcr));
 
   /* Under 1 MHz floors to 0, which the 40..125 MHz range rejects. */

@@ -5,9 +5,9 @@
 //! 480x854 panel, and the bring-up order HUM Ch 64.3.1 asks for: PHY
 //! first, then the DSI link layer (HUM Ch 65), then the HS clock.
 //!
-//! The panel-datasheet timings are still placeholders (zero DSI guard
-//! timings and timeouts, `tinit = 1` on the PHY), exactly as in the C
-//! this replaces.
+//! The panel-datasheet timings are placeholders pending physical bench panel
+//! attachment (zero DSI guard timings and timeouts, `tinit = 1` on the PHY),
+//! exactly as in the C this replaces.
 
 const hal = @import("hal.zig");
 
@@ -121,6 +121,12 @@ const phy_nfmul_0_00: u8 = 0;
 const dsi_lanes_2: u8 = 2;
 const dsi_clock_non_continuous: u8 = 0;
 
+/// TODO(MIPI-DSI panel not yet on bench): Target panel is Focus LCDs E45RA-MW276-C
+/// (part of Renesas RTKAPPLCDMS01001BE MIPI Graphics Expansion Board 1, EK-RA8D2 UM
+/// Section 8.2 p 45 / Table 34). The physical panel expansion board is not attached
+/// to the bench rig (bench uses parallel 1024x600 TFT and HDMI capture). Exact DSI guard
+/// timings (CLSTPTSETR / LPTRNSTSETR), timeouts, and per-panel DCS init sequence
+/// (sleep-out 0x11, display-on 0x29) remain pending physical bench panel bringup.
 pub const phy_timing = PhyTiming{ .tinit = 1 };
 
 pub const phy_config = PhyConfig{

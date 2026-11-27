@@ -74,8 +74,8 @@ typedef enum : uint16_t {
   k_ra8_mipi_phy_spin_budget   = 4096U, /**< Max poll iterations.        */
 } ra8_mipi_phy_limits_t;
 
-/* ``k_ra8_mipi_phy_mstpc_bit``, the provisional MSTPCRC slot this driver
- * ungates, is declared in ``ra8_mipi_phy_internal.h`` because the lifecycle
+/* ``k_ra8_mipi_phy_mstpc_bit_dsi`` / ``_csi``, the MSTPCRC slots this driver
+ * ungates, are declared in ``ra8_mipi_phy_internal.h`` because the lifecycle
  * observers in ``mipi_phy_ops_abi.zig`` read the same bit. */
 
 /**
@@ -151,28 +151,33 @@ static ra8_mipi_phy_eotp_t s_eotp = k_ra8_mipi_phy_eotp_disabled;
  */
 
 /**
- * @brief Clear MSTPCRC bit 13, ungating MIPI PHY.
+ * @brief Clear the MSTPCRC module-stop bit for the active MIPI subsystem.
  *
  * @details
- * Stop-gap until ``ra8_mstp_t`` learns the MIPI PHY slot. Cites HUM
- * Ch 64.4.2 p 3838 ("MIPI PHY operation can be disabled or enabled
- * using Module Stop Control Register C (MSTPCRC). The MIPI PHY
- * module is initially stopped after reset.").
+ * Ungates the MIPI subsystem corresponding to the configured mode. Cites HUM
+ * Ch 11.2.8 Table 11.13 pp 446-447 (MSTPC10 = MIPI DSI, MSTPC17 = MIPI CSI) and
+ * Ch 64.4.2 p 3838 ("MIPI PHY operation can be disabled or enabled using
+ * Module Stop Control Register C (MSTPCRC)").
+ *
+ * @param[in] mode Active MIPI PHY mode (DSI Host or CSI Device).
  *
  * @pre Caller has unlocked write protection on MSTPCRC if required.
  * @pre Called from a single-threaded init context (or with IRQs masked).
- * @post MSTPCRC bit 13 is cleared and the MIPI PHY clock is running.
+ * @post The subsystem MSTPCRC bit is cleared and the MIPI PHY clock is running.
  * @post No other MSTPCRC bits are modified.
  *
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_mipi_phy_mstp_unstop(void)
+static void internal_mipi_phy_mstp_unstop(ra8_mipi_phy_mode_t mode)
 {
-  /* HUM Ch 64.4.2 "Module-Stop Function Setting", p 3838 */
+  /* HUM Ch 11.2.8 Table 11.13 pp 446-447 & Ch 64.4.2 p 3838 */
+  const uint32_t     bit   = (mode == k_ra8_mipi_phy_mode_dsi_host)
+                               ? (uint32_t)k_ra8_mipi_phy_mstpc_bit_dsi
+                               : (uint32_t)k_ra8_mipi_phy_mstpc_bit_csi;
   volatile uint32_t* mstpc = &ra8_mstp()->MSTPCRC;
-  *mstpc                   = *mstpc & ~((uint32_t)1U << (uint32_t)k_ra8_mipi_phy_mstpc_bit);
+  *mstpc                   = *mstpc & ~((uint32_t)1U << bit);
 }
 
 /* Spin until ``(reg & mask) == mask`` or the budget runs out -- see surrounding code and HUM citations. */
@@ -360,7 +365,7 @@ static ra8_err_t internal_mipi_phy_validate_init_cfg(const ra8_mipi_phy_config_t
 RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_init_power_up(const ra8_mipi_phy_config_t* cfg)
 {
-  internal_mipi_phy_mstp_unstop();
+  internal_mipi_phy_mstp_unstop(cfg->mode);
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_mdc) =
     (cfg->mode == k_ra8_mipi_phy_mode_dsi_host) ? k_ra8_mipi_phy_mdc_hosten : 0U;
   /* HUM Ch 64.2.1 p 3822: RFREQ encodes (MHz - 1). FSP r_mipi_phy.c
