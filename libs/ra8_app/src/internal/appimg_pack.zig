@@ -31,6 +31,10 @@ pub const Manifest = struct {
     app_id: []const u8,
     /// Name a launcher shows, shorter than `appimg.Width.display_name`.
     display_name: []const u8,
+    /// Optional 64-byte 2-bit grayscale packed icon (16x16 pixels).
+    icon: ?[]const u8 = null,
+    /// Optional format version override (1 or 2). Defaults to 2 (Format.version).
+    format_version: ?u32 = null,
 };
 
 /// Why the packer refused to build or sign an image.
@@ -53,9 +57,22 @@ fn field(comptime width: usize, text: []const u8) Error![width]u8 {
 pub fn header(manifest: Manifest, code_len: usize, data_len: usize) Error!Header {
     const limit = std.math.maxInt(u32);
     if (code_len > limit or data_len > limit) return appimg.Error.OutOfRange;
+
+    var version = manifest.format_version orelse appimg.Format.version;
+    var icon_offset: u32 = 0;
+    var icon_length: u32 = 0;
+
+    if (manifest.icon) |icon_data| {
+        if (icon_data.len != appimg.Format.icon_bytes) return appimg.Error.OutOfRange;
+        if (version == appimg.Format.version_v1) return appimg.Error.Validation;
+        version = appimg.Format.version_v2;
+        icon_offset = @intCast(code_len + data_len);
+        icon_length = @intCast(icon_data.len);
+    }
+
     return .{
         .magic = appimg.Format.magic,
-        .format_version = appimg.Format.version,
+        .format_version = version,
         .entry_offset = manifest.entry_offset,
         .code_size = @intCast(code_len),
         .data_size = @intCast(data_len),
@@ -64,11 +81,13 @@ pub fn header(manifest: Manifest, code_len: usize, data_len: usize) Error!Header
         .capabilities = manifest.capabilities,
         .app_id = try field(appimg.Width.app_id, manifest.app_id),
         .display_name = try field(appimg.Width.display_name, manifest.display_name),
+        .icon_offset = icon_offset,
+        .icon_length = icon_length,
         .signature = @splat(0),
     };
 }
 
-/// Lay out `header || code || data` with an all-zero (unsigned) signature.
+/// Lay out `header || code || data [|| icon]` with an all-zero (unsigned) signature.
 /// The caller owns the returned bytes.
 pub fn assemble(
     allocator: std.mem.Allocator,
@@ -80,10 +99,21 @@ pub fn assemble(
     const bytes = try allocator.alloc(u8, head.imageLen());
     errdefer allocator.free(bytes);
 
-    const code_at = @sizeOf(Header);
-    @memcpy(bytes[0..code_at], std.mem.asBytes(&head));
-    @memcpy(bytes[code_at..][0..code.len], code);
-    @memcpy(bytes[code_at + code.len ..][0..data.len], data);
+    const hdr_size = head.headerSize();
+    if (head.format_version == appimg.Format.version_v1) {
+        @memcpy(bytes[0..appimg.Header.signature_offset_v1], std.mem.asBytes(&head)[0..appimg.Header.signature_offset_v1]);
+        @memset(bytes[appimg.Header.signature_offset_v1..hdr_size], 0);
+    } else {
+        @memcpy(bytes[0..hdr_size], std.mem.asBytes(&head));
+    }
+
+    const payload_base = hdr_size;
+    @memcpy(bytes[payload_base..][0..code.len], code);
+    @memcpy(bytes[payload_base + code.len ..][0..data.len], data);
+    if (manifest.icon) |icon_data| {
+        @memcpy(bytes[payload_base + head.icon_offset ..][0..icon_data.len], icon_data);
+    }
+
     _ = try appimg.parse(bytes);
     return bytes;
 }
@@ -99,7 +129,8 @@ pub fn sign(allocator: std.mem.Allocator, bytes: []u8, key_pair: Ed25519.KeyPair
     const joined = try std.mem.concat(allocator, u8, &.{ msg.head, msg.tail });
     defer allocator.free(joined);
     const signature = key_pair.sign(joined, null) catch return Error.KeyRejected;
-    @memcpy(bytes[Header.signature_offset..][0..appimg.Width.signature], &signature.toBytes());
+    const sig_offset = head.signatureOffset();
+    @memcpy(bytes[sig_offset..][0..appimg.Width.signature], &signature.toBytes());
 }
 
 /// Assemble and sign in one step. The caller owns the returned bytes.

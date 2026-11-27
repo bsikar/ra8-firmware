@@ -475,11 +475,13 @@ pub const AppImgVerifier = extern struct {
 comptime {
     const word = @sizeOf(usize);
 
-    std.debug.assert(@sizeOf(AppImgHeader) == 160);
+    std.debug.assert(@sizeOf(AppImgHeader) == 168);
     std.debug.assert(@offsetOf(AppImgHeader, "capabilities") == 28);
     std.debug.assert(@offsetOf(AppImgHeader, "app_id") == 32);
     std.debug.assert(@offsetOf(AppImgHeader, "display_name") == 64);
-    std.debug.assert(@offsetOf(AppImgHeader, "signature") == 96);
+    std.debug.assert(@offsetOf(AppImgHeader, "icon_offset") == 96);
+    std.debug.assert(@offsetOf(AppImgHeader, "icon_length") == 100);
+    std.debug.assert(@offsetOf(AppImgHeader, "signature") == 104);
 
     std.debug.assert(@sizeOf(AppImgSpan) == 8);
     std.debug.assert(@offsetOf(AppImgSpan, "length") == 4);
@@ -547,10 +549,10 @@ pub export fn ra8_appimg_signed_span(
     out: ?*AppImgSpan,
 ) callconv(.c) u16 {
     if (out) |sink| sink.* = .{};
-    if (header == null) return rejectNull("header must not be nullptr");
+    const image = header orelse return rejectNull("header must not be nullptr");
     const sink = out orelse return rejectNull("out must not be nullptr");
 
-    const span = appimg.signedSpan(len) catch |err| return imageCode(err);
+    const span = appimg.signedSpan(image.*, len) catch |err| return imageCode(err);
     sink.* = .{ .offset = span.offset, .length = span.length };
     return code(.ok);
 }
@@ -567,6 +569,48 @@ pub export fn ra8_appimg_payload_span(
 
     const span = appimg.payloadSpan(image.*, len) catch |err| return imageCode(err);
     sink.* = .{ .offset = span.offset, .length = span.length };
+    return code(.ok);
+}
+
+/// Report the byte range the app icon occupies within the `.ra8app` file.
+pub export fn ra8_appimg_icon_span(
+    header: ?*const AppImgHeader,
+    len: usize,
+    out: ?*AppImgSpan,
+) callconv(.c) u16 {
+    if (out) |sink| sink.* = .{};
+    const image = header orelse return rejectNull("header must not be nullptr");
+    const sink = out orelse return rejectNull("out must not be nullptr");
+
+    const span = appimg.iconSpan(image.*, len) catch |err| return imageCode(err);
+    sink.* = .{ .offset = span.offset, .length = span.length };
+    return code(.ok);
+}
+
+/// Retrieve a pointer to the app icon data from an `.ra8app` image buffer.
+pub export fn ra8_appimg_get_icon(
+    header: ?*const AppImgHeader,
+    bytes: ?[*]const u8,
+    len: usize,
+    out_icon: ?*?[*]const u8,
+    out_len: ?*usize,
+) callconv(.c) u16 {
+    if (out_icon) |sink| sink.* = null;
+    if (out_len) |sink| sink.* = 0;
+    const image = header orelse return rejectNull("header must not be nullptr");
+    const base = bytes orelse return rejectNull("bytes must not be nullptr");
+    const icon_sink = out_icon orelse return rejectNull("out_icon must not be nullptr");
+    const len_sink = out_len orelse return rejectNull("out_len must not be nullptr");
+
+    if (image.icon_length == 0) {
+        icon_sink.* = null;
+        len_sink.* = 0;
+        return code(.ok);
+    }
+
+    const span = appimg.iconSpan(image.*, len) catch |err| return imageCode(err);
+    icon_sink.* = base + span.offset;
+    len_sink.* = span.length;
     return code(.ok);
 }
 

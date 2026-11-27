@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Format tests for the `.ra8app` container: every refusal the parser can
-//! reach, the two spans, and the capability comparison.
+//! reach, the two spans, format v1 and v2 with icon metadata, and the capability comparison.
 
 const std = @import("std");
 const appimg = @import("appimg");
@@ -26,21 +26,32 @@ fn goodHeader() appimg.Header {
     h.capabilities = appimg.Capability.display;
     @memcpy(h.app_id[0..11], "com.ex.rdr\x00");
     @memcpy(h.display_name[0..7], "Reader\x00");
+    h.icon_offset = 0;
+    h.icon_length = 0;
     @memset(&h.signature, 0xAB);
     return h;
 }
 
 /// Serialise a header followed by the payload it declares.
 fn imageOf(allocator: std.mem.Allocator, h: appimg.Header) ![]u8 {
-    const buf = try allocator.alloc(u8, header_bytes + h.payloadLen());
+    const hdr_size = h.headerSize();
+    const buf = try allocator.alloc(u8, hdr_size + h.payloadLen());
     @memset(buf, 0);
-    @memcpy(buf[0..header_bytes], std.mem.asBytes(&h));
+    if (h.format_version == appimg.Format.version_v1) {
+        @memcpy(buf[0..appimg.Header.signature_offset_v1], std.mem.asBytes(&h)[0..appimg.Header.signature_offset_v1]);
+        @memcpy(buf[appimg.Header.signature_offset_v1..hdr_size], &h.signature);
+    } else {
+        @memcpy(buf[0..hdr_size], std.mem.asBytes(&h));
+    }
     return buf;
 }
 
 test "the on-disk header has the wire layout the format pins" {
-    try std.testing.expectEqual(@as(usize, 160), header_bytes);
-    try std.testing.expectEqual(@as(usize, 96), appimg.Header.signature_offset);
+    try std.testing.expectEqual(@as(usize, 160), appimg.Format.header_bytes_v1);
+    try std.testing.expectEqual(@as(usize, 168), appimg.Format.header_bytes_v2);
+    try std.testing.expectEqual(@as(usize, 168), header_bytes);
+    try std.testing.expectEqual(@as(usize, 96), appimg.Header.signature_offset_v1);
+    try std.testing.expectEqual(@as(usize, 104), appimg.Header.signature_offset_v2);
 }
 
 test "a well-formed image parses and round-trips its fields" {
@@ -55,8 +66,90 @@ test "a well-formed image parses and round-trips its fields" {
     try std.testing.expectEqualStrings("com.ex.rdr", std.mem.sliceTo(&parsed.app_id, 0));
 }
 
+test "format v1 legacy header parses correctly into in-memory Header" {
+    var v1 = goodHeader();
+    v1.format_version = appimg.Format.version_v1;
+    v1.icon_offset = 0;
+    v1.icon_length = 0;
+
+    const image = try imageOf(std.testing.allocator, v1);
+    defer std.testing.allocator.free(image);
+
+    try std.testing.expectEqual(@as(usize, 160 + 256 + 64), image.len);
+    const parsed = try appimg.parse(image);
+    try std.testing.expectEqual(@as(u32, 1), parsed.format_version);
+    try std.testing.expectEqual(@as(u32, 0), parsed.icon_offset);
+    try std.testing.expectEqual(@as(u32, 0), parsed.icon_length);
+    try std.testing.expectEqual(v1.code_size, parsed.code_size);
+    try std.testing.expectEqual(v1.data_size, parsed.data_size);
+    try std.testing.expectEqualSlices(u8, &v1.signature, &parsed.signature);
+
+    const span = try appimg.signedSpan(parsed, image.len);
+    try std.testing.expectEqual(@as(u32, 96), span.length);
+
+    const payload = try appimg.payloadSpan(parsed, image.len);
+    try std.testing.expectEqual(@as(u32, 160), payload.offset);
+    try std.testing.expectEqual(@as(u32, 320), payload.length);
+}
+
+test "format v2 with icon parses and reports valid icon span" {
+    var v2 = goodHeader();
+    v2.format_version = appimg.Format.version_v2;
+    v2.icon_offset = v2.code_size + v2.data_size; // immediately follows code + data
+    v2.icon_length = appimg.Format.icon_bytes;
+
+    const image = try imageOf(std.testing.allocator, v2);
+    defer std.testing.allocator.free(image);
+
+    const parsed = try appimg.parse(image);
+    try std.testing.expectEqual(@as(u32, 2), parsed.format_version);
+    try std.testing.expectEqual(@as(u32, 320), parsed.icon_offset);
+    try std.testing.expectEqual(@as(u32, 64), parsed.icon_length);
+
+    const span = try appimg.iconSpan(parsed, image.len);
+    try std.testing.expectEqual(@as(u32, 168 + 320), span.offset);
+    try std.testing.expectEqual(@as(u32, 64), span.length);
+
+    const slice = (try appimg.iconSlice(parsed, image)).?;
+    try std.testing.expectEqual(@as(usize, 64), slice.len);
+}
+
+test "an icon length other than 64 when non-zero is out of range" {
+    var v2 = goodHeader();
+    v2.icon_offset = v2.code_size + v2.data_size;
+    v2.icon_length = 63;
+    const image = try imageOf(std.testing.allocator, v2);
+    defer std.testing.allocator.free(image);
+    try std.testing.expectError(appimg.Error.OutOfRange, appimg.parse(image));
+
+    var v2_big = goodHeader();
+    v2_big.icon_offset = v2_big.code_size + v2_big.data_size;
+    v2_big.icon_length = 65;
+    const image2 = try imageOf(std.testing.allocator, v2_big);
+    defer std.testing.allocator.free(image2);
+    try std.testing.expectError(appimg.Error.OutOfRange, appimg.parse(image2));
+}
+
+test "an icon overlapping code or data is out of range" {
+    var v2 = goodHeader();
+    v2.icon_offset = (v2.code_size + v2.data_size) - 1; // overlaps data!
+    v2.icon_length = appimg.Format.icon_bytes;
+    const image = try imageOf(std.testing.allocator, v2);
+    defer std.testing.allocator.free(image);
+    try std.testing.expectError(appimg.Error.OutOfRange, appimg.parse(image));
+}
+
+test "a non-zero icon offset when icon length is zero is a validation refusal" {
+    var v2 = goodHeader();
+    v2.icon_offset = 16;
+    v2.icon_length = 0;
+    const image = try imageOf(std.testing.allocator, v2);
+    defer std.testing.allocator.free(image);
+    try std.testing.expectError(appimg.Error.Validation, appimg.parse(image));
+}
+
 test "an image shorter than the header is refused before anything is read" {
-    const short: [header_bytes - 1]u8 = @splat(0);
+    const short: [160 - 1]u8 = @splat(0);
     try std.testing.expectError(appimg.Error.ShortImage, appimg.parse(&short));
 }
 
@@ -171,10 +264,17 @@ test "the payload length cannot overflow the size check" {
 }
 
 test "the signed span ends where the signature field begins" {
-    const span = try appimg.signedSpan(header_bytes);
+    const h = goodHeader();
+    const span = try appimg.signedSpan(h, header_bytes);
     try std.testing.expectEqual(@as(u32, 0), span.offset);
-    try std.testing.expectEqual(@as(u32, 96), span.length);
-    try std.testing.expectError(appimg.Error.ShortImage, appimg.signedSpan(header_bytes - 1));
+    try std.testing.expectEqual(@as(u32, 104), span.length);
+    try std.testing.expectError(appimg.Error.ShortImage, appimg.signedSpan(h, header_bytes - 1));
+
+    var v1 = h;
+    v1.format_version = appimg.Format.version_v1;
+    const span_v1 = try appimg.signedSpan(v1, appimg.Format.header_bytes_v1);
+    try std.testing.expectEqual(@as(u32, 0), span_v1.offset);
+    try std.testing.expectEqual(@as(u32, 96), span_v1.length);
 }
 
 test "the payload span starts after the header and covers code plus data" {

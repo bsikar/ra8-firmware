@@ -24,7 +24,17 @@ pub const public_key = pinned_pubkey.pinned();
 /// Capability bits this host grants: none; txm_hello_m33 asks for none.
 pub const granted: u32 = 0;
 /// sizeof(appimg.Header): the module payload starts here.
-pub const header_bytes = 160;
+pub const header_bytes = 168;
+
+/// Dynamic header size based on format version: 160 for v1, 168 for v2.
+pub fn headerBytes(bytes: []const u8) usize {
+    if (bytes.len >= 8) {
+        const version = std.mem.readInt(u32, bytes[4..8], .little);
+        if (version == 1) return 160;
+        if (version == 2) return 168;
+    }
+    return header_bytes;
+}
 
 /// True when the root module targets a TrustZone Non-Secure image linking
 /// the Secure Gateway import veneer (`ra8_nsc_appimg_ed25519_verify`).
@@ -102,7 +112,8 @@ pub fn admitted(bytes: []const u8) bool {
 /// The byte is restored before returning, so an admitted image stays
 /// admitted (RA8FW-831).
 pub fn refusesTamper(bytes: []u8) bool {
-    if (bytes.len <= header_bytes) return false;
+    const hdr_len = headerBytes(bytes);
+    if (bytes.len <= hdr_len) return false;
     const last = bytes.len - 1;
     bytes[last] ^= 0x01;
     defer bytes[last] ^= 0x01;

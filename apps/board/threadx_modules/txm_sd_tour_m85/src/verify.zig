@@ -24,7 +24,17 @@ pub const public_key = [appimg_verify.pubkey_bytes]u8{
 /// module's manifest asks for (appimg.zig: display 0x1, storage 0x2).
 pub const granted: u32 = 0x1 | 0x2;
 /// sizeof(appimg.Header): the module payload starts here.
-pub const header_bytes = 160;
+pub const header_bytes = 168;
+
+/// Dynamic header size based on format version: 160 for v1, 168 for v2.
+pub fn headerBytes(bytes: []const u8) usize {
+    if (bytes.len >= 8) {
+        const version = std.mem.readInt(u32, bytes[4..8], .little);
+        if (version == 1) return 160;
+        if (version == 2) return 168;
+    }
+    return header_bytes;
+}
 
 fn ed25519(
     ctx: ?*anyopaque,
@@ -55,7 +65,8 @@ pub fn admitted(bytes: []const u8) bool {
 /// The byte is restored before returning, so an admitted image stays
 /// admitted (RA8FW-831).
 pub fn refusesTamper(bytes: []u8) bool {
-    if (bytes.len <= header_bytes) return false;
+    const hdr_len = headerBytes(bytes);
+    if (bytes.len <= hdr_len) return false;
     const last = bytes.len - 1;
     bytes[last] ^= 0x01;
     defer bytes[last] ^= 0x01;
@@ -73,7 +84,8 @@ pub const Manifest = struct {
 /// (appimg.Header: eight u32 words, then app_id 32, display_name 32,
 /// signature 64).
 pub fn manifest(bytes: []const u8) ?Manifest {
-    if (bytes.len < header_bytes) return null;
+    const hdr_len = headerBytes(bytes);
+    if (bytes.len < hdr_len) return null;
     const capabilities = std.mem.readInt(u32, bytes[7 * @sizeOf(u32) ..][0..4], .little);
     const field = bytes[8 * @sizeOf(u32) ..][0..32];
     const end = std.mem.indexOfScalar(u8, field, 0) orelse field.len;

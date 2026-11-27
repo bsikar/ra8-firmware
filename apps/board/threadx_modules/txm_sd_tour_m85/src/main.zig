@@ -75,7 +75,7 @@ fn admit() anyerror!App {
     backend.say(tamper_line);
     const man = verify.manifest(image[0..len]) orelse return error.manifest;
     return .{
-        .payload = image[verify.header_bytes..len],
+        .payload = image[verify.headerBytes(image[0..len])..len],
         .app_id = man.app_id,
         .capabilities = man.capabilities,
     };

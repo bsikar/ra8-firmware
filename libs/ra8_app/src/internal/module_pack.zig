@@ -20,6 +20,8 @@ pub const Identity = struct {
     app_id: []const u8,
     display_name: []const u8,
     capabilities: u32 = pack.gate.image.Capability.none,
+    icon: ?[]const u8 = null,
+    format_version: ?u32 = null,
 };
 
 pub const Error = preamble.Error || pack.Error;
@@ -38,6 +40,8 @@ pub fn packModule(
         .capabilities = identity.capabilities,
         .app_id = identity.app_id,
         .display_name = identity.display_name,
+        .icon = identity.icon,
+        .format_version = identity.format_version,
     };
     return pack.pack(allocator, manifest, module, &.{}, key_pair);
 }
