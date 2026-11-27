@@ -1,10 +1,11 @@
 {
   "test_roots": [
-    "tests/zig_build_graph/build_graph_test.zig"
+    "tests/zig_build_graph/build_graph_test.zig",
+    "tests/zig_build_graph/ra8app_setup_test.zig"
   ],
   "covered_sources": [
-    "tests/zig_build_graph/abi_contract.zig",
-    "tests/zig_build_graph/build_graph_test.zig"
+    "tests/zig_build_graph/build_graph_test.zig",
+    "tests/zig_build_graph/ra8app_setup_test.zig"
   ],
   "minimum_tests": 10
 }

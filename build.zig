@@ -342,12 +342,19 @@ pub fn build(b: *std.Build) void {
     // test` against the same module_pack and test key the build graph packs
     // with.
     const app_dep = b.dependency("ra8_app", .{});
-    const ra8app_setup_module = b.createModule(.{
+    const setup_example_module = b.createModule(.{
         .root_source_file = b.path("apps/board/threadx_modules/ra8app_setup_hello/setup_example.zig"),
         .target = b.graph.host,
     });
+    setup_example_module.addImport("module_pack", app_dep.module("module_pack"));
+    setup_example_module.addImport("test_key", app_dep.module("test_key"));
+
+    const ra8app_setup_module = b.createModule(.{
+        .root_source_file = b.path("tests/zig_build_graph/ra8app_setup_test.zig"),
+        .target = b.graph.host,
+    });
     ra8app_setup_module.addImport("module_pack", app_dep.module("module_pack"));
-    ra8app_setup_module.addImport("test_key", app_dep.module("test_key"));
+    ra8app_setup_module.addImport("setup_example", setup_example_module);
     const ra8app_setup_tests = b.addTest(.{ .root_module = ra8app_setup_module });
     zig_test_step.dependOn(&b.addRunArtifact(ra8app_setup_tests).step);
 
