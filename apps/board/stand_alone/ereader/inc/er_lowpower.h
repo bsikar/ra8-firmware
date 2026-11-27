@@ -384,6 +384,31 @@ void er_lowpower_ns_tick(bool                  sw1_down,
                                                    uint32_t             fb_crc,
                                                    er_lp_wake_reason_t* out_wake);
 
+/**
+ * @brief Request low-power hold handoff on the active Non-Secure target context.
+ *
+ * @details Forwards to ``er_lowpower_request_handoff(&s_ns_lp_ctx)`` so background
+ * supervisor threads (e.g. system thread when the display backlight turns OFF)
+ * can initiate an M85 -> M33 hold handoff without waiting for the full idle timer.
+ *
+ * @return ::ra8_err_t outcome.
+ * @retval k_ra8_ok              Handoff successfully requested.
+ * @retval k_ra8_err_not_supported Low-power mode is disabled.
+ * @retval k_ra8_err_not_initialized Context not initialised.
+ *
+ * @pre ``er_lowpower_ns_setup`` completed.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t er_lowpower_ns_request_handoff(void);
+
+/**
+ * @brief Query whether target M33 hold-page low-power mode is currently enabled.
+ *
+ * @return `true` if initialised and enabled, `false` otherwise.
+ * @since 0.1.0
+ */
+[[nodiscard]] bool er_lowpower_ns_is_enabled(void);
+
 #ifdef __cplusplus
 }
 #endif

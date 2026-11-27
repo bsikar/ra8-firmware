@@ -50,6 +50,7 @@ fail() {
 printf '%s\n' "${OUT}" | grep -q "EXC] ERROR" && fail "CPU exception recorded"
 printf '%s\n' "${OUT}" | grep -q "M33 secondary hold supervisor started" || fail "missing M33 start banner"
 printf '%s\n' "${OUT}" | grep -q "Entering M33 hold" || fail "M85 never entered M33 hold"
+printf '%s\n' "${OUT}" | grep -q "Backlight OFF -> requested M33 hold handoff" || fail "missing screen-off idle handoff request"
 
 wake_count="$(printf '%s\n' "${OUT}" | grep -c "M85 wake -> page turn completed" || true)"
 if [[ "${wake_count}" -lt 2 ]]; then

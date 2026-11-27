@@ -204,6 +204,8 @@ volatile uint32_t g_ns_fig_active       = 0U;
 volatile uint32_t g_ns_fig_scale        = 0U;
 volatile uint32_t g_ns_manga_active     = 0U;
 volatile uint32_t g_ns_translate_active = 0U;
+volatile uint32_t g_ns_idle_handoff_requests = 0U;
+volatile uint32_t g_ns_lpm_standby_wakes     = 0U;
 
 /** @brief 1024x600 RGB565 panel framebuffer placed in NOLOAD external SDRAM. */
 RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
@@ -388,10 +390,15 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
     return;
   }
 
-  const uint8_t                        supports_dim = s_ns_backlight_caps.supports_pwm ? 1U : 0U;
+  const uint8_t  supports_dim   = s_ns_backlight_caps.supports_pwm ? 1U : 0U;
+#ifdef RA8_EREADER_LP_EMU_SOAK
+  const uint32_t off_timeout_ms = 80U;
+#else
+  const uint32_t off_timeout_ms = (uint32_t)k_display_backlight_default_off_ms;
+#endif
   const display_backlight_policy_cfg_t pol_cfg      = {
     .dim_after_ms = (supports_dim != 0U) ? (uint32_t)k_display_backlight_default_dim_ms : 0U,
-    .off_after_ms = (uint32_t)k_display_backlight_default_off_ms,
+    .off_after_ms = off_timeout_ms,
     .active_pct   = (uint8_t)k_display_backlight_default_active_pct,
     .dimmed_pct   = (uint8_t)k_display_backlight_default_dimmed_pct,
     .supports_dim = supports_dim,
@@ -935,11 +942,17 @@ RA8_INTERNAL static void internal_ns_handle_lp_step(bool  sw1_edge,
                                                         &wake);
   *prev_sw1                = false;
   *prev_sw2                = false;
-  if ((err == k_ra8_ok) && ((wake == k_er_lp_wake_next_page) || (wake == k_er_lp_wake_auto_test))) {
-    if (s_ns_panel.initialized) {
-      internal_ns_handle_page_turn(k_er_dir_next);
+  if ((err == k_ra8_ok) && (wake != k_er_lp_wake_none)) {
+    /* Wake backlight on leaving low-power hold (button or soak wake). */
+    ra8_ereader_backlight_notify_activity();
+    if ((wake == k_er_lp_wake_next_page) || (wake == k_er_lp_wake_auto_test)) {
+      if (s_ns_panel.initialized) {
+        internal_ns_handle_page_turn(k_er_dir_next);
+      }
+      (void)internal_ns_log_emit("LP", "M85 wake -> page turn completed");
+    } else if (wake == k_er_lp_wake_toggle) {
+      (void)internal_ns_log_emit("LP", "M85 wake -> low-power toggle");
     }
-    (void)internal_ns_log_emit("LP", "M85 wake -> page turn completed");
   }
 }
 
@@ -1011,7 +1024,8 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
     }
   }
 
-  uint32_t tick = 0U;
+  uint32_t tick                  = 0U;
+  bool     screen_off_lp_latched = false;
   for (;;) {
     tick++;
     g_ns_sys_ticks = tick;
@@ -1019,6 +1033,31 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
       (void)internal_ns_log_emit("SYS", "System heartbeat: supervisor loop");
     }
+
+    /* Screen-off idle and low-power entry (RA8FW-1400) */
+    if (s_ns_backlight_ready && (g_ns_backlight_state == (uint32_t)k_display_backlight_state_off)) {
+      if (!screen_off_lp_latched) {
+        if (er_lowpower_ns_is_enabled()) {
+          if (er_lowpower_ns_request_handoff() == k_ra8_ok) {
+            screen_off_lp_latched = true;
+            g_ns_idle_handoff_requests++;
+            (void)internal_ns_log_emit("SYS", "Backlight OFF -> requested M33 hold handoff");
+          }
+        } else {
+          /* M33 hold disabled or unavailable: enter timed Software Standby via Secure LPM */
+          ra8_err_t lpm_err = k_ra8_ok;
+          ER_NS_NSC_CALL(lpm_err, ra8_nsc_lpm_standby_ms(100U));
+          if (lpm_err == k_ra8_ok) {
+            screen_off_lp_latched = true;
+            g_ns_lpm_standby_wakes++;
+            (void)internal_ns_log_emit("SYS", "Backlight OFF -> LPM standby wake");
+          }
+        }
+      }
+    } else if (g_ns_backlight_state != (uint32_t)k_display_backlight_state_off) {
+      screen_off_lp_latched = false;
+    }
+
     tx_thread_sleep((uint32_t)k_ns_sys_poll_ticks);
   }
 }
