@@ -20,11 +20,18 @@ pub const View = struct {
 };
 
 /// Power the block, clear GWCA control/status, then turn on DDE per agent.
+///
+/// If GWCA was in OPERATION mode (e.g. from a prior run across warm reset),
+/// it transitions through DISABLE mode first per HUM Ch 34.3.1.1 "GWMC" p 1792
+/// to allow pending AXI bus activity to cleanly drain before entering RESET.
 pub fn init(ops: anytype, v: View) u16 {
     const err = ops.mstpEnable();
     if (err != ok) {
         ops.fail("gwca_init: mstp enable", err);
         return err;
+    }
+    if ((v.gwca.ctrl & 0x3) != 0) {
+        v.gwca.ctrl = (v.gwca.ctrl & ~@as(u32, 0x3)) | 1;
     }
     v.gwca.ctrl = 0;
     v.gwca.sts = 0;
@@ -37,6 +44,9 @@ pub fn init(ops: anytype, v: View) u16 {
 
 /// Stop the block, drop the handler, then gate its clock.
 pub fn deinit(ops: anytype, v: View) u16 {
+    if ((v.gwca.ctrl & 0x3) != 0) {
+        v.gwca.ctrl = (v.gwca.ctrl & ~@as(u32, 0x3)) | 1;
+    }
     v.gwca.ctrl = 0;
     v.gwca.ie = 0;
     ops.clearHandler();
@@ -45,6 +55,9 @@ pub fn deinit(ops: anytype, v: View) u16 {
 
 /// Stop the block and gate its clock; the handler stays attached.
 pub fn enterStop(ops: anytype, v: View) u16 {
+    if ((v.gwca.ctrl & 0x3) != 0) {
+        v.gwca.ctrl = (v.gwca.ctrl & ~@as(u32, 0x3)) | 1;
+    }
     v.gwca.ctrl = 0;
     return ops.mstpDisable();
 }

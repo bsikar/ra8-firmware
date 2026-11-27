@@ -700,6 +700,24 @@ static void test_rgmii_select_bad_port(void)
 }
 
 /**
+ * @brief Verify that RGMII media-select clears and releases RGRST across warm reset.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- verifies warm-reset state transition).
+ */
+static void test_rgmii_select_warm_reset(void)
+{
+  TEST_BEGIN("rgmii_select warm reset");
+  prep();
+  *ra8_eswm_miirr() = (uint32_t)k_ra8_eswm_miirr_rgrst1;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_rgmii_select(k_ra8_eth_mii_port_1));
+  TEST_ASSERT_EQ(k_ra8_eswm_miicr_txcide | (uint32_t)k_ra8_eswm_miicr_miisel_rgmii,
+                 *ra8_eswm_miicr1());
+  TEST_ASSERT_EQ(k_ra8_eswm_miirr_rgrst1, *ra8_eswm_miirr() & (uint32_t)k_ra8_eswm_miirr_rgrst1);
+  TEST_END("rgmii_select warm reset");
+}
+
+/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -735,6 +753,7 @@ static void (*const s_test_roster[])(void) = {
   test_rgmii_select_port1,
   test_rgmii_select_port0,
   test_rgmii_select_bad_port,
+  test_rgmii_select_warm_reset,
 };
 
 int main(void)

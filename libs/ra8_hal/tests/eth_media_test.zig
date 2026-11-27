@@ -41,6 +41,13 @@ test "MIIRR keeps the other port's enable bits" {
     try std.testing.expectEqual(want, regs.miirr);
 }
 
+test "port 1 clears and releases RGRST1 when already set across warm reset" {
+    var regs = Regs{ .miirr = eth_media.miirr_rgrst1 };
+    try eth_media.rgmiiSelect(regs.window(), 1);
+    try std.testing.expectEqual(rgmii_mode, regs.miicr1);
+    try std.testing.expectEqual(eth_media.miirr_rgrst1, regs.miirr);
+}
+
 test "an out-of-range port is refused and touches nothing" {
     var regs = Regs{};
     try std.testing.expectError(error.InvalidPort, eth_media.rgmiiSelect(regs.window(), 2));

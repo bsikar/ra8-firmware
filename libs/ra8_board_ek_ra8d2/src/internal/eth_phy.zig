@@ -14,19 +14,28 @@ const vocab = @import("vocab.zig");
 pub const Err = vocab.Err;
 
 /// Reset-pulse lengths, in nop iterations. Both are minimums from the GPY111
-/// datasheet, held before any timer this board owns is running.
+/// datasheet (Section 4.1 "Power-on and Reset Sequence"), held before any timer
+/// this board owns is running. At 1 GHz Cortex-M85 clock frequency (1-2 cycles
+/// per loop iteration), 25M / 80M iterations provide deterministic >= 25 ms /
+/// >= 80 ms timings across repeated warm-reset cycles.
 pub const Reset = struct {
-    /// >= 15 ms with RSTN low.
-    pub const low_iters: u32 = 5_000_000;
-    /// >= 60 ms after RSTN releases, before the first MDIO access.
-    pub const post_iters: u32 = 20_000_000;
+    /// >= 15 ms with RSTN low (datasheet specifies >= 15 ms; 25,000,000 nop
+    /// iterations guarantees >= 25 ms on Cortex-M85).
+    pub const low_iters: u32 = 25_000_000;
+    /// >= 60 ms after RSTN releases, before the first MDIO access (datasheet
+    /// specifies >= 60 ms; 80,000,000 nop iterations guarantees >= 80 ms).
+    pub const post_iters: u32 = 80_000_000;
     /// Cap on polling BMCR.RESET for its self-clear.
     pub const soft_spin: u32 = 4096;
+    /// Cap on polling BMSR for auto-negotiation complete and link up.
+    /// At 1 MHz MDC, 25,000 reads provide a ~2.0 s bounded wait.
+    pub const an_spin: u32 = 25_000;
 };
 
 /// Clause-22 register numbers and the bit fields this board writes.
 pub const Reg = struct {
     pub const bmcr: u8 = 0;
+    pub const bmsr: u8 = 1;
     pub const anar: u8 = 4;
     pub const gbcr: u8 = 9;
     /// GPY111 vendor register carrying the RGMII skew fields.
@@ -38,6 +47,9 @@ pub const Bits = struct {
     pub const bmcr_reset: u16 = 0x8000;
     pub const bmcr_an_enable: u16 = 0x1000;
     pub const bmcr_an_restart: u16 = 0x0200;
+    /// BMSR bits (IEEE 802.3 Clause 22 / GPY111 register 1).
+    pub const bmsr_link_up: u16 = 0x0004;
+    pub const bmsr_an_complete: u16 = 0x0020;
     /// MIICTRL RXSKEW field [14:12].
     pub const rxskew_mask: u16 = 0x7000;
     /// RXSKEW = 0b010, i.e. 1.0 ns.
@@ -115,8 +127,25 @@ fn startAutoneg() u32 {
     return write(Reg.bmcr, Bits.bmcr_an_enable | Bits.bmcr_an_restart);
 }
 
-/// Soft-reset the PHY, fix the RGMII receive skew, and start negotiating.
-/// Needs the RMAC up, since every step rides MDIO.
+/// Poll BMSR for auto-negotiation complete and link up (HUM Ch 33.4.1.2).
+/// Bounded poll: returns ok when link and autoneg are complete, or ok on timeout
+/// if no link partner is connected so headless and bare-metal boots do not hang.
+pub fn waitForAutoneg() u32 {
+    var spins: u32 = 0;
+    while (spins < Reset.an_spin) : (spins += 1) {
+        var bmsr: u16 = 0;
+        const read_err = read(Reg.bmsr, &bmsr);
+        if (read_err != Err.ok) return read_err;
+        if ((bmsr & (Bits.bmsr_an_complete | Bits.bmsr_link_up)) == (Bits.bmsr_an_complete | Bits.bmsr_link_up)) {
+            return Err.ok;
+        }
+    }
+    return Err.ok;
+}
+
+/// Soft-reset the PHY, fix the RGMII receive skew, restart negotiating, and
+/// wait for auto-negotiation to complete. Needs the RMAC up, since every step
+/// rides MDIO.
 pub fn chipInit() u32 {
     const reset_err = softReset();
     if (reset_err != Err.ok) return reset_err;
@@ -124,5 +153,8 @@ pub fn chipInit() u32 {
     const skew_err = setRgmiiSkew();
     if (skew_err != Err.ok) return skew_err;
 
-    return startAutoneg();
+    const an_err = startAutoneg();
+    if (an_err != Err.ok) return an_err;
+
+    return waitForAutoneg();
 }
