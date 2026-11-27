@@ -175,10 +175,14 @@ fn evalBubbleOcrAndNmt(
     if (c.ra8_translate_ctc_charset_open(ocr_case.tchr_buf.ptr, ocr_case.tchr_buf.len, &hdr) != c.ra8_ok) {
         return error.TranslateCtcOpenFailed;
     }
+    const expected_ocr = ocrModelForLang(lang);
+    if (hdr.version != c.ctc_version or hdr.class_count != ocr_case.class_count or hdr.ocr_model != expected_ocr) {
+        return error.TranslateCtcOpenFailed;
+    }
 
     const ctc_cfg = c.CtcDecodeCfg{
         .time_steps = ocr_case.time_steps,
-        .expected_ocr_model = ocrModelForLang(lang),
+        .expected_ocr_model = expected_ocr,
     };
     var ocr_utf8: [512]u8 = undefined;
     var ocr_res = c.CtcResult{};
