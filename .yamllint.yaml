@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# yamllint configuration -- yamllint 1.37.1, the pin the lint-yaml gate, the
+# yamllint configuration -- yamllint 1.38.0, the pin the lint-yaml gate, the
 # devcontainer image and the CI runners all install.
 #
 # Scope is the 10 first-party workflow / config YAML files. Vendored trees

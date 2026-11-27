@@ -83,7 +83,7 @@ target; the "status" column flags the known skews.
 |------|-------------|-----|---------|--------|
 | `arm-none-eabi-gcc` (ship binaries) | **13.3.rel1** (`/opt/arm-gnu-toolchain-13.3`: runner + devcontainer, latter by URL+sha256) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **13.3.1** (`/opt/arm-gnu-toolchain-13.3`) | **CONVERGED** -- pinned 13.3.rel1, enforced; see 3.1 |
 | host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
-| `just` | **1.40.0** (`JUST_VERSION`, devcontainer) | 1.58.0 | 1.40.0 (`/usr/local/bin`) | Mac may run recipes, but CI formatting/reference checks use the pinned devcontainer release |
+| `just` | **1.58.0** (`JUST_VERSION`, devcontainer) | 1.58.0 | 1.58.0 (`/usr/local/bin`) | Mac may run recipes, but CI formatting/reference checks use the pinned devcontainer release |
 | GitHub Actions runner | n/a (no runner pool) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | SINGLE PATH -- only the HIL listener runs it |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.8 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | CONVERGED -- see 3.2 |
 | `clang-tidy` | **18.1.8** (`clang-tidy-18`, from `clang-tools-18`) | 22.1.8 (Homebrew LLVM) | 18.1.8 (`clang-tidy-18`) | Mac is on a DIFFERENT MAJOR -- not the same LLVM as clang-format; see 3.2 |
@@ -94,7 +94,7 @@ target; the "status" column flags the known skews.
 | `rustc` / Cargo (host tests and ABI fixtures) | **1.89.0** (`RUST_VERSION`, official distribution in the devcontainer) | use the devcontainer until locally installed | **1.89.0** (the ra8ci provisioner reads the same archive pins) | CONVERGED; `test-rust` asserts the exact compiler and Cargo pin before executing native tests |
 | `cppcheck` | **2.13** (Ubuntu 24.04) | 2.21 (Homebrew) | 2.13 (built from source, `/usr/local/bin`) | Mac 2.21 emits VERSION-SPECIFIC FALSE POSITIVES -- do NOT use the Mac's; see 3.3 |
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `pyproject.toml` / `uv.lock`) | 0.6.13 (`.venv`) | 0.6.13 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
-| `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
+| `yamllint` | **1.38.0** (`pyproject.toml` / `uv.lock`) | 1.38.0 (`.venv`) | 1.38.0 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | 1.7.7 (devcontainer) | 1.7.7 (`/usr/local/bin`) | CONVERGED -- see 3.5 |
 | `gcovr` | *retired* (RA8FW-1266) | n/a | n/a | RETIRED -- gcov-era coverage retired in RA8FW-1266; see 3.7 |
 
@@ -200,7 +200,7 @@ changes which `clang-tidy` and `gcovr` you get. Always use
 ### 3.5 cmake-format / cmake-lint / yamllint / actionlint
 
 The `lint-cmake` and `lint-yaml` gates pin `cmakelang`==**0.6.13**
-(which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.37.1**
+(which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.38.0**
 and `actionlint` **v1.7.7**. `scripts/dev/setup_python.sh` installs the Python tools in
 the repository-local `.venv`; the devcontainer, runner, and provisioned dev box
 install their Python tools in `/opt/ra8-python-tools`. `actionlint` is installed

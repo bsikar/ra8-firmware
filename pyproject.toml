@@ -22,7 +22,7 @@ dev = [
   "cmakelang==0.6.13",
   "libclang==18.1.1",
   "ruff==0.16.10",
-  "yamllint==1.37.1",
+  "yamllint==1.38.0",
 ]
 ci = [
   { include-group = "dev" },
