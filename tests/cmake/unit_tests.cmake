@@ -50,7 +50,7 @@ function(ra8_add_test name src_file)
     list(APPEND _ra8_test_include_dirs ${FW_ROOT}/tools/mkbookimg/inc)
   elseif(name STREQUAL "test_ereader_pageturn")
     list(APPEND _ra8_test_include_dirs ${FW_ROOT}/examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc)
-  elseif(name STREQUAL "test_ereader_panel")
+  elseif(name STREQUAL "test_ereader_panel" OR name STREQUAL "test_ereader_lowpower")
     list(APPEND _ra8_test_include_dirs ${FW_ROOT}/apps/board/stand_alone/ereader/inc)
   elseif(name STREQUAL "test_ra8_shelf_classify" OR name STREQUAL "test_app_ereader_shelf_comic")
     list(APPEND _ra8_test_include_dirs
@@ -627,6 +627,15 @@ if(TARGET test_ereader_panel)
   )
   target_include_directories(
     test_ereader_panel PRIVATE ${FW_ROOT}/apps/board/stand_alone/ereader/inc
+  )
+endif()
+
+if(TARGET test_ereader_lowpower)
+  target_sources(
+    test_ereader_lowpower PRIVATE ${FW_ROOT}/apps/board/stand_alone/ereader/src/er_lowpower.c
+  )
+  target_include_directories(
+    test_ereader_lowpower PRIVATE ${FW_ROOT}/apps/board/stand_alone/ereader/inc
   )
 endif()
 

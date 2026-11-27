@@ -61,7 +61,7 @@ const ErrCode = u16;
 // none of its linker symbols. Its load (MRAM) and run (SRAM2 NS alias, or
 // OSPI NS alias under `ns_xip`) bases are fixed by the NS linker script; in
 // the RAM-resident layout the Secure boot copies a fixed window large enough
-// for the NS image (ThreadX + USBX + ra8_usb fit well under 192 KB) and
+// for the NS image (matching the full 256 KB NS_LOAD aperture) and
 // BLXNS-es to slot 1 of the NS vector table at the run base.
 // Invariant: matches RA8_NS_MRAM_ORIGIN / RA8_NS_OSPI_ORIGIN / RA8_NS_SRAM_ORIGIN
 // in libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
@@ -71,7 +71,7 @@ const ns_load_base: usize = 0x02080000; // NS image LMA (Secure MRAM).
 const ns_ospi_run_base: usize = 0x90000000; // NS OSPI XIP alias (bit[28] = 1).
 const ns_sram_run_base: usize = 0x32100000; // NS image VMA (SRAM2 NS alias).
 const ns_run_base: usize = if (boot_options.ns_xip) ns_ospi_run_base else ns_sram_run_base;
-const ns_copy_size: usize = 0x00030000; // Bytes copied LMA->VMA (192 KB).
+const ns_copy_size: usize = 0x00040000; // Bytes copied LMA->VMA (256 KB).
 
 // ---------------------------------------------------------------------------
 // Secure-only register addresses and bit fields touched during NS bring-up.

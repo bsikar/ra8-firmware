@@ -83,11 +83,11 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_i2c` | 0 | 2 | 16 | 9 | 4 |
 | `ra8_i3c` | 1 | 3 | 50 | 15 | 7 |
 | `ra8_icu` | 0 | 1 | 7 | 7 | 3 |
-| `ra8_ipc` | 1 | 4 | 43 | 6 | 2 |
+| `ra8_ipc` | 1 | 4 | 43 | 7 | 3 |
 | `ra8_isr` | 0 | 1 | 9 | 14 | 191 |
 | `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
-| `ra8_lpm` | 0 | 3 | 32 | 10 | 11 |
+| `ra8_lpm` | 0 | 3 | 32 | 11 | 11 |
 | `ra8_lvd` | 0 | 3 | 27 | 2 | 1 |
 | `ra8_mipi_csi` | 0 | 4 | 46 | 2 | 0 |
 | `ra8_mipi_dsi` | 0 | 3 | 40 | 5 | 0 |
@@ -107,7 +107,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_rmac` | 1 | 2 | 36 | 9 | 0 |
 | `ra8_rsip` | 6 | 8 | 71 | 12 | 5 |
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |
-| `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
+| `ra8_sau` | 0 | 1 | 8 | 3 | 2 |
 | `ra8_sci` | 1 | 3 | 42 | 15 | 28 |
 | `ra8_sdcard` | 0 | 1 | 6 | 3 | 5 |
 | `ra8_sdhi` | 1 | 1 | 16 | 5 | 0 |

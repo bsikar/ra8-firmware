@@ -35,6 +35,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 # SRAM-run e-reader stays the default build. Set before ra8_add_app() so the
 # shared ns_usb_handoff Zig boot object receives trust_zone + ns_xip.
 option(RA8_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
+option(RA8_EREADER_LP_EMU_SOAK "Enable periodic M33 wake cadence for headless emulator soak" OFF)
 set(RA8_APP_BOOT_TRUST_ZONE ON)
 if(RA8_EREADER_NS_XIP)
   set(RA8_APP_BOOT_NS_XIP ON)
@@ -48,10 +49,17 @@ endif()
 # This automatically handles include paths for ra8_core, ra8_hal, ra8_net_pal, ra8_usb_pal,
 # ra8_board_ek_ra8d2, and compiles the Ring 5 libs/ra8_secure_app/ sources.
 ra8_add_app(
-  NAME ra8d2-ereader BOOT_PROFILE ns_usb_handoff
+  NAME ra8d2-ereader BOOT_PROFILE ns_usb_handoff CPU1_IMAGE
   STACK_BYTES 2200 MRAM_LENGTH 512K
   DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
-  LIBS ra8_mpu ra8_tz_secure_boot ra8_io_bus AUX_SRCS src/ns_main.c src/er_panel.c src/ns_pal_shims.c
+  LIBS ra8_mpu ra8_tz_secure_boot ra8_io_bus
+  AUX_SRCS
+    src/ns_main.c
+    src/er_panel.c
+    src/er_lowpower.c
+    src/er_lowpower_ns.c
+    src/ns_pal_shims.c
+    src/cpu1_main.c
 )
 
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
@@ -83,6 +91,9 @@ add_custom_command(
 # owns the CMSE implib handshake at both ends, the NS warning profile, the
 # build ordering, and the merged-hex staple.
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
+if(NOT _ra8_has_parent AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND TARGET threadx_ns)
+  target_compile_options(threadx_ns PRIVATE -Os)
+endif()
 
 # Bake the Latin-1 subset font into .rodata so the Reading body reflows real text
 # with or without a microSD card present.
@@ -357,6 +368,8 @@ ra8_add_ns_image(
   SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/er_panel.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/er_lowpower.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/er_lowpower_ns.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_pal_shims.c
   ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_sdhi.c
   ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
@@ -379,6 +392,7 @@ ra8_add_ns_image(
   STBI_NO_PIC
   STBI_NO_PNM
   $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
+  $<$<BOOL:${RA8_EREADER_LP_EMU_SOAK}>:RA8_EREADER_LP_EMU_SOAK>
   COMPILE_OPTIONS
   -Os
   INCLUDES
@@ -502,3 +516,25 @@ add_dependencies(
   ra8d2-ereader_ns_zig_fs
   ra8d2-ereader_ns_zig_hal
 )
+
+# ---- Secondary Cortex-M33 Image (RA8FW-250 hold-page supervisor) ----------
+ra8_add_cpu1_image(
+  PARENT ra8d2-ereader
+  NAME ra8d2-ereader_cpu1
+  SOURCES src/cpu1_main.c
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/inc ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+)
+
+if(TARGET ra8d2-ereader_cpu1.elf)
+  ra8_cpu1_add_first_party_sources(
+    ra8d2-ereader_cpu1.elf ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+  )
+  target_compile_definitions(
+    ra8d2-ereader_cpu1.elf PRIVATE RA8_BUILD_FOR_CPU1 RA8_LOG_LEVEL=0
+  )
+  if(NOT TARGET ra8d2-ereader_cpu1.elf_zig_ra8_hal_cortex_m33)
+    ra8_link_zig_library_for_cpu(
+      TARGET ra8d2-ereader_cpu1.elf LIB ra8_hal CPU cortex_m33 FLOAT hard
+    )
+  endif()
+endif()
