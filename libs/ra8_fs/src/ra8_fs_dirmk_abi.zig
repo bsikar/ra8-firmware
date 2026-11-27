@@ -33,9 +33,6 @@ const marker_dot: u8 = @intCast(c.k_dir_marker_dot);
 const attr_directory: u8 = @intCast(c.k_ra8_fs_attr_directory);
 const attr_lfn: u8 = @intCast(c.k_ra8_fs_attr_lfn);
 const first_data: u32 = @intCast(c.k_cluster_first_data);
-const sector_max: usize = @intCast(c.k_ra8_fs_sector_max);
-
-const zero_sector: [sector_max]u8 = @splat(0);
 
 const scan_more: u8 = 0;
 const scan_empty: u8 = 1;
@@ -74,9 +71,10 @@ fn dir_cluster_init(m: ?*const Mount, new_cluster: u32, parent_cluster: u32) u16
     if (err != ok) {
         return err;
     }
+    c.priv_byte_fill(buf, 0, 2 * entry_bytes);
     var s: u32 = 1;
     while (s < m.?.sectors_per_cluster) : (s += 1) {
-        err = c.priv_write_sector(m, base + @as(u64, s), &zero_sector);
+        err = c.priv_write_sector(m, base + @as(u64, s), buf);
         if (err != ok) {
             return err;
         }

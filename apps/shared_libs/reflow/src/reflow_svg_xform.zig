@@ -215,8 +215,9 @@ fn internal_xform_read(v: [*]const u8, vlen: usize, j: *usize, args: []f32) i32 
 /// centre given, e and f keep that centre fixed; otherwise the origin maps
 /// to itself.
 fn internal_xform_rotate(args: []const f32, na: i32) SvgUtf {
-    const co: f32 = @floatCast(std.math.cos(@as(f64, internal_deg2rad(args[0]))));
-    const si: f32 = @floatCast(std.math.sin(@as(f64, internal_deg2rad(args[0]))));
+    const rad: f32 = internal_deg2rad(args[0]);
+    const co: f32 = std.math.cos(rad);
+    const si: f32 = std.math.sin(rad);
     const cx: f32 = if (na >= 3) args[1] else 0.0;
     const cy: f32 = if (na >= 3) args[2] else 0.0;
     return .{
@@ -253,14 +254,14 @@ fn internal_xform_build(kind: SvgXfKind, args: []const f32, na: i32) SvgUtf {
         .skewx => .{
             .a = 1.0,
             .b = 0.0,
-            .c = @floatCast(std.math.tan(@as(f64, internal_deg2rad(args[0])))),
+            .c = std.math.tan(internal_deg2rad(args[0])),
             .d = 1.0,
             .e = 0.0,
             .f = 0.0,
         },
         .skewy => .{
             .a = 1.0,
-            .b = @floatCast(std.math.tan(@as(f64, internal_deg2rad(args[0])))),
+            .b = std.math.tan(internal_deg2rad(args[0])),
             .c = 0.0,
             .d = 1.0,
             .e = 0.0,

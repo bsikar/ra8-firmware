@@ -18,7 +18,7 @@ pub export var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 /// One whole sector of zero bytes, in read-only storage. The shared source
 /// for every zero-fill write (fresh directory clusters, cluster tails).
-pub export const k_zero_sector: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+pub export var k_zero_sector: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 /// Mount table -- max `k_ra8_fs_max_mounts` simultaneous volumes.
 /// Static because firmware does not allocate; the adapter is

@@ -74,8 +74,6 @@ const strm_off_dlen: usize = @intCast(c.k_exfat_strm_off_dlen);
 const name_off: usize = @intCast(c.k_exfat_name_off);
 const first_data: u32 = @intCast(c.k_cluster_first_data);
 
-const zero_sector: [sector_max]u8 = @splat(0);
-
 fn rd32(p: []const u8, off: usize) u32 {
     return std.mem.readInt(u32, p[off..][0..4], .little);
 }
@@ -213,7 +211,7 @@ pub export fn priv_exfat_zero_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) 
     var s: u32 = 0;
     const spc = m.*.sectors_per_cluster;
     while (s < spc) : (s += 1) {
-        const e = c.priv_write_sector(m, base + s, &zero_sector);
+        const e = c.priv_write_sector(m, base + s, &c.k_zero_sector);
         if (e != ok) {
             return e;
         }

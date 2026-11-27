@@ -1,6 +1,6 @@
 /**
  * @file apps/board/stand_alone/ereader/src/ns_main.c
- * @brief Non-Secure main entry point: launches ThreadX and the e-reader UI.
+ * @brief Non-Secure main entry point: launches ThreadX, touch, SD/VFS, and the reader subsystem.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
@@ -14,11 +14,16 @@
  * A ThreadX watchdog supervisor guards the workers: at start-up it arms the
  * Secure-owned WDT through the ``ra8_nsc_wdt_start`` veneer, then refreshes it
  * (through ``ra8_nsc_wdt_refresh``) only while every worker thread keeps
- * checking in within its deadline. If any thread wedges the supervisor stops
- * kicking the WDT and it underflows. Expiry is routed to NMI in this build, so
- * a wedge halts the system deterministically (context preserved for a
- * debugger) instead of hanging silently; routing expiry to an internal reset
- * for automatic reboot is a separate product decision.
+ * checking in within its deadline.
+ *
+ * The Non-Secure application brings up:
+ *   - The EK-RA8D2 GLCDC panel + SDRAM framebuffer via ``ra8_display_pal``.
+ *   - Backlight policy with 30s timeout and activity wake.
+ *   - Touch polling via ``ra8_nsc_board_touch_open`` and ``ra8_nsc_touch_read``.
+ *   - Storage through ``ra8_board_sdhi_pins_init``, ``ra8_sdcard_init``,
+ *     ``ra8_io_blockdev_sdhi_init``, and ``epub_open_streamed_fs``.
+ *   - Reader subsystem with ``reflow`` layout, touch edge page turns,
+ *     and tap-to-zoom raster figures via ``zoom_popup``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -26,18 +31,37 @@
  */
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
+#include "epub.h"
+#include "epub_fs.h"
+#include "er_pageturn.h"
 #include "er_panel.h"
+#include "figure_fixture.h"
+#include "literata_latin1.h"
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_display_pal_backlight.h"
 #include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_gfx.h"
+#include "ra8_io.h"
+#include "ra8_io_blockdev.h"
+#include "ra8_io_blockdev_sdhi.h"
+#include "ra8_io_vfs.h"
 #include "ra8_nsc.h"
 #include "ra8_nsc_io.h"
 #include "ra8_panel.h"
 #include "ra8_panel_timing.h"
+#include "ra8_sdcard.h"
 #include "ra8_wdt_supervisor.h"
+#include "reflow.h"
+#include "reflow_image.h"
 #include "tx_api.h"
+#include "zoom.h"
+#include "zoom_mem.h"
+#include "zoom_popup.h"
 
 /* Linker symbols for BSS and Stack */
 extern uint32_t g_ra8_ls_ns_bss_start;
@@ -46,9 +70,6 @@ extern uint32_t g_ra8_ls_ns_stack_top;
 extern uint32_t g_ra8_ls_ns_run_start;
 
 #ifdef RA8_EREADER_NS_XIP
-/* XIP-only: .data lives (writable) in SRAM but its init image is in OSPI. These
- * mark the OSPI load image (LMA) and the SRAM run bounds (VMA) so the NS reset
- * handler can copy it in -- the Secure boot no longer copies the whole image. */
 extern uint32_t g_ra8_ls_ns_data_load_start;
 extern uint32_t g_ra8_ls_ns_data_start;
 extern uint32_t g_ra8_ls_ns_data_end;
@@ -56,7 +77,7 @@ extern uint32_t g_ra8_ls_ns_data_end;
 
 /** @brief Address of NS VTOR register. */
 typedef enum : uintptr_t {
-  k_ns_scb_vtor_addr = 0xE000ED08U, /**< Ns scb vtor address. */
+  k_ns_scb_vtor_addr = 0xE000ED08U, /**< NS SCB VTOR address. */
 } ns_scb_addr_t;
 
 /**
@@ -66,7 +87,7 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint32_t {
   k_ns_ui_thread_stack_size  = 4096U, /**< Stack size for UI thread.     */
-  k_ns_sys_thread_stack_size = 2048U, /**< Stack size for System thread. */
+  k_ns_sys_thread_stack_size = 4096U, /**< Stack size for System thread. */
 } ns_thread_stack_t;
 
 static TX_THREAD s_ui_thread;
@@ -78,10 +99,6 @@ static uint8_t s_sys_thread_stack[k_ns_sys_thread_stack_size];
 /**
  * @enum ns_log_cadence_t
  * @brief Heartbeat-log cadence per thread (iterations between log lines).
- * @details Each thread logs a startup line once, then a periodic heartbeat so
- *          the serial / SWO log shows the system is alive without flooding it.
- *          The UI thread sleeps ~16 ms (~60 FPS) and the system thread ~100
- *          ticks, so both cadences land near a one-second heartbeat.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -92,9 +109,6 @@ typedef enum : uint32_t {
 /**
  * @enum ns_thread_sleep_t
  * @brief Per-thread loop sleep period, in ThreadX ticks.
- * @details The UI thread sleeps ~16 ticks (~16 ms at a 1 kHz tick, ~60 FPS); the
- *          system thread sleeps ~100 ticks (~100 ms) since it only supervises.
- *          Every loop must sleep so the other threads get to run.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -105,9 +119,6 @@ typedef enum : uint32_t {
 /**
  * @enum ns_thread_prio_t
  * @brief ThreadX priority + preemption threshold for each Non-Secure thread.
- * @details Lower numbers are higher priority. The UI thread runs ahead of the
- *          system thread so input/rendering stays responsive; each thread uses
- *          the same value for its priority and its preemption threshold.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -118,12 +129,6 @@ typedef enum : uint32_t {
 /**
  * @enum ns_wdt_param_t
  * @brief Watchdog-supervisor sizing and timing parameters.
- * @details The supervisor refreshes the WDT every ::k_ns_wdt_refresh_ms only if
- *          both workers have checked in within their deadlines. The deadlines
- *          are generous multiples of each worker's loop period (UI ~16 ms, SYS
- *          ~100 ms) so ordinary slow work (a book load, an SD read) never false
- *          -trips the reset, while a genuine wedge is caught within the deadline.
- * @invariant Each deadline exceeds its worker's loop period by a wide margin.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -136,9 +141,6 @@ typedef enum : uint32_t {
 /**
  * @enum ns_wdt_prio_t
  * @brief ThreadX priority for the watchdog supervisor thread.
- * @details Sits between the UI (::k_ns_ui_priority) and system
- *          (::k_ns_sys_priority) workers: high enough to preempt the background
- *          system thread and refresh on time, low enough not to starve the UI.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -154,78 +156,66 @@ static uint8_t s_ui_wdt_handle = (uint8_t)k_ra8_wdt_sup_handle_invalid;
 static uint8_t s_sys_wdt_handle = (uint8_t)k_ra8_wdt_sup_handle_invalid;
 
 /**
- * @var g_ns_ui_frames
- * @brief HIL liveness probe: UI-thread iteration count.
- * @details Bumped once per UI frame. Read via J-Link (NS SRAM survives a
- *          connect) to confirm the NS world is alive and the watchdog supervisor
- *          is being fed -- a frozen value means the UI thread wedged (and the
- *          WDT would then stop being refreshed). Diagnostic only.
- * @note Written by the UI thread; read externally by the bench.
- * @since 0.1.0
+ * @enum er_reader_layout_t
+ * @brief Frame geometry and styling metrics for the reader view.
  */
-volatile uint32_t g_ns_ui_frames = 0U;
-/**
- * @var g_ns_sys_ticks
- * @brief HIL liveness probe: system-thread iteration count.
- * @details Bumped once per system-thread poll; see ::g_ns_ui_frames. A frozen
- *          value means the system thread wedged. Diagnostic only.
- * @note Written by the system thread; read externally by the bench.
- * @since 0.1.0
- */
-volatile uint32_t g_ns_sys_ticks = 0U;
-/**
- * @var g_ns_backlight_state
- * @brief Live NS backlight policy state (0 = ACTIVE, 1 = DIMMED, 2 = OFF).
- */
-volatile uint32_t g_ns_backlight_state = (uint32_t)k_display_backlight_state_off;
-/**
- * @var g_ns_backlight_pct
- * @brief Current target backlight brightness percent applied by NS UI thread (0..100).
- */
-volatile uint32_t g_ns_backlight_pct = 0U;
-/**
- * @var g_ns_backlight_transitions
- * @brief Total backlight state transitions observed by the NS UI loop.
- */
+typedef enum : uint32_t {
+  k_er_statusbar_h     = 64U,                 /**< Status bar height (pixels).         */
+  k_er_footer_h        = 56U,                 /**< Footer band height (pixels).        */
+  k_er_margin_x        = 64U,                 /**< Horizontal text margin (pixels).    */
+  k_er_body_gap        = 24U,                 /**< Vertical band-to-body gap (pixels). */
+  k_er_reflow_px       = 22U,                 /**< Body font size in pixels.           */
+  k_er_zoom_strip_rows = 16U,                 /**< Composited rows per zoom strip.     */
+  k_er_zoom_scale_max  = 4U,                  /**< Maximum figure zoom scale.          */
+  k_er_fig_gray8_cap   = 512U * 1024U,        /**< Decoded figure gray8 capacity.      */
+  k_er_img_arena       = 2U * 1024U * 1024U,  /**< SDRAM image decode arena.           */
+  k_er_reflow_ink      = 0xFF101010U,         /**< Reflow text color (near-black).     */
+  k_er_reflow_link     = 0xFF2A52BEU,         /**< Reflow link color (cerulean).       */
+  k_er_color_statusbar = 0x1A2530U,           /**< Status bar background color.        */
+  k_er_color_paper     = 0xFFFFFFU,           /**< Paper background color.             */
+  k_er_color_rule      = 0xAAAAAAU,           /**< Footer hairline rule color.         */
+} er_reader_layout_t;
+
+/* Public telemetry globals for HIL and emulator inspection */
+volatile uint32_t g_ns_ui_frames            = 0U;
+volatile uint32_t g_ns_sys_ticks            = 0U;
+volatile uint32_t g_ns_backlight_state      = (uint32_t)k_display_backlight_state_off;
+volatile uint32_t g_ns_backlight_pct        = 0U;
 volatile uint32_t g_ns_backlight_transitions = 0U;
-/**
- * @var g_ns_backlight_init_err
- * @brief Error status captured during NS backlight controller bring-up.
- */
-volatile ra8_err_t g_ns_backlight_init_err = k_ra8_ok;
-/**
- * @var g_ns_panel_ready
- * @brief Non-zero once NS display PAL + ``ra8_gfx`` initial frame flush succeeded.
- */
-volatile uint32_t g_ns_panel_ready = 0U;
-/**
- * @var g_ns_panel_init_err
- * @brief Error status captured during NS SDRAM + display PAL bring-up.
- */
-volatile ra8_err_t g_ns_panel_init_err = k_ra8_ok;
-/**
- * @var g_ns_refresh_mode
- * @brief Active selectable panel refresh mode (``er_refresh_mode_t``).
- */
-volatile uint32_t g_ns_refresh_mode = (uint32_t)k_er_refresh_fast_clean;
-/**
- * @var g_ns_refresh_hint
- * @brief Latest ``display_refresh_hint_t`` submitted to ``display_flush()``.
- */
-volatile uint32_t g_ns_refresh_hint = (uint32_t)k_display_refresh_init;
-/**
- * @var g_ns_frames_flushed
- * @brief Total frames rendered through ``ra8_gfx`` and flushed via display PAL.
- */
-volatile uint32_t g_ns_frames_flushed = 0U;
-/**
- * @var g_ns_fb_crc
- * @brief FNV-1a checksum across the SDRAM panel framebuffer after the latest flush.
- */
-volatile uint32_t g_ns_fb_crc = 0U;
+volatile ra8_err_t g_ns_backlight_init_err  = k_ra8_ok;
+volatile uint32_t g_ns_panel_ready          = 0U;
+volatile ra8_err_t g_ns_panel_init_err      = k_ra8_ok;
+volatile uint32_t g_ns_refresh_mode         = (uint32_t)k_er_refresh_fast_clean;
+volatile uint32_t g_ns_refresh_hint         = (uint32_t)k_display_refresh_init;
+volatile uint32_t g_ns_frames_flushed       = 0U;
+volatile uint32_t g_ns_fb_crc               = 0U;
+
+volatile uint32_t g_ns_touch_ready          = 0U;
+volatile uint32_t g_ns_touch_events         = 0U;
+volatile uint32_t g_ns_sd_ready             = 0U;
+volatile uint32_t g_ns_book_ready           = 0U;
+volatile uint32_t g_ns_current_chapter      = 0U;
+volatile uint32_t g_ns_current_page         = 0U;
+volatile uint32_t g_ns_total_pages          = 1U;
+volatile uint32_t g_ns_total_chapters       = 2U;
+volatile uint32_t g_ns_page_turns           = 0U;
+volatile uint32_t g_ns_fig_active           = 0U;
+volatile uint32_t g_ns_fig_scale            = 0U;
+volatile uint32_t g_ns_manga_active         = 0U;
+volatile uint32_t g_ns_translate_active     = 0U;
 
 /** @brief 1024x600 RGB565 panel framebuffer placed in NOLOAD external SDRAM. */
 RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
+
+/* External SDRAM buffers preserving internal SRAM */
+[[gnu::section(".sdram_data")]] static reflow_t s_reflow_engine;
+[[gnu::section(".sdram_data")]] static uint8_t  s_fig_gray8[k_er_fig_gray8_cap];
+[[gnu::section(".sdram_data")]] static uint8_t  s_zoom_row[k_panel_width_px];
+[[gnu::section(".sdram_data")]] static uint8_t  s_zoom_strip[(size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows];
+[[gnu::section(".sdram_data")]] static uint8_t  s_zoom_packed[((size_t)k_panel_width_px * (size_t)k_er_zoom_strip_rows) / 2U];
+[[gnu::section(".sdram_data")]] static uint8_t  s_img_arena_buf[k_er_img_arena];
+[[gnu::section(".sdram_data")]] static uint8_t  s_img_res_buf[128U * 1024U];
+[[gnu::section(".sdram_data")]] static uint8_t  s_chapter_xhtml[64U * 1024U];
 
 static er_panel_state_t           s_ns_panel                   = {};
 static display_backlight_t        s_ns_backlight               = {};
@@ -234,32 +224,62 @@ static ra8_nsc_backlight_caps_t   s_ns_backlight_caps          = {};
 static bool                       s_ns_backlight_ready         = false;
 static volatile bool              s_backlight_activity_pending = false;
 
-/**
- * @brief Convert ThreadX kernel ticks into monotonic milliseconds.
- * @return Elapsed milliseconds from ThreadX tick counter.
- */
+static ra8_io_blockdev_t          s_sd_bd                      = {};
+static ra8_fs_backend_t           s_sd_be                      = {};
+static ra8_fs_mount_t*            s_sd_mount                   = nullptr;
+[[gnu::section(".sdram_data")]] static epub_stream_fs_ctx_t s_epub_io   = {};
+[[gnu::section(".sdram_data")]] static epub_book_t          s_epub_book = {};
+static bool                       s_book_loaded                = false;
+
+static zoom_mem_src_t             s_fig_mem                    = {};
+static zoom_popup_t               s_fig_popup                  = {};
+static ra8_img_arena_t            s_reflow_img_arena           = {};
+static bool                       s_reader_ready               = false;
+
+typedef struct {
+  const char* xhtml;
+  uint32_t    len;
+  const char* href;
+  uint32_t    href_len;
+} er_spine_chapter_t;
+
+static const char k_er_chapter1_xhtml[] =
+  "<html><body><h1>Chapter I: Down the Rabbit-Hole</h1>"
+  "<p>Alice was beginning to get very tired of sitting by her sister on the bank, "
+  "and of having nothing to do: once or twice she had peeped into the book her sister was "
+  "reading, but it had no pictures or conversations in it.</p>"
+  "<img src=\"figure.png\"/>"
+  "<p>So she was considering in her own mind whether the pleasure of making a daisy-chain "
+  "would be worth the trouble of getting up and picking the daisies, when suddenly a White "
+  "Rabbit with pink eyes ran close by her.</p></body></html>";
+
+static const char k_er_chapter2_xhtml[] =
+  "<html><body><h1>Chapter II: The Pool of Tears</h1>"
+  "<p>'Curiouser and curiouser!' cried Alice (she was so much surprised, that for the moment "
+  "she quite forgot how to speak good English); 'now I'm opening out like the largest "
+  "telescope that ever was! Good-bye, feet!'</p>"
+  "<p>And she went on rambling: 'Oh, my poor little feet, I wonder who will put on your shoes "
+  "and stockings for you now, dears?'</p></body></html>";
+
+static const er_spine_chapter_t k_er_builtin_spine[] = {
+  {k_er_chapter1_xhtml, (uint32_t)(sizeof(k_er_chapter1_xhtml) - 1U), "ch1.xhtml", 9U},
+  {k_er_chapter2_xhtml, (uint32_t)(sizeof(k_er_chapter2_xhtml) - 1U), "ch2.xhtml", 9U},
+};
+
+/** @brief Convert ThreadX kernel ticks into monotonic milliseconds. */
 RA8_INTERNAL static uint32_t internal_ns_now_ms(void)
 {
   return (uint32_t)(((uint64_t)tx_time_get() * 1000ULL) / (uint64_t)TX_TIMER_TICKS_PER_SECOND);
 }
 
-/**
- * @brief Backlight enable callback bridged across TrustZone to Secure board GPIO.
- * @param[in] ctx Unused caller context.
- * @param[in] on  1 for ON, 0 for OFF.
- * @return ``k_ra8_ok`` on success or NSC error code.
- */
+/** @brief Backlight enable callback bridged across TrustZone to Secure board GPIO. */
 RA8_INTERNAL static ra8_err_t internal_ns_backlight_set_cb(void* ctx, uint8_t on)
 {
   (void)ctx;
   return ra8_nsc_backlight_set(on != 0U);
 }
 
-/**
- * @brief Signal user or display activity to wake the NS backlight idle timer.
- * @details Lockless single-flag latch consumed by the NS UI thread.
- * @since 0.1.0
- */
+/** @brief Signal user or display activity to wake the NS backlight idle timer. */
 void ra8_ereader_backlight_notify_activity(void);
 void ra8_ereader_backlight_notify_activity(void)
 {
@@ -314,27 +334,13 @@ RA8_INTERNAL static void internal_ns_panel_setup(void)
     return;
   }
 
-  err = er_panel_render_frame(&s_ns_panel,
-                              k_display_event_open,
-                              "RA8D2 E-Reader",
-                              "Panel ready through ra8_display_pal + ra8_gfx");
-  if (err != k_ra8_ok) {
-    g_ns_panel_init_err = err;
-    (void)ra8_nsc_log_emit("UI", "Panel initial frame flush failed");
-    return;
-  }
-
   g_ns_panel_init_err = k_ra8_ok;
   g_ns_panel_ready    = 1U;
   internal_ns_panel_publish();
-  (void)ra8_nsc_log_emit("UI", "Panel initialized: frame 1 flushed");
-  (void)ra8_nsc_log_emit("UI", er_panel_refresh_mode_label(s_ns_panel.mode));
+  (void)ra8_nsc_log_emit("UI", "Panel initialized via display PAL");
 }
 
-/**
- * @brief Bring up the NS backlight controller, 30s idle policy, and wake switches.
- * @param[in] now_ms Monotonic timestamp in milliseconds.
- */
+/** @brief Bring up the NS backlight controller, 30s idle policy, and wake switches. */
 RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
 {
   ra8_err_t err = ra8_nsc_backlight_get_caps(&s_ns_backlight_caps);
@@ -391,11 +397,7 @@ RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
   s_ns_backlight_ready    = true;
 }
 
-/**
- * @brief Pump user button edges and advance the 30s backlight idle policy.
- * @param[in,out] prev_sw1 Prior sampled SW1 pressed state.
- * @param[in,out] prev_sw2 Prior sampled SW2 pressed state.
- */
+/** @brief Pump user button edges and advance the 30s backlight idle policy. */
 RA8_INTERNAL static void
 internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2, bool* out_sw1_edge, bool* out_sw2_edge)
 {
@@ -433,58 +435,366 @@ internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2, bool* out_sw1_edge, b
       g_ns_backlight_transitions++;
       g_ns_backlight_state = (uint32_t)dec.state;
       g_ns_backlight_pct   = (uint32_t)dec.target_pct;
-      (void)ra8_nsc_log_emit("UI", (dec.on != 0U) ? "Backlight: active" : "Backlight: idle off");
     }
   }
 }
 
-/**
- * @brief Perform the ThreadX Non-Secure context switch requested by PendSV.
- * @details The ThreadX Cortex-M port supplies this exception entry point. The
- *          Non-Secure vector table references it directly so a pending context
- *          switch saves the outgoing thread and restores the scheduler-selected
- *          thread before exception return.
- * @pre PendSV was entered in Non-Secure handler mode.
- * @pre ThreadX has initialised the scheduler and thread contexts.
- * @post The pending context-switch request has been serviced.
- * @post The scheduler-selected thread context is active for exception return.
- * @note Exception-context entry point supplied by ThreadX; not thread-callable.
- * @since 0.1.0
- */
+/** @brief Image loader callback for reflow: provides PNG data from EPUB or fixture. */
+RA8_INTERNAL static ra8_err_t internal_ns_image_loader(void*           ctx,
+                                                       const char*     href,
+                                                       uint32_t        href_len,
+                                                       const uint8_t** out_bytes,
+                                                       size_t*         out_len)
+{
+  (void)ctx;
+  (void)href_len;
+  if (s_book_loaded && (href != nullptr)) {
+    size_t got = 0U;
+    if ((epub_get_resource(&s_epub_book, href, s_img_res_buf, sizeof(s_img_res_buf), &got) ==
+         k_ra8_ok) &&
+        (got > 0U)) {
+      *out_bytes = s_img_res_buf;
+      *out_len   = got;
+      return k_ra8_ok;
+    }
+  }
+  *out_bytes = k_er_figure_png;
+  *out_len   = (size_t)k_er_figure_png_len;
+  return k_ra8_ok;
+}
+
+/** @brief Build the SDRAM scratch descriptor for zoom_popup. */
+RA8_INTERNAL static zoom_scratch_t internal_ns_fig_scratch(void)
+{
+  return (zoom_scratch_t){
+    .row        = s_zoom_row,
+    .row_cap    = (uint32_t)sizeof(s_zoom_row),
+    .strip      = s_zoom_strip,
+    .strip_cap  = (uint32_t)sizeof(s_zoom_strip),
+    .packed     = s_zoom_packed,
+    .packed_cap = (uint32_t)sizeof(s_zoom_packed),
+  };
+}
+
+/** @brief Render figure zoom popup and flush its bounding rect. */
+RA8_INTERNAL static void internal_ns_figure_present(void)
+{
+  if (zoom_popup_render(&s_fig_popup) != k_ra8_ok) {
+    return;
+  }
+  zoom_present_t plan = {};
+  if ((zoom_popup_present(&s_fig_popup, &plan) != k_ra8_ok) || !plan.present) {
+    return;
+  }
+  const display_refresh_hint_t hint =
+    (plan.refresh == k_zoom_refresh_fast) ? k_display_refresh_fast : k_display_refresh_quality;
+  const display_rect_t r = {
+    .x = (uint16_t)((plan.rect.x >= 0) ? plan.rect.x : 0),
+    .y = (uint16_t)((plan.rect.y >= 0) ? plan.rect.y : 0),
+    .w = (uint16_t)((plan.rect.w >= 0) ? plan.rect.w : 0),
+    .h = (uint16_t)((plan.rect.h >= 0) ? plan.rect.h : 0),
+  };
+  (void)display_flush(s_ns_panel.display, r, hint);
+  s_ns_panel.last_hint = hint;
+  s_ns_panel.last_rect = r;
+  s_ns_panel.frame_count++;
+  internal_ns_panel_publish();
+}
+
+/** @brief Decode raster figure and open zoom popup overlay. */
+RA8_INTERNAL static bool internal_ns_figure_open(uint32_t img_idx, int32_t tx, int32_t ty)
+{
+  const reflow_image_box_t* box   = &s_reflow_engine.image_boxes[img_idx];
+  const uint8_t*            bytes = nullptr;
+  size_t                    len   = 0U;
+  const char*               href  = (const char*)&s_reflow_engine.text_pool[box->src_off];
+  if (internal_ns_image_loader(nullptr, href, box->src_len, &bytes, &len) != k_ra8_ok) {
+    return false;
+  }
+  ra8_img_arena_t arena = {
+    .base   = s_img_arena_buf,
+    .cap    = (size_t)k_er_img_arena,
+    .offset = 0U,
+    .live   = 0U,
+  };
+  uint32_t img_w = 0U;
+  uint32_t img_h = 0U;
+  if (ra8_img_decode_gray8(&arena, bytes, len, s_fig_gray8, sizeof(s_fig_gray8), &img_w, &img_h) !=
+      k_ra8_ok) {
+    return false;
+  }
+  zoom_source_t zs = {};
+  if ((zoom_mem_src_init(&s_fig_mem, s_fig_gray8, img_w, img_h, 0U) != k_ra8_ok) ||
+      (zoom_mem_src_bind(&s_fig_mem, &zs) != k_ra8_ok)) {
+    return false;
+  }
+  const int32_t focus_x = (box->w > 0)
+                            ? (int32_t)(((int64_t)(tx - box->x) * (int64_t)img_w) / (int64_t)box->w)
+                            : (int32_t)(img_w / 2U);
+  const int32_t focus_y = (box->h > 0)
+                            ? (int32_t)(((int64_t)(ty - box->y) * (int64_t)img_h) / (int64_t)box->h)
+                            : (int32_t)(img_h / 2U);
+  const zoom_popup_cfg_t cfg = {
+    .src       = zs,
+    .scratch   = internal_ns_fig_scratch(),
+    .fb_w      = (uint16_t)k_panel_width_px,
+    .fb_h      = (uint16_t)k_panel_height_px,
+    .scale     = (uint8_t)k_zoom_scale_min,
+    .scale_max = (uint8_t)k_er_zoom_scale_max,
+    .policy    = k_zoom_policy_responsive,
+    .focus_x   = focus_x,
+    .focus_y   = focus_y,
+  };
+  if (zoom_popup_open(&s_fig_popup, &cfg) != k_ra8_ok) {
+    return false;
+  }
+  g_ns_fig_active = 1U;
+  g_ns_fig_scale  = (uint32_t)s_fig_popup.view.scale;
+  internal_ns_figure_present();
+  (void)ra8_nsc_log_emit("UI", "Figure zoom opened");
+  return true;
+}
+
+/** @brief Format a positive integer into a buffer and return characters appended. */
+RA8_INTERNAL static size_t internal_ns_append_uint(char* buf, size_t cap, size_t pos, uint32_t val)
+{
+  char     tmp[16];
+  uint32_t v = val;
+  size_t   n = 0U;
+  do {
+    tmp[n++] = (char)('0' + (v % 10U));
+    v /= 10U;
+  } while ((v > 0U) && (n < sizeof(tmp)));
+
+  while ((n > 0U) && (pos < (cap - 1U))) {
+    buf[pos++] = tmp[--n];
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+/** @brief Format string literal into buffer. */
+RA8_INTERNAL static size_t internal_ns_append_str(char* buf, size_t cap, size_t pos, const char* str)
+{
+  if (str == nullptr) {
+    return pos;
+  }
+  while ((*str != '\0') && (pos < (cap - 1U))) {
+    buf[pos++] = *str++;
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+/** @brief Render the current reader page (status bar, reflow body, footer) and flush. */
+RA8_INTERNAL static void internal_ns_render_page(void)
+{
+  if (!s_ns_panel.initialized || !s_reader_ready) {
+    return;
+  }
+  const int32_t w        = (int32_t)k_panel_width_px;
+  const int32_t h        = (int32_t)k_panel_height_px;
+  const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
+
+  (void)ra8_gfx_clear((uint32_t)k_er_color_paper);
+  (void)ra8_gfx_rect(0, 0, w, (int32_t)k_er_statusbar_h, (uint32_t)k_er_color_statusbar, true);
+
+  const char* title = (s_book_loaded && (s_epub_book.title[0] != '\0'))
+                        ? s_epub_book.title
+                        : "Alice's Adventures in Wonderland";
+  (void)ra8_gfx_text_out((int32_t)k_er_margin_x,
+                         24,
+                         title,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_er_color_paper,
+                         (uint32_t)k_er_color_statusbar);
+
+  if (g_ns_current_page >= g_ns_total_pages) {
+    g_ns_current_page = (g_ns_total_pages > 0U) ? (g_ns_total_pages - 1U) : 0U;
+  }
+  (void)reflow_render_page_at(&s_reflow_engine, g_ns_current_page, (int32_t)k_er_margin_x, body_top);
+
+  const int32_t footer_rule_y = h - (int32_t)k_er_footer_h;
+  (void)ra8_gfx_line((int32_t)k_er_margin_x,
+                     footer_rule_y,
+                     w - (int32_t)k_er_margin_x,
+                     footer_rule_y,
+                     (uint32_t)k_er_color_rule);
+
+  char   footer_buf[96] = {};
+  size_t pos            = 0U;
+  pos                   = internal_ns_append_str(footer_buf, sizeof(footer_buf), pos, "Page ");
+  pos = internal_ns_append_uint(footer_buf, sizeof(footer_buf), pos, g_ns_current_page + 1U);
+  pos = internal_ns_append_str(footer_buf, sizeof(footer_buf), pos, " of ");
+  pos = internal_ns_append_uint(footer_buf, sizeof(footer_buf), pos, g_ns_total_pages);
+  pos = internal_ns_append_str(footer_buf, sizeof(footer_buf), pos, "  |  Chapter ");
+  pos = internal_ns_append_uint(footer_buf, sizeof(footer_buf), pos, g_ns_current_chapter + 1U);
+  pos = internal_ns_append_str(footer_buf, sizeof(footer_buf), pos, " of ");
+  pos = internal_ns_append_uint(footer_buf, sizeof(footer_buf), pos, g_ns_total_chapters);
+
+  (void)ra8_gfx_text_out((int32_t)k_er_margin_x,
+                         footer_rule_y + 16,
+                         footer_buf,
+                         &ra8_gfx_font_8x16,
+                         0x555555U,
+                         (uint32_t)k_er_color_paper);
+
+  display_policy_decision_t dec = {};
+  (void)display_policy_decide(&s_ns_panel.policy, k_display_event_turn, &dec);
+  const display_rect_t full_rect = display_full_rect(s_ns_panel.display);
+  (void)display_flush(s_ns_panel.display, full_rect, dec.hint);
+  s_ns_panel.last_hint = dec.hint;
+  s_ns_panel.last_rect = full_rect;
+  s_ns_panel.frame_count++;
+  internal_ns_panel_publish();
+}
+
+/** @brief Load and layout a chapter (either from open EPUB or built-in spine). */
+RA8_INTERNAL static void internal_ns_load_chapter(uint32_t ch_idx)
+{
+  if (!s_reader_ready) {
+    return;
+  }
+  uint32_t pages = 1U;
+  if (s_book_loaded) {
+    size_t got = 0U;
+    if ((epub_load_chapter(&s_epub_book,
+                           (uint16_t)ch_idx,
+                           s_chapter_xhtml,
+                           sizeof(s_chapter_xhtml),
+                           &got) == k_ra8_ok) &&
+        (got > 0U)) {
+      if (reflow_layout_chapter(&s_reflow_engine, s_chapter_xhtml, got, &pages) == k_ra8_ok) {
+        g_ns_total_pages     = (pages > 0U) ? pages : 1U;
+        g_ns_current_chapter = ch_idx;
+        return;
+      }
+    }
+  }
+
+  const uint32_t idx = (ch_idx < 2U) ? ch_idx : 0U;
+  if (reflow_layout_chapter(&s_reflow_engine,
+                            (const uint8_t*)k_er_builtin_spine[idx].xhtml,
+                            k_er_builtin_spine[idx].len,
+                            &pages) == k_ra8_ok) {
+    g_ns_total_pages     = (pages > 0U) ? pages : 1U;
+    g_ns_current_chapter = idx;
+  }
+}
+
+/** @brief Advance or retreat reading location by one page turn. */
+RA8_INTERNAL static void internal_ns_handle_page_turn(er_dir_t dir)
+{
+  uint32_t next_ch = g_ns_current_chapter;
+  uint32_t next_p  = g_ns_current_page;
+  bool     crossed = false;
+  if (er_pageturn_step(g_ns_current_chapter,
+                       g_ns_current_page,
+                       g_ns_total_pages,
+                       g_ns_total_chapters,
+                       dir,
+                       &next_ch,
+                       &next_p,
+                       &crossed)) {
+    g_ns_page_turns++;
+    if (crossed) {
+      g_ns_current_chapter = next_ch;
+      internal_ns_load_chapter(next_ch);
+      g_ns_current_page = (next_p == k_er_page_last) ? (g_ns_total_pages - 1U) : 0U;
+    } else {
+      g_ns_current_page = next_p;
+    }
+    internal_ns_render_page();
+    (void)ra8_nsc_log_emit("UI", "Page turn executed");
+  }
+}
+
+/** @brief Hit test tap against images in the active reflow layout. */
+RA8_INTERNAL static bool internal_ns_try_figure_tap(int32_t x, int32_t y)
+{
+  const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
+  const int32_t tx       = x - (int32_t)k_er_margin_x;
+  const int32_t ty       = y - body_top;
+  uint32_t      img_idx  = 0U;
+  if (reflow_hit_test_image(&s_reflow_engine, g_ns_current_page, tx, ty, &img_idx) == k_ra8_ok) {
+    return internal_ns_figure_open(img_idx, tx, ty);
+  }
+  return false;
+}
+
+/** @brief Initialize reflow engine and layout initial chapter. */
+RA8_INTERNAL static void internal_ns_reader_setup(void)
+{
+  const int32_t body_w = (int32_t)k_panel_width_px - ((int32_t)k_er_margin_x * 2);
+  const int32_t body_h = (int32_t)k_panel_height_px - (int32_t)k_er_statusbar_h -
+                         (int32_t)k_er_footer_h - ((int32_t)k_er_body_gap * 2);
+  if ((body_w <= 0) || (body_h <= 0)) {
+    return;
+  }
+
+  if (reflow_init((uint16_t)body_w,
+                  (uint16_t)body_h,
+                  g_ra8_font_literata_latin1,
+                  (uint32_t)g_ra8_font_literata_latin1_len,
+                  (uint16_t)k_er_reflow_px,
+                  (uint32_t)k_er_reflow_ink,
+                  (uint32_t)k_er_reflow_link,
+                  &s_reflow_engine) != k_ra8_ok) {
+    (void)ra8_nsc_log_emit("UI", "Reflow init failed");
+    return;
+  }
+
+  s_reflow_img_arena = (ra8_img_arena_t){
+    .base   = s_img_arena_buf,
+    .cap    = (size_t)k_er_img_arena,
+    .offset = 0U,
+    .live   = 0U,
+  };
+  (void)reflow_set_image_loader(&s_reflow_engine, internal_ns_image_loader, nullptr, &s_reflow_img_arena);
+
+  uint32_t pages = 1U;
+  if (reflow_layout_chapter(&s_reflow_engine,
+                            (const uint8_t*)k_er_builtin_spine[0].xhtml,
+                            k_er_builtin_spine[0].len,
+                            &pages) == k_ra8_ok) {
+    g_ns_total_pages     = (pages > 0U) ? pages : 1U;
+    g_ns_current_page    = 0U;
+    g_ns_current_chapter = 0U;
+    g_ns_total_chapters  = 2U;
+    s_reader_ready       = true;
+    (void)ra8_nsc_log_emit("UI", "Reader subsystem ready");
+  }
+}
+
+/** @brief Search and open book from SD library via streamed reader. */
+RA8_INTERNAL static void internal_ns_open_sd_book(void)
+{
+  static const char* const k_candidate_books[] = {
+    "Alice's Adventures in Wonderland - Lewis Carroll.epub",
+    "alice.epub",
+    "book.epub",
+  };
+  for (size_t i = 0U; i < (sizeof(k_candidate_books) / sizeof(k_candidate_books[0])); ++i) {
+    if (epub_open_streamed_fs(s_sd_mount, k_candidate_books[i], &s_epub_io, &s_epub_book) ==
+        k_ra8_ok) {
+      uint16_t ch_count = 0U;
+      if ((epub_get_chapter_count(&s_epub_book, &ch_count) == k_ra8_ok) && (ch_count > 0U)) {
+        g_ns_total_chapters = (uint32_t)ch_count;
+        g_ns_book_ready     = 1U;
+        s_book_loaded       = true;
+        (void)ra8_nsc_log_emit("SYS", "EPUB book opened from SD library");
+        return;
+      }
+    }
+  }
+  (void)ra8_nsc_log_emit("SYS", "SD mounted; default reading library ready");
+}
+
+/** @brief SysTick exception handler forwarding to ThreadX kernel timer. */
 extern void PendSV_Handler(void);
-
-/**
- * @brief Advance the ThreadX kernel timer by one hardware tick.
- * @details The ThreadX Cortex-M port supplies this timer ISR worker. The local
- *          SysTick handler calls it only after the kernel readiness flag is set,
- *          allowing ThreadX delays, timers, and timed waits to advance.
- * @pre ThreadX low-level initialisation has completed.
- * @pre Called once for the SysTick event being serviced.
- * @post The ThreadX system clock has advanced by one tick.
- * @post Any timeout made ready by that tick is visible to the scheduler.
- * @note Runs in Non-Secure handler mode and is not re-entrant.
- * @since 0.1.0
- */
 extern void _tx_timer_interrupt(void);
-
-/* External state for the thread tick hook. */
 extern volatile uint32_t g_ra8_threadx_systick_ready;
 
-/**
- * @brief SysTick exception handler for the Non-Secure ThreadX OS.
- * @details Drives the ThreadX timer: once the kernel is up
- *          (@c g_ra8_threadx_systick_ready set), each SysTick forwards into
- *          @c _tx_timer_interrupt to service timeouts and the time-slice. Before
- *          the kernel is ready the tick is ignored so an early SysTick cannot
- *          enter the scheduler.
- * @return Nothing.
- * @pre Installed as the SysTick vector in the NS vector table.
- * @pre @c g_ra8_threadx_systick_ready is set only after @c tx_kernel_enter.
- * @post When the kernel is ready, one ThreadX timer tick has been serviced.
- * @post When the kernel is not ready, no scheduler state is touched.
- * @note Runs in NS handler mode; not callable from thread context.
- * @since 0.1.0
- */
 RA8_INTERNAL static void internal_systick_handler(void)
 {
   if (g_ra8_threadx_systick_ready != 0U) {
@@ -492,20 +802,7 @@ RA8_INTERNAL static void internal_systick_handler(void)
   }
 }
 
-/**
- * @brief Park the CPU in an idle loop if a fatal startup error occurs.
- * @details Spins forever issuing @c wfi so a Non-Secure bring-up failure halts
- *          deterministically (low power) instead of executing undefined state.
- *          Recovery requires an external reset.
- * @return Does not return (@c noreturn).
- * @note The function never returns to its caller.
- * @pre Called only on an unrecoverable NS startup error.
- * @pre Interrupts that could resume normal flow are not relied upon.
- * @post The core remains parked in a low-power wait loop until reset.
- * @post No further application code executes.
- * @note Not thread-safe; terminal error path only.
- * @since 0.1.0
- */
+/** @brief Low-power halt on fatal unrecoverable bring-up failure. */
 RA8_INTERNAL [[noreturn]] static void internal_panic_halt(void)
 {
   while (1) {
@@ -514,20 +811,7 @@ RA8_INTERNAL [[noreturn]] static void internal_panic_halt(void)
 }
 
 /**
- * @brief UI thread entry: runs the e-reader UI frame loop.
- * @details The Non-Secure UI thread. By the time ThreadX schedules it the Secure
- *          substrate, the TrustZone boundary, and logging (SCI8) are all up, so it
- *          drives the frame loop for the lifetime of the system: each iteration
- *          advances the frame counter, emits a heartbeat on the configured
- *          cadence, and yields so the other threads run. Never returns.
- * @param[in] thread_input ThreadX entry argument (unused; reserved by the API).
- * @return Nothing (runs for the lifetime of the system).
- * @pre Registered as the UI thread's entry in ::tx_application_define.
- * @pre @c ra8_nsc_periph_init has completed (Secure services available).
- * @post The UI loop runs continuously, yielding each iteration.
- * @post Heartbeat log lines are emitted on the configured cadence.
- * @note Runs on the NS UI thread; not thread-safe across threads.
- * @since 0.1.0
+ * @brief UI thread entry: runs touch polling, page turns, zoom, and frame rendering.
  */
 RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
 {
@@ -536,69 +820,122 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
   internal_ns_panel_setup();
   internal_ns_backlight_setup(internal_ns_now_ms());
 
+  /* Touch controller bring-up */
+  const ra8_nsc_touch_cfg_t tcfg = {
+    .max_points = 1U,
+    .irq_pin    = 32U,
+  };
+  if (ra8_nsc_board_touch_open(&tcfg) == k_ra8_ok) {
+    g_ns_touch_ready = 1U;
+    (void)ra8_nsc_log_emit("UI", "Touch controller open: OK");
+  } else {
+    g_ns_touch_ready = 0U;
+    (void)ra8_nsc_log_emit("UI", "Touch controller open: skipped/unavailable");
+  }
+
+  /* Reader subsystem bring-up */
+  internal_ns_reader_setup();
+  internal_ns_render_page();
+
   uint32_t frame    = 0U;
   bool     prev_sw1 = false;
   bool     prev_sw2 = false;
   for (;;) {
     frame++;
     g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
-    bool sw1_edge  = false;
-    bool sw2_edge  = false;
+
+    bool sw1_edge = false;
+    bool sw2_edge = false;
     internal_ns_backlight_tick(&prev_sw1, &prev_sw2, &sw1_edge, &sw2_edge);
-    if (s_ns_panel.initialized) {
-      if (sw2_edge) {
-        if (er_panel_cycle_refresh_mode(&s_ns_panel) == k_ra8_ok) {
-          (void)er_panel_render_frame(&s_ns_panel,
-                                      k_display_event_turn,
-                                      "RA8D2 E-Reader",
-                                      "Refresh mode switched by user input");
-          internal_ns_panel_publish();
-          (void)ra8_nsc_log_emit("UI", er_panel_refresh_mode_label(s_ns_panel.mode));
-        }
-      } else if (sw1_edge) {
-        if (er_panel_render_frame(&s_ns_panel,
-                                  k_display_event_turn,
-                                  "RA8D2 E-Reader",
-                                  "Page turn flushed via display PAL") == k_ra8_ok) {
-          internal_ns_panel_publish();
+
+    const uint32_t now_ms = internal_ns_now_ms();
+
+    /* Figure popup tick / animated pan decay */
+    if (zoom_popup_active(&s_fig_popup)) {
+      if (zoom_popup_tick(&s_fig_popup, now_ms)) {
+        internal_ns_figure_present();
+      }
+    }
+
+    /* Poll touchscreen inputs */
+    if (g_ns_touch_ready != 0U) {
+      ra8_nsc_touch_point_t pt  = {};
+      uint8_t               got = 0U;
+      if ((ra8_nsc_touch_read(&pt, 1U, &got) == k_ra8_ok) && (got > 0U)) {
+        g_ns_touch_events++;
+        ra8_ereader_backlight_notify_activity();
+
+        if (zoom_popup_active(&s_fig_popup)) {
+          zoom_popup_action_t act = k_zoom_popup_act_none;
+          if (zoom_popup_tap(&s_fig_popup, pt.x, pt.y, now_ms, &act) == k_ra8_ok) {
+            g_ns_fig_scale = (uint32_t)s_fig_popup.view.scale;
+            if (act == k_zoom_popup_act_redrawn) {
+              internal_ns_figure_present();
+            } else if (act == k_zoom_popup_act_closed) {
+              (void)zoom_popup_close(&s_fig_popup);
+              g_ns_fig_active = 0U;
+              g_ns_fig_scale  = 0U;
+              internal_ns_render_page();
+            }
+          }
+        } else {
+          if (!internal_ns_try_figure_tap(pt.x, pt.y)) {
+            const er_dir_t dir = er_tap_to_dir(pt.x, (int32_t)k_panel_width_px);
+            if (dir != k_er_dir_none) {
+              internal_ns_handle_page_turn(dir);
+            }
+          }
         }
       }
     }
+
+    /* User button fallbacks (SW1 = prev page, SW2 = next page) */
+    if (s_ns_panel.initialized && (sw1_edge || sw2_edge)) {
+      const er_dir_t bdir = er_buttons_to_dir(sw1_edge, sw2_edge);
+      if (bdir != k_er_dir_none) {
+        internal_ns_handle_page_turn(bdir);
+      }
+    }
+
     /* Prove liveness to the watchdog supervisor once per frame. */
     (void)ra8_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {
       (void)ra8_nsc_log_emit("UI", "UI loop: frame heartbeat");
     }
-    tx_thread_sleep((uint32_t)k_ns_ui_frame_ticks); /* ~16 ms; yields to the others. */
+    tx_thread_sleep((uint32_t)k_ns_ui_frame_ticks);
   }
 }
 
 /**
  * @brief System supervisor and storage background thread.
- * @details Lower-priority background worker for long-running, non-UI duties --
- *          SD card / filesystem setup, input polling, battery status, and OTA
- *          state. It runs an infinite supervisor loop, emitting a periodic
- *          heartbeat and sleeping each iteration so the UI thread stays
- *          responsive. It never returns.
- * @param[in] thread_input ThreadX entry argument (unused; reserved by the API).
- * @return Nothing (runs for the lifetime of the system).
- * @pre Registered as the system thread's entry in ::tx_application_define.
- * @pre ThreadX is running (the scheduler invoked this entry).
- * @post The supervisor loop runs continuously, yielding each iteration.
- * @post Heartbeat log lines are emitted on the configured cadence.
- * @note Runs on the NS system thread; not thread-safe across threads.
- * @since 0.1.0
  */
 RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-
   (void)ra8_nsc_log_emit("SYS", "System thread started (storage + supervisor)");
+
+  /* Bring up SDHI pins and SD card */
+  if (ra8_board_sdhi_pins_init() == k_ra8_ok) {
+    const ra8_sdcard_cfg_t scfg = {.instance = 1U};
+    if (ra8_sdcard_init(&scfg) == k_ra8_ok) {
+      (void)ra8_io_vfs_init();
+      if ((ra8_io_blockdev_sdhi_init(&s_sd_bd) == k_ra8_ok) &&
+          (ra8_io_blockdev_as_fs_backend(&s_sd_bd, &s_sd_be) == k_ra8_ok) &&
+          (ra8_fs_mount(&s_sd_be, &s_sd_mount) == k_ra8_ok)) {
+        (void)ra8_io_vfs_mount("sd", s_sd_mount);
+        g_ns_sd_ready = 1U;
+        (void)ra8_nsc_log_emit("SYS", "SD storage mounted at sd:/");
+
+        /* Attempt to open candidate EPUB from SD */
+        internal_ns_open_sd_book();
+      }
+    }
+  }
+
   uint32_t tick = 0U;
   for (;;) {
     tick++;
-    g_ns_sys_ticks = tick; /* HIL liveness probe (read via J-Link). */
-    /* Prove liveness to the watchdog supervisor once per poll. */
+    g_ns_sys_ticks = tick;
     (void)ra8_wdt_supervisor_checkin(s_sys_wdt_handle);
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
       (void)ra8_nsc_log_emit("SYS", "System heartbeat: supervisor loop");
@@ -607,25 +944,7 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
   }
 }
 
-/**
- * @brief Arm the watchdog and start the ThreadX check-in supervisor.
- * @details Runs once from ::tx_application_define, before the workers are
- *          created, and in this exact order: arm the Secure WDT via the
- *          ``ra8_nsc_wdt_start`` veneer; initialise the supervisor with a
- *          caller-owned stack; redirect its refresh hook to the
- *          ``ra8_nsc_wdt_refresh`` veneer (the library default would call the
- *          WDT directly, which faults in NS); register the UI and system
- *          workers with their deadlines; then start the supervisor thread. Any
- *          failure is unrecoverable this early, so it parks in ::internal_panic_halt.
- * @return Nothing.
- * @note Returns only on full success; otherwise never returns (halts).
- * @pre ::ra8_nsc_periph_init has completed (Secure clocks + substrate up).
- * @pre Called in single-threaded boot context before any worker is created.
- * @post The WDT is armed and the supervisor thread is running.
- * @post ::s_ui_wdt_handle and ::s_sys_wdt_handle hold valid registry handles.
- * @note Not thread-safe; boot-time only.
- * @since 0.1.0
- */
+/** @brief Arm the watchdog and start the ThreadX check-in supervisor. */
 RA8_INTERNAL static void internal_wdt_setup(void)
 {
   if (ra8_nsc_wdt_start() != k_ra8_ok) {
@@ -640,8 +959,6 @@ RA8_INTERNAL static void internal_wdt_setup(void)
   if (ra8_wdt_supervisor_init(&sup_cfg) != k_ra8_ok) {
     internal_panic_halt();
   }
-  /* Route refresh through the NSC veneer -- the WDT is Secure-owned, so the
-   * library's default direct ra8_wdt_refresh_deferred would fault in NS. */
   if (ra8_wdt_supervisor_set_refresh_hook(ra8_nsc_wdt_refresh) != k_ra8_ok) {
     internal_panic_halt();
   }
@@ -660,76 +977,44 @@ RA8_INTERNAL static void internal_wdt_setup(void)
   }
 }
 
-/**
- * @brief Setup ThreadX threads and resources.
- */
+/** @brief Setup ThreadX threads and resources. */
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;
-
-  /* Arm the WDT + start the check-in supervisor before any worker runs. */
   internal_wdt_setup();
 
-  /* Create the UI thread. A failed create is unrecoverable this early: the
-   * WDT supervisor already registered the "ui"/"sys" deadlines, so a missing
-   * worker would only surface later as a silent watchdog boot-loop -- panic
-   * now instead, like every other NS bring-up failure in this file. */
-  /* (CHAR*)(uintptr_t): the vendored ThreadX API takes a non-const CHAR* for
-   * the thread name; the uintptr_t hop launders the string-literal const
-   * without tripping -Wcast-qual (same pattern as ra8_wdt_supervisor). */
   if (tx_thread_create(&s_ui_thread,
                        (CHAR*)(uintptr_t)"UI Thread",
                        internal_ui_thread_entry,
                        0UL,
                        s_ui_thread_stack,
                        k_ns_ui_thread_stack_size,
-                       k_ns_ui_priority, /* Priority             */
-                       k_ns_ui_priority, /* Preemption threshold */
+                       k_ns_ui_priority,
+                       k_ns_ui_priority,
                        TX_NO_TIME_SLICE,
                        TX_AUTO_START) != TX_SUCCESS) {
     internal_panic_halt();
   }
 
-  /* Create the System/Storage thread */
   if (tx_thread_create(&s_sys_thread,
                        (CHAR*)(uintptr_t)"System Thread",
                        internal_sys_thread_entry,
                        0UL,
                        s_sys_thread_stack,
                        k_ns_sys_thread_stack_size,
-                       k_ns_sys_priority, /* Priority             */
-                       k_ns_sys_priority, /* Preemption threshold */
+                       k_ns_sys_priority,
+                       k_ns_sys_priority,
                        TX_NO_TIME_SLICE,
                        TX_AUTO_START) != TX_SUCCESS) {
     internal_panic_halt();
   }
 }
 
-/**
- * @brief Non-Secure Reset handler: entered via Secure-to-NS transition.
- *
- * @details
- * Slot 1 of the NS vector table and the NS image's linker entry symbol; the
- * Secure boot BLXNS-es here. No header declares it because the only callers
- * are the hardware vector fetch and the linker -- the prototype below
- * satisfies -Wmissing-prototypes for this externally-linked boot symbol.
- *
- * @pre The Secure boot copied/armed the NS image and programmed VTOR_NS.
- * @pre Executes in NS Thread mode with MSP_NS from vector slot 0.
- * @post .bss (and, under XIP, .data) is initialised; ThreadX never returns.
- * @post Interrupt state is whatever tx_kernel_enter establishes.
- *
- * @note Not thread-safe; single-threaded NS boot only.
- * @since 0.1.0
- */
+/** @brief Non-Secure Reset handler: entered via Secure-to-NS transition. */
 [[noreturn]] void ns_reset_handler(void);
-
 [[noreturn]] void ns_reset_handler(void)
 {
 #ifdef RA8_EREADER_NS_XIP
-  /* XIP: code/rodata execute in place from OSPI, but .data must be writable, so
-   * copy its init image from OSPI (LMA) into SRAM (VMA) before any initialised
-   * global is read. Must run first -- nothing below may touch a .data global. */
   const uintptr_t data_src = (uintptr_t)&g_ra8_ls_ns_data_load_start;
   const uintptr_t data_dst = (uintptr_t)&g_ra8_ls_ns_data_start;
   const uintptr_t data_end = (uintptr_t)&g_ra8_ls_ns_data_end;
@@ -738,52 +1023,25 @@ void tx_application_define(void* first_unused_memory)
   }
 #endif
 
-  /* Zero the NS BSS section */
   const uintptr_t bss_start = (uintptr_t)&g_ra8_ls_ns_bss_start;
   const uintptr_t bss_end   = (uintptr_t)&g_ra8_ls_ns_bss_end;
   for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
     *(volatile uint32_t*)addr = 0U;
   }
 
-  /* Set the NS VTOR so exceptions vector correctly to NS handlers */
   *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra8_ls_ns_run_start;
 
-  /* Call Secure-side substrate initialization via NSC veneer gateway */
   if (ra8_nsc_periph_init() != k_ra8_ok) {
     internal_panic_halt();
   }
 
-  /* Announce the Non-Secure world is live before handing off to ThreadX.
-   * Logs flow NS -> ra8_nsc_log_emit veneer -> Secure ra8_log_info -> ITM
-   * (visible on the J-Link SWO console). */
   (void)ra8_nsc_log_emit("BOOT", "ra8d2-ereader: Non-Secure world online");
-
-  /* Enter ThreadX RTOS kernel (never returns) */
   tx_kernel_enter();
-
   internal_panic_halt();
 }
 
-/* =============================================================================
- * Non-Secure Vector Table
- * =============================================================================
- */
 typedef void (*ns_exc_handler_t)(void);
 
-/**
- * @brief Default Non-Secure fault/NMI handler: park the CPU in a wfi halt.
- * @details Installed on the NMI, HardFault, and the other unhandled Non-Secure
- *          exception vectors. There is no recovery path, so it spins in a @c wfi
- *          loop and leaves the faulting context intact for a debugger.
- * @return Nothing (noreturn; control never leaves the halt loop).
- * @note This function does not return.
- * @pre Reached only via a Non-Secure exception vector.
- * @pre Recovery, if any, is the debugger's or watchdog's responsibility.
- * @post The CPU is parked in a wfi loop and runs no further NS code.
- * @post The faulting context is left unmodified for inspection.
- * @note Runs in NS exception context.
- * @since 0.1.0
- */
 RA8_INTERNAL [[noreturn]] static void internal_nmi_halt(void)
 {
   while (1) {

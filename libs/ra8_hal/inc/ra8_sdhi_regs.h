@@ -34,8 +34,13 @@ extern "C" {
 #include "ra8_attributes.h"
 
 typedef enum : uintptr_t {
+#ifdef RA8_PERIPH_NS_ALIAS
+  k_ra8_sdhi0_base_addr = 0x50252000UL, /**< RA8 sdhi0 base address (NS alias). */
+  k_ra8_sdhi1_base_addr = 0x50252400UL, /**< RA8 sdhi1 base address (NS alias). */
+#else
   k_ra8_sdhi0_base_addr = 0x40252000UL, /**< RA8 sdhi0 base address. */
   k_ra8_sdhi1_base_addr = 0x40252400UL, /**< RA8 sdhi1 base address. */
+#endif
   k_ra8_sdhi_stride     = 0x400UL,      /**< RA8 SDHI stride.        */
 } ra8_sdhi_addr_t;
 

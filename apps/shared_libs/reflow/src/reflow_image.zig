@@ -104,21 +104,26 @@ fn initDecoderMux(mux: *Ra8ImgdecMux, webp_scratch: *Ra8ImgArena, stb_scratch: *
     var err = ra8_imgdec_mux_init(mux);
     if (err != 0) return @intCast(err);
 
+    var bound_any: bool = false;
     var dec: Ra8Imgdec = .{ .iface = null, .ctx = null };
+
     err = ra8_jpeg_imgdec_bind(&dec);
-    if (err != 0) return @intCast(err);
-    err = ra8_imgdec_mux_add(mux, &dec);
-    if (err != 0) return @intCast(err);
+    if (err == 0 and ra8_imgdec_mux_add(mux, &dec) == 0) {
+        bound_any = true;
+    }
 
     err = ra8_webp_imgdec_bind(&dec, webp_scratch);
-    if (err != 0) return @intCast(err);
-    err = ra8_imgdec_mux_add(mux, &dec);
-    if (err != 0) return @intCast(err);
+    if (err == 0 and ra8_imgdec_mux_add(mux, &dec) == 0) {
+        bound_any = true;
+    }
 
     const stb_err = ra8_img_imgdec_bind(&dec, stb_scratch);
-    if (stb_err != k_ra8_ok) return stb_err;
-    err = ra8_imgdec_mux_add(mux, &dec);
-    return @intCast(err);
+    if (stb_err == k_ra8_ok and ra8_imgdec_mux_add(mux, &dec) == 0) {
+        bound_any = true;
+    }
+
+    if (!bound_any) return @intCast(k_ra8_err_not_supported);
+    return k_ra8_ok;
 }
 
 /// Probe `bytes` against each layout in priority order until a mux member matches.

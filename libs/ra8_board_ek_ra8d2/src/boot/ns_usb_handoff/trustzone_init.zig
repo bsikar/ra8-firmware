@@ -81,11 +81,13 @@ const ns_copy_size: usize = 0x00030000; // Bytes copied LMA->VMA (192 KB).
 // ---------------------------------------------------------------------------
 
 const psarb_addr: usize = 0x40204004; // PSCU PSARB (peripheral S/NS attr).
+const psarc_addr: usize = 0x40204008; // PSCU PSARC (peripheral S/NS attr).
 
 const sau_granule_mask: u32 = 0xFFFFFFE0; // 32-byte SAU quantum mask.
 const psarb_usbfs_ns: u32 = 0x00000800; // PSARB11 = 1: USBFS0 Non-secure.
 const psarb_usbhs_ns: u32 = 0x00001000; // PSARB12 = 1: USBHS Non-secure.
 const psarb_usb_ns: u32 = 0x00001800; // PSARB11|12: both USB ctrls NS.
+const psarc_sdhi_ns: u32 = 0x00001800; // PSARC11|12 = 1: SDHI1 and SDHI0 NS.
 
 // ---------------------------------------------------------------------------
 // Packed `ra8_port_pin_t` codes for the EK-RA8D2 USB pins, `(port << 8) |
@@ -362,6 +364,9 @@ fn tzUsbMarkNs() void {
     const err = ra8_tz_psar_set_ns(psarb_addr, psarb_usb_ns, &seen);
     g_tz_usb_psarb_readback = seen;
     g_tz_usb_psarb_err = err;
+
+    var seen_c: u32 = 0;
+    _ = ra8_tz_psar_set_ns(psarc_addr, psarc_sdhi_ns, &seen_c);
 }
 
 /// Hand BOTH USB controllers to the Non-secure world before BLXNS.

@@ -332,10 +332,6 @@ const strm_off_clus: u32 = @intCast(c.k_exfat_strm_off_clus);
 const off_file_attr: u32 = @intCast(c.k_exfat_off_file_attr);
 const attr_archive: u8 = @intCast(c.k_exfat_attr_archive);
 
-/// Sector of zeros the gap-filling loop writes from; the Zig side keeps its
-/// own read-only copy rather than reaching across to the C one.
-const zero_sector: [c.k_ra8_fs_sector_max]u8 = @splat(0);
-
 /// Resolve the cluster at chain index `idx` of an already-grown file. A
 /// contiguous file is arithmetic; a chained one walks the FAT from the
 /// forward waypoint the read path maintains, so a sequential write costs one
@@ -420,7 +416,7 @@ pub export fn internal_exfat_close_gap(file: [*c]c.ra8_fs_file_t) callconv(.c) u
         if (gap < room) {
             n = @intCast(gap);
         }
-        e = priv_write_into_sector(file[0].mount, lba, off, &zero_sector, n);
+        e = priv_write_into_sector(file[0].mount, lba, off, &c.k_zero_sector, n);
         if (e != ok) {
             return e;
         }
