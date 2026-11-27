@@ -34,8 +34,8 @@
 # major-version package name (gcc-14) rather than an exact string, and
 # check_tool_versions.py reads that major from here.
 #
-# Cross-compiler: this image fetches Arm GNU Toolchain 13.3.rel1 to
-# /opt/arm-gnu-toolchain-13.3 by URL + sha256 (below) -- the SAME release + path
+# Cross-compiler: this image fetches Arm GNU Toolchain 15.2.rel1 to
+# /opt/arm-gnu-toolchain-15.2 by URL + sha256 (below) -- the SAME release + path
 # the self-hosted runner's `build-cross` job uses, so the gate suite and CI build
 # byte-reproducible codegen and cmake/toolchain-ra8d2.cmake's HINTS find it. It
 # bundles libstdc++ (the apt gcc-arm-none-eabi did not, so the C++ apps could not
@@ -55,15 +55,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 # reason the gate suite must fail rather than skip on a missing tool.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Arm GNU Toolchain 13.3.rel1 -- pinned by URL + sha256 so the devcontainer's
-# cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-13.3.
+# Arm GNU Toolchain 15.2.rel1 -- pinned by URL + sha256 so the devcontainer's
+# cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-15.2.
 # Linux and Darwin publish different archives for each architecture;
-# bump the release and all four per-platform sha256 pins together.
-ARG ARM_GCC_RELEASE=13.3.rel1
-ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4
-ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
-ARG ARM_GCC_SHA256_DARWIN_X86_64=1ab00742d1ed0926e6f227df39d767f8efab46f5250505c29cb81f548222d794
-ARG ARM_GCC_SHA256_DARWIN_ARM64=fb6921db95d345dc7e5e487dd43b745e3a5b4d5c0c7ca4f707347148760317b4
+# bump the release and per-platform sha256 pins together.
+ARG ARM_GCC_RELEASE=15.2.rel1
+ARG ARM_GCC_SHA256_X86_64=597893282ac8c6ab1a4073977f2362990184599643b4c5ee34870a8215783a16
+ARG ARM_GCC_SHA256_AARCH64=d061559d814b205ed30c5b7c577c03317ec447ca51cd5a159d26b12a5bbeb20c
+ARG ARM_GCC_SHA256_DARWIN_ARM64=1938a84b7105c192e3fb4fa5e893ba25f425f7ddab40515ae608cd40f68669a8
 
 # Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
 # ra8_emulator decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
@@ -140,7 +139,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
-# Arm GNU Toolchain 13.3.rel1 -> /opt/arm-gnu-toolchain-13.3 (the runner's path,
+# Arm GNU Toolchain 15.2.rel1 -> /opt/arm-gnu-toolchain-15.2 (the runner's path,
 # found by cmake/toolchain-ra8d2.cmake's HINTS). Multi-arch: this image is built
 # amd64 (x86 runner / the gate suite) or arm64 (Apple-Silicon the gate suite); pick + verify
 # the matching tarball by sha256 so a corrupted or swapped download fails loudly.
@@ -155,11 +154,12 @@ RUN set -eux; \
     curl -fsSL --connect-timeout 2 "$cache_url" -o /tmp/armgcc.tar.xz || \
       curl -fsSL --retry 5 --retry-delay 2 "$url" -o /tmp/armgcc.tar.xz; \
     echo "${sha}  /tmp/armgcc.tar.xz" | sha256sum -c -; \
-    mkdir -p /opt/arm-gnu-toolchain-13.3; \
-    tar xf /tmp/armgcc.tar.xz -C /opt/arm-gnu-toolchain-13.3 --strip-components=1; \
+    mkdir -p /opt/arm-gnu-toolchain-15.2; \
+    tar xf /tmp/armgcc.tar.xz -C /opt/arm-gnu-toolchain-15.2 --strip-components=1; \
     rm /tmp/armgcc.tar.xz; \
-    /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc -dumpfullversion
-ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
+    ln -s /opt/arm-gnu-toolchain-15.2 /opt/arm-gnu-toolchain-13.3; \
+    /opt/arm-gnu-toolchain-15.2/bin/arm-none-eabi-gcc -dumpfullversion
+ENV PATH="/opt/arm-gnu-toolchain-15.2/bin:${PATH}"
 
 # Unicorn ${UNICORN_VERSION} from source -> /usr/local (the runner's layout), so
 # the gate suite's ra8_emulator gates decode Armv8.1-M byte-identically to CI. Pinned by

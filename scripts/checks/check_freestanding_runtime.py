@@ -167,9 +167,12 @@ def find_tool(tool_name: str) -> str | None:
             if p.is_file() and os.access(p, os.X_OK):
                 return str(p)
 
-    home_opt = str(pathlib.Path.home() / "opt" / "arm-gnu-toolchain-13.3" / "bin")
+    home_opt_15 = str(pathlib.Path.home() / "opt" / "arm-gnu-toolchain-15.2" / "bin")
+    home_opt_13 = str(pathlib.Path.home() / "opt" / "arm-gnu-toolchain-13.3" / "bin")
     known_paths = [
-        home_opt,
+        home_opt_15,
+        "/opt/arm-gnu-toolchain-15.2/bin",
+        home_opt_13,
         "/opt/arm-gnu-toolchain/bin",
         "/opt/toolchains/arm-gnu-toolchain-13.3/bin",
         "/usr/local/bin",

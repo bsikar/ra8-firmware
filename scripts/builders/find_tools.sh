@@ -106,6 +106,8 @@ ra8_find_arm_toolchain_activate() { # -> 0
   command -v arm-none-eabi-gcc >/dev/null 2>&1 && return 0
   local _dir
   for _dir in ${RA8_ARM_TOOLCHAIN_BIN:+"$RA8_ARM_TOOLCHAIN_BIN"} \
+              /opt/arm-gnu-toolchain-15.2/bin "$HOME"/opt/arm-gnu-toolchain-15.2/bin \
+              /opt/arm-gnu-toolchain-13.3/bin "$HOME"/opt/arm-gnu-toolchain-13.3/bin \
               /opt/arm-gnu-toolchain-*/bin "$HOME"/opt/arm-gnu-toolchain-*/bin; do
     [ -n "$_dir" ] || continue
     [ -x "$_dir/arm-none-eabi-gcc" ] || continue

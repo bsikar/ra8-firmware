@@ -13,9 +13,10 @@ const arm_flags = @import("arm_flags.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const src_tree = @import("src_tree.zig");
 
-/// Where the Arm GNU Toolchain 13.3 lives unless `-Darm-gnu-toolchain` says
+/// Where the Arm GNU Toolchain lives unless `-Darm-gnu-toolchain` says
 /// otherwise.
-pub const default_toolchain_dir = "/opt/arm-gnu-toolchain-13.3/bin";
+pub const default_toolchain_dir = "/opt/arm-gnu-toolchain-15.2/bin";
+pub const fallback_toolchain_dir = "/opt/arm-gnu-toolchain-13.3/bin";
 pub const toolchain_option = "arm-gnu-toolchain";
 
 /// The tools this recipe drives, each by its full path.
@@ -28,7 +29,19 @@ pub const Gnu = struct {
 /// The toolchain in `dir`, or null when its gcc is not there.
 pub fn findGnu(b: *std.Build, dir: []const u8) ?Gnu {
     const gcc = b.pathJoin(&.{ dir, "arm-none-eabi-gcc" });
-    if (!src_tree.existsOutside(b, gcc)) return null;
+    if (!src_tree.existsOutside(b, gcc)) {
+        if (std.mem.eql(u8, dir, default_toolchain_dir)) {
+            const fallback_gcc = b.pathJoin(&.{ fallback_toolchain_dir, "arm-none-eabi-gcc" });
+            if (src_tree.existsOutside(b, fallback_gcc)) {
+                return .{
+                    .gcc = fallback_gcc,
+                    .ar = b.pathJoin(&.{ fallback_toolchain_dir, "arm-none-eabi-ar" }),
+                    .objcopy = b.pathJoin(&.{ fallback_toolchain_dir, "arm-none-eabi-objcopy" }),
+                };
+            }
+        }
+        return null;
+    }
     return .{
         .gcc = gcc,
         .ar = b.pathJoin(&.{ dir, "arm-none-eabi-ar" }),

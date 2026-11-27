@@ -81,7 +81,7 @@ target; the "status" column flags the known skews.
 
 | Tool | Target (CI) | Mac | dev box | Status |
 |------|-------------|-----|---------|--------|
-| `arm-none-eabi-gcc` (ship binaries) | **13.3.rel1** (`/opt/arm-gnu-toolchain-13.3`: runner + devcontainer, latter by URL+sha256) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **13.3.1** (`/opt/arm-gnu-toolchain-13.3`) | **CONVERGED** -- pinned 13.3.rel1, enforced; see 3.1 |
+| `arm-none-eabi-gcc` (ship binaries) | **15.2.rel1** (`/opt/arm-gnu-toolchain-15.2`: runner + devcontainer, latter by URL+sha256; 13.3 fallback) | **15.2.1** (`~/opt/arm-gnu-toolchain-15.2`) | **15.2.1** (`/opt/arm-gnu-toolchain-15.2`) | **CONVERGED** -- pinned 15.2.rel1 (13.3 fallback), enforced; see 3.1 |
 | host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
 | `just` | **1.58.0** (`JUST_VERSION`, devcontainer) | 1.58.0 | 1.58.0 (`/usr/local/bin`) | Mac may run recipes, but CI formatting/reference checks use the pinned devcontainer release |
 | GitHub Actions runner | n/a (no runner pool) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | SINGLE PATH -- only the HIL listener runs it |
@@ -102,21 +102,22 @@ target; the "status" column flags the known skews.
 
 ## 3. Known divergences + how to handle each
 
-### 3.1 arm-none-eabi-gcc: converged on 13.3.rel1 everywhere (T5-02)
+### 3.1 arm-none-eabi-gcc: converged on 15.2.rel1 (with 13.3.rel1 fallback) everywhere (T5-02)
 
 Codegen correctness on the attacker-facing `miniz` ZIP inflater is
 version-specific (arm-gcc 13.3 miscompiles it under strict aliasing where other
 majors do not; worked around with `-fno-strict-aliasing` on the SOUP TUs in
 `cmake/ra8_add_app.cmake`), so every environment is pinned to the **same** Arm GNU
-Toolchain release: **13.3.rel1** (gcc `13.3.1`).
+Toolchain release: **15.2.rel1** (gcc `15.2.1`), while preserving backward-compatible
+fallback support for **13.3.rel1** (gcc `13.3.1`).
 
 **How the pin is enforced:**
-- **Install path + HINTS.** Each environment installs 13.3.rel1 at a standard
+- **Install path + HINTS.** Each environment installs 15.2.rel1 at a standard
   path: the runner, devcontainer and dev box at
-  `/opt/arm-gnu-toolchain-13.3`, and the Mac at
-  `~/opt/arm-gnu-toolchain-13.3`. `cmake/toolchain-ra8d2.cmake`
+  `/opt/arm-gnu-toolchain-15.2`, and the Mac at
+  `~/opt/arm-gnu-toolchain-15.2`. `cmake/toolchain-ra8d2.cmake`
   `find_program`s the cross tools with `HINTS` on those paths (searched before
-  `PATH`), so the pinned 13.3 wins regardless of what stray arm-gcc sits on `PATH`
+  13.3 and `PATH`), so the pinned 15.2 wins regardless of what stray arm-gcc sits on `PATH`
   (e.g. a Homebrew 14.x). Override with `-DRA8_ARM_TOOLCHAIN_BIN=<dir>`. The `scripts/emu` gates
   (smoke.sh, eil_all.sh, matrix.sh) additionally locate the toolchain at run
   time -- `RA8_ARM_TOOLCHAIN_BIN`, then PATH, then `/opt` and `~/opt`
@@ -125,16 +126,16 @@ Toolchain release: **13.3.rel1** (gcc `13.3.1`).
   run needs no PATH surgery (see `scripts/builders/find_tools.sh`, which
   discovers `zig` the same way via `RA8_ZIG`).
 - **Version assertion.** The toolchain file runs `-dumpfullversion` and requires
-  major.minor `13.3` (patch-tolerant; rejects 13.2 and 14.x). A mismatch is a
+  major.minor `15.2` (or `13.3` fallback; patch-tolerant; rejects 13.2 and 14.x). A mismatch is a
   **FATAL error by default** (`RA8_STRICT_TOOLCHAIN` defaults ON) -- a build that
   silently picks up a stray arm-gcc fails loudly instead of shipping divergent
   codegen. Pass `-DRA8_STRICT_TOOLCHAIN=OFF` (or `RA8_STRICT_TOOLCHAIN=0` in the
   environment) for a deliberate one-off local build on a different toolchain.
-- **Reproducible fetch.** `.devcontainer/Dockerfile` owns the 13.3.rel1 release
-  and **URL + sha256** pins for all supported host assets: Linux x86-64 /
-  AArch64 and Darwin x86-64 / arm64. The container consumes the matching Linux
+- **Reproducible fetch.** `.devcontainer/Dockerfile` owns the 15.2.rel1 release
+  and **URL + sha256** pins for supported host assets: Linux x86-64 /
+  AArch64 and Darwin arm64. The container consumes the matching Linux
   `ARM_GCC_SHA256_X86_64` / `_AARCH64` archive and installs it to
-  `/opt/arm-gnu-toolchain-13.3` -- byte-identical to the runner, bundling
+  `/opt/arm-gnu-toolchain-15.2` -- byte-identical to the runner, bundling
   libstdc++ (the old apt `gcc-arm-none-eabi` did not, so C++ apps could not build
   in the devcontainer) and its own newlib. Linux and Darwin archives are
   platform-specific and therefore intentionally have different hashes. The

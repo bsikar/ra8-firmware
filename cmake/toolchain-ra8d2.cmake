@@ -13,14 +13,17 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 # Cross-compiler prefix
 set(TOOLCHAIN_PREFIX arm-none-eabi-)
 
-# Prefer the pinned Arm GNU Toolchain 13.3 install if present, at the per-OS
+# Prefer the pinned Arm GNU Toolchain 15.2 install if present, at the per-OS
 # standard path, so every environment (Mac, dev box, CI runner, devcontainer)
 # builds with the SAME compiler regardless of what stray arm-gcc sits on PATH.
-# find_program searches HINTS before the system PATH, so a 13.3 install
-# here wins; absent it, the search falls back to PATH and the version assertion
-# below catches a mismatch. To relocate, install to one of these paths (see
-# docs/TOOLCHAIN.md) or pass -DRA8_ARM_TOOLCHAIN_BIN=<dir>.
-set(_ra8_pinned_tc_bin ${RA8_ARM_TOOLCHAIN_BIN} /opt/arm-gnu-toolchain-13.3/bin
+# find_program searches HINTS before the system PATH, so a 15.2 install
+# here wins; absent it, the search falls back to 13.3 and then PATH, and the
+# version assertion below catches a mismatch. To relocate, install to one of
+# these paths (see docs/TOOLCHAIN.md) or pass -DRA8_ARM_TOOLCHAIN_BIN=<dir>.
+set(_ra8_pinned_tc_bin ${RA8_ARM_TOOLCHAIN_BIN}
+                       /opt/arm-gnu-toolchain-15.2/bin
+                       $ENV{HOME}/opt/arm-gnu-toolchain-15.2/bin
+                       /opt/arm-gnu-toolchain-13.3/bin
                        $ENV{HOME}/opt/arm-gnu-toolchain-13.3/bin
 )
 
@@ -88,8 +91,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/ra8_bootstrap.cmake")
 # RA8_STRICT_TOOLCHAIN=0 in the environment) to downgrade the mismatch to a
 # warning. See docs/TOOLCHAIN.md.
 set(RA8_PINNED_ARM_GCC_VERSION
-    "13.3"
-    CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1)"
+    "15.2"
+    CACHE STRING "Pinned arm-none-eabi-gcc major.minor (15.2.rel1)"
 )
 option(RA8_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned version" ON)
 # Escape hatch: RA8_STRICT_TOOLCHAIN=0 in the environment downgrades to a warning.
@@ -108,18 +111,17 @@ if(NOT _ra8_arm_gcc_rc EQUAL 0)
       "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpfullversion' failed (rc=${_ra8_arm_gcc_rc})"
   )
 endif()
-# Pin to major.minor -- the Arm GNU Toolchain release line (13.3.rel1 ships gcc
-# 13.3.1). Patch-tolerant so a 13.3.x point release still matches, but 13.2 / 14.x
-# do not. This is stricter than the previous major-only check (which accepted the
-# codegen-divergent 13.2).
+# Pin to major.minor -- the Arm GNU Toolchain release line (15.2.rel1 ships gcc
+# 15.2.1, with 13.3.rel1 fallback). Patch-tolerant so a point release still
+# matches, but 13.2 / 14.x do not.
 string(REGEX MATCH "^[0-9]+\\.[0-9]+" _ra8_arm_gcc_mm "${_ra8_arm_gcc_version}")
-if(NOT _ra8_arm_gcc_mm STREQUAL "${RA8_PINNED_ARM_GCC_VERSION}")
+if(NOT (_ra8_arm_gcc_mm STREQUAL "${RA8_PINNED_ARM_GCC_VERSION}" OR _ra8_arm_gcc_mm STREQUAL "13.3"))
   set(_ra8_tc_msg
       "arm-none-eabi-gcc is ${_ra8_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
-      "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
+      "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (15.2.rel1, with 13.3.rel1 fallback) for "
       "reproducible codegen -- the miniz inflater is version-sensitive. "
-      "Install 13.3.rel1 to /opt/arm-gnu-toolchain-13.3 or "
-      "~/opt/arm-gnu-toolchain-13.3 (see docs/TOOLCHAIN.md), or pass "
+      "Install 15.2.rel1 to /opt/arm-gnu-toolchain-15.2 or "
+      "~/opt/arm-gnu-toolchain-15.2 (see docs/TOOLCHAIN.md), or pass "
       "-DRA8_STRICT_TOOLCHAIN=OFF for a deliberate one-off build."
   )
   if(RA8_STRICT_TOOLCHAIN)
