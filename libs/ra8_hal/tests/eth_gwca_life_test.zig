@@ -41,6 +41,17 @@ test "init clears GWCA, sets DDE on every agent and logs once" {
     try std.testing.expectEqualSlices(u32, &.{ 0x11, 0x11, 0xFFFF_FFFF }, &f);
 }
 
+test "init transitions through DISABLE before RESET when GWCA starts in OPERATION" {
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
+    var g: life.events.Regs = .{ .ctrl = 3, .sts = 3, .ie = 0, .iclr = 0 };
+    var f = [3]u32{ 0, 0, 0 };
+    const v = life.View{ .gwca = &g, .fwpc = .{ &f[0], &f[1], &f[2] } };
+    try std.testing.expectEqual(life.ok, life.init(Ops{ .log = &log }, v));
+    try std.testing.expectEqualStrings("EI", log.items);
+    try std.testing.expectEqual(@as(u32, 0), g.ctrl | g.sts | g.ie | g.iclr);
+}
+
 test "init stops before touching registers when MSTP fails" {
     var log: std.ArrayList(u8) = .empty;
     defer log.deinit(std.testing.allocator);

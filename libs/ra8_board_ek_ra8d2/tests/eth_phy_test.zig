@@ -18,6 +18,7 @@ var write_err: u32 = 0;
 var read_err: u32 = 0;
 var bmcr_clears_after: u32 = 0;
 var miictrl_value: u16 = 0;
+var bmsr_value: u16 = eth_phy.Bits.bmsr_an_complete | eth_phy.Bits.bmsr_link_up;
 var gpio_pin: u16 = 0;
 var gpio_level: u32 = 0xFFFF;
 var gpio_init_err: u32 = 0;
@@ -33,6 +34,7 @@ fn reset() void {
     read_err = 0;
     bmcr_clears_after = 0;
     miictrl_value = 0;
+    bmsr_value = eth_phy.Bits.bmsr_an_complete | eth_phy.Bits.bmsr_link_up;
     gpio_pin = 0;
     gpio_level = 0xFFFF;
     gpio_init_err = 0;
@@ -58,6 +60,10 @@ export fn ra8_rmac_mdio_c22_read(port: u8, phy_addr: u8, reg_addr: u8, out_value
     reads_len += 1;
     if (reg_addr == eth_phy.Reg.miictrl) {
         out_value.* = miictrl_value;
+        return 0;
+    }
+    if (reg_addr == eth_phy.Reg.bmsr) {
+        out_value.* = bmsr_value;
         return 0;
     }
     const cleared = reads_len > bmcr_clears_after;
@@ -178,4 +184,21 @@ test "every MDIO access targets RMAC1 and the strapped PHY address" {
     try std.testing.expectEqual(eth_phy.Err.ok, eth_phy.chipInit());
     try std.testing.expectEqual(@as(u8, 1), last_port);
     try std.testing.expectEqual(eth_phy.addr, last_addr);
+}
+
+test "autoneg wait exits when link up and an complete assert" {
+    reset();
+    try std.testing.expectEqual(eth_phy.Err.ok, eth_phy.waitForAutoneg());
+}
+
+test "autoneg wait returns ok on timeout when disconnected" {
+    reset();
+    bmsr_value = 0;
+    try std.testing.expectEqual(eth_phy.Err.ok, eth_phy.waitForAutoneg());
+}
+
+test "autoneg wait forwards mdio read error" {
+    reset();
+    read_err = eth_phy.Err.hw_timeout;
+    try std.testing.expectEqual(eth_phy.Err.hw_timeout, eth_phy.waitForAutoneg());
 }

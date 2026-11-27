@@ -54,6 +54,12 @@ pub fn eswmBringUp(out_eswclk_hz: *u32) u32 {
 /// Walk ETHA1 from RESET through DISABLE to CONFIG, which is the only mode in
 /// which RMAC.MPIC is writable.
 pub fn ethaToConfig() u32 {
+    // If ETHA was left in OPERATION from a previous run across warm reset,
+    // transition to DISABLE first to cleanly drain pending bus cycles.
+    // HUM Ch 32.3.1.1 "EAMC : Ethernet Agent Mode Control Register" p 1630.
+    _ = hal.ra8_etha_set_mode(Eth.etha_port, Eth.opc_disable);
+    busy_wait.spin(etha_step_iters);
+
     const cfg = hal.EthaConfig{
         .initial_mode = Eth.opc_reset,
         .eaeie0_mask = 0,

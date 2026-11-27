@@ -901,6 +901,25 @@ RA8_INTERNAL static void internal_test_board_ethernet_init_coma_bpr_timeout(void
 }
 
 /**
+ * @brief Verify Ethernet initialization deterministically succeeds across repeated warm resets.
+ * @details Calls ra8_board_ethernet_init repeatedly to simulate repeated flash+probe
+ *          cycles without power cycling, confirming warm-reset recovery.
+ * @pre Fake MMIO and board HAL state can be reset.
+ * @post Each successive ra8_board_ethernet_init call returns k_ra8_ok.
+ * @note Exercises warm-reset recovery across repeated cycles.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_board_ethernet_init_repeated_warm_reset(void)
+{
+  TEST_BEGIN("board_ethernet_init repeated warm reset cycles");
+  for (uint32_t cycle = 0U; cycle < 5U; ++cycle) {
+    internal_reset_board_hal_state();
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_board_ethernet_init());
+  }
+  TEST_END("board_ethernet_init repeated warm reset cycles");
+}
+
+/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -946,6 +965,7 @@ static void (*const s_test_roster[])(void) = {
   internal_test_board_uart_console_flush,
   internal_test_board_ethernet_init,
   internal_test_board_ethernet_init_coma_bpr_timeout,
+  internal_test_board_ethernet_init_repeated_warm_reset,
 };
 
 int main(void)

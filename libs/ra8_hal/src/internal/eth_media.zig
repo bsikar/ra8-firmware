@@ -52,14 +52,16 @@ pub fn hardware() Window {
 
 /// Route `port`'s pins to RGMII, then bring its RGMII block out of reset.
 ///
-/// MIICR is written before MIIRR.RGRSTm is set so the pin mux is in the
-/// right mode the instant the data pins go live.
+/// Per HUM Ch 29.2.1.1, RGRSTm must be set to 0 (reset) while changing MIICRm,
+/// then set to 1 (release). Clearing RGRSTm first ensures deterministic recovery
+/// across warm resets where RGRSTm was already asserted by a previous run.
 /// HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287;
 /// HUM Ch 29.2.1.1 "MIIRR : Media-independent Interface Reset Register" p 1289.
 pub fn rgmiiSelect(window: Window, port: u8) Error!void {
     if (port > port_max) return error.InvalidPort;
     const miicr = if (port == 0) window.miicr0 else window.miicr1;
     const rgrst = if (port == 0) miirr_rgrst0 else miirr_rgrst1;
+    window.miirr.* = window.miirr.* & ~rgrst;
     miicr.* = miicr_txcide | miicr_miisel_rgmii;
     window.miirr.* = window.miirr.* | rgrst;
 }
