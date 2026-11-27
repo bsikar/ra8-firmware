@@ -392,7 +392,7 @@ def run_emulator_check(
             "zig",
             "--console",
             "--instructions",
-            "120000000000",
+            "3000000000000000",
             "--until",
             "dfu-payload: Slot A active",
             "--dump-mem",

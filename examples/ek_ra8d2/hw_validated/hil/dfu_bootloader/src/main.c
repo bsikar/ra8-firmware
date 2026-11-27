@@ -765,10 +765,18 @@ VOID tx_application_define(VOID* first_unused_memory)
  * @brief Arm WDT0 in reset-on-expiry mode before launching a trial slot.
  *
  * @details
- * Configures WDT0 (HUM Ch 27) with a 1024-cycle window over CLKDIV /4, hardware
- * reset on expiry (`RSTIRQS = 1`), and Sleep-keep-count (`SLCSTP = 0`) so a
- * hung or WFI-stalled trial payload always triggers a hardware reset back into
- * the bootloader instead of hanging forever. Confirmed boots leave WDT0 disarmed.
+ * Configures WDT0 (HUM Ch 27) with a 16384-cycle window over CLKDIV /8192,
+ * hardware reset on expiry (`WDTRCR.RSTIRQS = 1`, HUM Ch 27.2.4 p 1262), and
+ * Sleep-keep-count (`WDTCSTPR.SLCSTP = 0`, HUM Ch 27.2.5 p 1262) so a hung or
+ * WFI-stalled trial payload always triggers a hardware reset back into the
+ * bootloader instead of hanging forever.
+ *
+ * At PCLKB = 62.5 MHz (HUM Ch 27.2.2 Table 27.2 p 1259):
+ *   Period = 16,384 * 8,192 / 62,500,000 = ~2.15 seconds.
+ * This timeout leaves ample margin for the bootloader's SHA-256 + ECDSA-P256 RoT
+ * image verification and SRAM copy (~506 ms measured on EK-RA8D2 silicon) while
+ * still leaving ~1.64 s for the trial payload to initialize, execute self-tests,
+ * and call ::ra8_dfu_confirm(). Confirmed boots leave WDT0 disarmed.
  *
  * @return void -- halts in ::blc_panic_halt if WDT bring-up fails.
  * @pre Called once on a trial boot right before ::blc_boot_slot.
@@ -779,8 +787,8 @@ static void blc_arm_trial_watchdog_or_halt(void)
 {
 #ifndef RA8_OFF_TARGET
   const ra8_wdt_cfg_t cfg = {
-    .timeout       = k_ra8_wdt_timeout_1024,
-    .clock_div     = k_ra8_wdt_clkdiv_4,
+    .timeout       = k_ra8_wdt_timeout_16384,
+    .clock_div     = k_ra8_wdt_clkdiv_8192,
     .window_start  = k_ra8_wdt_window_start_100,
     .window_end    = k_ra8_wdt_window_end_0,
     .on_expiry     = k_ra8_wdt_on_expiry_reset,

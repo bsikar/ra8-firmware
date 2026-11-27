@@ -48,8 +48,9 @@ Boot decision and state arbitration live in `libs/ra8_dfu` (`ra8_dfu_boot_decide
    - `dfu_bootloader` persists `tries_left - 1` into the alternate ping-pong page
      **before** launching so even an instant fault consumes a try.
    - `dfu_bootloader` arms WDT0 (`blc_arm_trial_watchdog_or_halt()`) in
-     reset-on-expiry mode (`k_ra8_wdt_timeout_1024`, `k_ra8_wdt_clkdiv_4`,
-     ~25.6 s timeout, `RSTIRQS = 1`, `SLCSTP = 0` so WFI still counts down).
+     reset-on-expiry mode (`k_ra8_wdt_timeout_16384`, `k_ra8_wdt_clkdiv_8192`,
+     ~2.15 s timeout at 62.5 MHz PCLKB per HUM Ch 27.2.2 Table 27.2 p 1259,
+     `RSTIRQS = 1`, `SLCSTP = 0` so WFI still counts down).
    - It then verifies the image trailer (`ra8_rot_verify_image`) and launches at
      `k_ra8_dfu_run_base`.
 4. **Revert on exhausted tries:** If a trial image hangs, faults, or reboots
@@ -94,9 +95,9 @@ To run across both confirmed and trial boots without reverting:
 2. **Initialize or preserve flash/MRAM access and run self-test:** Call
    `ra8_flash_init()` and run post-boot health checks (clock, comms, peripheral
    sanity) before confirming.
-3. **Feed or reset past the ~25.6 s trial watchdog:** On a trial boot, WDT0 is
+3. **Feed or reset past the ~2.15 s trial watchdog:** On a trial boot, WDT0 is
    latched until reset (HUM Ch 27 write-once `WDTCR`/`WDTRCR`). If startup plus
-   self-test takes close to ~25.6 s, call `ra8_wdt_refresh()` /
+   self-test takes close to ~2.15 s, call `ra8_wdt_refresh()` /
    `ra8_wdt_refresh_for(k_ra8_wdt0)`. Once confirmed, either continue periodic
    WDT0 refreshes for the remainder of that boot or trigger a clean software
    reset so the next boot starts in confirmed mode with WDT0 disarmed.
