@@ -32,6 +32,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/rabook_viewer` | `tools/rabook_viewer/build.zig` (`zig build` test/integration), `just/tools.just` (`tools::viewer`, `tools::view` via `build_host_tools.sh`), `cmake/ra8_webp_vendor.cmake` (still shared by the app + host-test recipes); format docs | three C-era unit targets + workspace/corpus integration suites (`zig build test`, `zig build integration`) | keep |
 | `tools/reader_vmem` | `just/tools.just` (`tools::build_reader_vmem`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; consumed by `tools/cache_bench` `sweep_block`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (workspace tests, `tests/src/reader_vmem_workspace_test.c`) | keep |
 | `tools/roadmap_stats` | `just/docs.just`; regenerates `docs/ROADMAP.md` | `.zig-test-contract.json` suite | keep |
+| `tools/translate_models` | `libs/ra8_translate`, `tools/translate_models/generated/`; consumes `tools/vela/src/vela_gen.py` | `tools/translate_models/tests/test_translate_models.py`, `tools/translate_models/src/build_translate_models.py --check`, `zig build test` (`tools/translate_models/build.zig`) | keep |
 | `tools/vela` | NPU model compiler, pinned in `build.zig.zon`; serves the `npu_vela` example; SOUP record `docs/SOUP/vela.md` | `tools/vela/tests/test_vela_gen.py` | keep |
 | `tools/zig_build` | root `build.zig` and every host Zig build (`apps/host/firmware_pipeline`, `image_pyramid`, `reg_gen`); `cmake/ra8_add_ns_image.cmake` | `.zig-test-contract.json` suite | keep |
 
